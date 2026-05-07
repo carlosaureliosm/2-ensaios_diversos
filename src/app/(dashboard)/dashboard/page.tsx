@@ -23,10 +23,10 @@ function getInitials(name: string): string {
 }
 
 export default function DashboardPage() {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userCargo, setUserCargo] = useState('');
   const [userRole, setUserRole] = useState('');
   const router = useRouter();
 
@@ -37,7 +37,8 @@ export default function DashboardPage() {
       setUserEmail(user.email ?? '');
       const meta = user.user_metadata ?? {};
       setUserName(meta.full_name ?? meta.name ?? user.email ?? '');
-      setUserRole(meta.role ?? meta.cargo ?? '');
+      setUserCargo(meta.cargo ?? '');
+      setUserRole(meta.role ?? 'user');
     });
   }, []);
 
@@ -49,15 +50,15 @@ export default function DashboardPage() {
 
   const initials = userName ? getInitials(userName) : '··';
   const displayName = userName || userEmail;
+  const isAdmin = userRole === 'admin';
 
   return (
     <div style={{ backgroundColor: '#1E3264', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
       <style>{`
-        .profile-btn:hover { background: rgba(255,255,255,0.1); }
-        .nav-link-off:hover { color: rgba(255,255,255,0.9); }
-        .dd-item:hover { background: rgba(255,255,255,0.1); }
-        .dd-item-danger:hover { background: rgba(186,26,26,0.25); }
+        .nav-link-off:hover { color: rgba(255,255,255,0.9) !important; }
         .fab:hover { background: #b08c18 !important; }
+        .signout-btn:hover { background: rgba(186,26,26,0.2) !important; color: #ffb4ab !important; }
+        .card-link:hover span { color: #1E3264 !important; }
       `}</style>
 
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 56, padding: '0 20px', backgroundColor: '#1E3264', borderBottom: '1px solid rgba(255,255,255,0.15)', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -65,48 +66,41 @@ export default function DashboardPage() {
           <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.02em', color: '#ffffff', textTransform: 'uppercase' }}>TECOMAT</span>
           <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
             <a href="/dashboard" style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', textDecoration: 'none', borderBottom: '2px solid #C8A020', paddingBottom: 2 }}>Ensaios</a>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <a href="/usuarios" className="nav-link-off" style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', transition: 'color 0.15s' }}>Usuários</a>
-              <span style={{ fontSize: 10, backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin</span>
-            </span>
+            {isAdmin && (
+              <a href="/usuarios" className="nav-link-off" style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', transition: 'color 0.15s' }}>
+                Usuários
+              </a>
+            )}
           </nav>
         </div>
 
-        <div style={{ position: 'relative' }}>
-          <button
-            className="profile-btn"
-            onClick={() => setDropdownOpen((v) => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 99, padding: '5px 5px 5px 10px', transition: 'background 0.15s' }}
-          >
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', lineHeight: 1, margin: 0 }}>{displayName || '...'}</p>
-              {userRole && <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', margin: '2px 0 0' }}>{userRole}</p>}
-            </div>
-            <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: '#C8A020', color: '#1E3264', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.3)' }}>
+        {/* Direita: avatar + nome + cargo + botão sair */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: '#C8A020', color: '#1E3264', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
               {initials}
             </div>
-          </button>
-
-          {dropdownOpen && (
-            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', width: 210, backgroundColor: '#1E3264', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.3)', padding: '6px 0', zIndex: 50 }}>
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#ffffff', margin: 0 }}>{displayName}</p>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', margin: '2px 0 0' }}>{userEmail}</p>
-              </div>
-              <button className="dd-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', fontSize: 13, color: 'rgba(255,255,255,0.85)', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', transition: 'background 0.15s' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                Meu Perfil
-              </button>
-              <button
-                className="dd-item-danger"
-                onClick={handleSignOut}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', fontSize: 13, color: '#ffb4ab', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', transition: 'background 0.15s' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffb4ab" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Sair
-              </button>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#ffffff', lineHeight: 1, margin: 0 }}>{displayName || '...'}</p>
+              {userCargo && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', margin: '2px 0 0' }}>{userCargo}</p>}
             </div>
-          )}
+          </div>
+
+          <div style={{ width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+
+          <button
+            className="signout-btn"
+            onClick={handleSignOut}
+            title="Sair"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 7, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.65)', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s, color 0.15s' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Sair
+          </button>
         </div>
       </header>
 
@@ -116,6 +110,7 @@ export default function DashboardPage() {
             <a
               key={ensaio.id}
               href={ensaio.href}
+              className="card-link"
               onMouseEnter={() => setHoveredCard(ensaio.id)}
               onMouseLeave={() => setHoveredCard(null)}
               style={{
