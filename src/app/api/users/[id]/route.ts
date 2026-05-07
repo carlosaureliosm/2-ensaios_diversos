@@ -82,7 +82,9 @@ export async function PATCH(
   }
 
   // Monta payload para o Supabase
-  const updates: Record<string, unknown> = { data: newMeta };
+  // CORREÇÃO: usar `user_metadata` em vez de `data` — o campo `data` não persiste
+  // corretamente em todas as versões do @supabase/supabase-js
+  const updates: Record<string, unknown> = { user_metadata: newMeta };
   if (email !== undefined && email !== '') updates.email = email;
   if (password !== undefined && password !== '') updates.password = password;
 

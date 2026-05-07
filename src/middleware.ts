@@ -42,8 +42,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // CORREÇÃO: `api` explicitamente excluído para evitar interceptação das rotas de API
   matcher: [
-    // Exclui rotas de API, arquivos estáticos e imagens
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

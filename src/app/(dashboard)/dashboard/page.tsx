@@ -27,7 +27,6 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userCargo, setUserCargo] = useState('');
-  const [userRole, setUserRole] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -38,7 +37,6 @@ export default function DashboardPage() {
       const meta = user.user_metadata ?? {};
       setUserName(meta.full_name ?? meta.name ?? user.email ?? '');
       setUserCargo(meta.cargo ?? '');
-      setUserRole(meta.role ?? 'user');
     });
   }, []);
 
@@ -50,7 +48,6 @@ export default function DashboardPage() {
 
   const initials = userName ? getInitials(userName) : '··';
   const displayName = userName || userEmail;
-  const isAdmin = userRole === 'admin';
 
   return (
     <div style={{ backgroundColor: '#1E3264', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
@@ -66,15 +63,14 @@ export default function DashboardPage() {
           <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.02em', color: '#ffffff', textTransform: 'uppercase' }}>TECOMAT</span>
           <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
             <a href="/dashboard" style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', textDecoration: 'none', borderBottom: '2px solid #C8A020', paddingBottom: 2 }}>Ensaios</a>
-            {isAdmin && (
-              <a href="/usuarios" className="nav-link-off" style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', transition: 'color 0.15s' }}>
-                Usuários
-              </a>
-            )}
+            {/* CORREÇÃO: botão Usuários visível para todos — a página /usuarios
+                exibe a lista completa para admin e apenas o perfil para usuário comum */}
+            <a href="/usuarios" className="nav-link-off" style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', transition: 'color 0.15s' }}>
+              Usuários
+            </a>
           </nav>
         </div>
 
-        {/* Direita: avatar + nome + cargo + botão sair */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: '#C8A020', color: '#1E3264', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
