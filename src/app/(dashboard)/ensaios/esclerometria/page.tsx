@@ -361,14 +361,17 @@ export default function EsclerometriaPage() {
         bigorna: cab.bigorna,
         mediaBigorna,
         coefBigorna,
-        amostras: amostras.map(a => ({
-          amostra: a.amostra,
-          posicao: a.posicao,
-          ie_medio: fmt(a.ieMedio),
-          ie_efetivo: fmt(a.ieEfetivo),
-          resistencia: fmt(a.resistencia),
-          dispersao: a.dispersao,
-        })),
+        amostras: amostras
+          .filter(a => a.status === 'Amostra Válida')
+          .map((a, i) => ({
+            item: i + 1,
+            amostra: a.amostra,
+            posicao: a.posicao,
+            ie_medio: fmt(a.ieMedio),
+            ie_efetivo: fmt(a.ieEfetivo),
+            resistencia: fmt(a.resistencia),
+            dispersao: a.dispersao,
+          })),
       };
 
       const res = await fetch('/api/ensaios/esclerometria/docx', {
@@ -397,9 +400,7 @@ export default function EsclerometriaPage() {
     }
   };
 
-  const validas  = amostras.filter(a => a.status === 'Amostra Válida');
-  const perdidas = amostras.filter(a => a.status === 'Amostra Perdida');
-  const fckMedia = validas.length > 0 ? validas.reduce((s, a) => s + (a.resistencia ?? 0), 0) / validas.length : null;
+
   const fmtData  = (iso: string) => { try { const d = new Date(iso); return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return iso; } };
 
   return (
@@ -665,16 +666,7 @@ export default function EsclerometriaPage() {
                   </div>
                 );
               })}
-              {amostras.length > 0 && (
-                <div style={{ display: 'flex', gap: 0, borderTop: `2px solid ${BORDER}`, background: '#F8F9FA' }}>
-                  {[{ label: 'Total', value: String(amostras.length), color: TEXT }, { label: 'Válidas', value: String(validas.length), color: SUCCESS }, { label: 'Perdidas', value: String(perdidas.length), color: perdidas.length > 0 ? DANGER : SUBTEXT }, ...(fckMedia !== null ? [{ label: 'fck médio', value: `${fckMedia.toFixed(1)} MPa`, color: PRIMARY }, { label: 'Mín.', value: `${Math.min(...validas.map(a => a.resistencia ?? Infinity)).toFixed(1)} MPa`, color: DANGER }, { label: 'Máx.', value: `${Math.max(...validas.map(a => a.resistencia ?? -Infinity)).toFixed(1)} MPa`, color: SUCCESS }] : [])].map((item, i) => (
-                    <div key={i} style={{ flex: 1, padding: '14px 20px', borderLeft: i > 0 ? `1px solid ${BORDER}` : 'none' }}>
-                      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{item.label}</p>
-                      <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 800, color: item.color }}>{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+
             </section>
           </div>
         )}

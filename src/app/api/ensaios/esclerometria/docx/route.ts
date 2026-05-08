@@ -15,6 +15,7 @@ import fs from 'fs';
 
 // ── Tipos ──────────────────────────────────────────────────────
 type AmostraPayload = {
+  item: number;
   amostra: string;
   posicao: string;
   ie_medio: string;
@@ -115,6 +116,7 @@ export async function POST(req: NextRequest) {
       cliente: body.cliente || '—',
       obra: body.obra || '—',
       att: body.att || '—',
+      endereco: body.endereco || '—',
       data: datas.capa,
       segunda_data: datas.corpo,
       b1:  body.bigorna[0] ?? '',
