@@ -33,7 +33,7 @@ export async function PATCH(
   }
 
   const body = await req.json();
-  const { full_name, cargo, role, email, password, action } = body;
+  const { full_name, cargo, crea, role, email, password, action } = body;
 
   const admin = createAdminClient();
 
@@ -69,6 +69,7 @@ export async function PATCH(
   const newMeta: Record<string, unknown> = { ...existingMeta };
   if (full_name !== undefined) newMeta.full_name = full_name;
   if (cargo !== undefined) newMeta.cargo = cargo;
+  if (crea !== undefined) newMeta.crea = crea;
 
   if (role !== undefined) {
     if (!isAdmin) return NextResponse.json({ error: 'Sem permissão para alterar nível.' }, { status: 403 });

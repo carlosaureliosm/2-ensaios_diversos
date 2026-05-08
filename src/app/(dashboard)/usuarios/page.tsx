@@ -12,6 +12,8 @@ type UserRow = {
   role: 'admin' | 'user';
   banned: boolean;
   created_at: string;
+  crea?: string;
+  assinatura_url?: string;
 };
 
 type CurrentUser = {
@@ -20,6 +22,8 @@ type CurrentUser = {
   full_name: string;
   cargo: string;
   role: 'admin' | 'user';
+  crea?: string;
+  assinatura_url?: string;
 };
 
 type ModalMode = 'create' | 'edit' | 'self-edit' | null;
@@ -81,8 +85,73 @@ function Modal({ mode, target, currentUser, onClose, onSuccess }: {
   const [email,    setEmail]    = useState(target?.email ?? '');
   const [password, setPassword] = useState('');
   const [role,     setRole]     = useState<'admin' | 'user'>(target?.role ?? 'user');
+  const [crea,     setCrea]     = useState(target?.crea ?? '');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
+
+  // Assinatura
+  const [assinaturaUrl,     setAssinaturaUrl]     = useState<string | null>(target?.assinatura_url ?? null);
+  const [assinaturaFile,    setAssinaturaFile]    = useState<File | null>(null);
+  const [assinaturaPreview, setAssinaturaPreview] = useState<string | null>(target?.assinatura_url ?? null);
+  const [assinaturaLoading, setAssinaturaLoading] = useState(false);
+  const [assinaturaError,   setAssinaturaError]   = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const targetId = target?.id ?? '';
+
+  const handleAssinaturaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setAssinaturaError('Formato inválido. Use PNG, JPEG ou WebP.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAssinaturaError('Arquivo muito grande. Máximo: 2 MB.');
+      return;
+    }
+    setAssinaturaError('');
+    setAssinaturaFile(file);
+    setAssinaturaPreview(URL.createObjectURL(file));
+  };
+
+  const handleAssinaturaUpload = async () => {
+    if (!assinaturaFile || !targetId) return;
+    setAssinaturaLoading(true);
+    setAssinaturaError('');
+    try {
+      const fd = new FormData();
+      fd.append('assinatura', assinaturaFile);
+      const res = await fetch(`/api/users/${targetId}/assinatura`, { method: 'POST', body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setAssinaturaUrl(json.assinatura_url);
+      setAssinaturaFile(null);
+    } catch (e: unknown) {
+      setAssinaturaError(e instanceof Error ? e.message : 'Erro ao enviar.');
+    } finally {
+      setAssinaturaLoading(false);
+    }
+  };
+
+  const handleAssinaturaRemover = async () => {
+    if (!targetId) return;
+    setAssinaturaLoading(true);
+    setAssinaturaError('');
+    try {
+      const res = await fetch(`/api/users/${targetId}/assinatura`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setAssinaturaUrl(null);
+      setAssinaturaPreview(null);
+      setAssinaturaFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (e: unknown) {
+      setAssinaturaError(e instanceof Error ? e.message : 'Erro ao remover.');
+    } finally {
+      setAssinaturaLoading(false);
+    }
+  };
 
   const overlayMouseDownRef = useRef(false);
 
@@ -97,12 +166,12 @@ function Modal({ mode, target, currentUser, onClose, onSuccess }: {
         const res = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, full_name: fullName, cargo, role }),
+          body: JSON.stringify({ email, password, full_name: fullName, cargo, crea, role }),
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error);
       } else {
-        const body: Record<string, string> = { full_name: fullName, cargo, email };
+        const body: Record<string, string> = { full_name: fullName, cargo, email, crea };
         if (password) body.password = password;
         if (isAdmin && !isSelfEdit) body.role = role;
 
@@ -152,7 +221,9 @@ function Modal({ mode, target, currentUser, onClose, onSuccess }: {
           border: `1px solid ${BORDER}`,
           borderRadius: 16,
           padding: '32px 28px',
-          width: '100%', maxWidth: 440,
+          width: '100%', maxWidth: 480,
+          maxHeight: '90vh',
+          overflowY: 'auto',
           boxShadow: '0 20px 60px rgba(30,50,100,0.18)',
         }}
       >
@@ -189,6 +260,10 @@ function Modal({ mode, target, currentUser, onClose, onSuccess }: {
             <label style={labelStyle}>Cargo / Função</label>
             <input className="tm-input" style={inputStyle} value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ex: Engenheiro, Técnico…" />
           </div>
+          <div>
+            <label style={labelStyle}>CREA</label>
+            <input className="tm-input" style={inputStyle} value={crea} onChange={(e) => setCrea(e.target.value)} placeholder="Nº CREA (ex: 12345-D/PE)" />
+          </div>
           {isAdmin && !isSelfEdit && (
             <div>
               <label style={labelStyle}>Nível de Acesso</label>
@@ -209,6 +284,104 @@ function Modal({ mode, target, currentUser, onClose, onSuccess }: {
                     {r === 'admin' ? 'Administrador' : 'Usuário Comum'}
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Assinatura (somente em edição, não na criação) ── */}
+          {!isCreate && (
+            <div>
+              <label style={labelStyle}>Imagem de Assinatura</label>
+              <div style={{
+                border: `1.5px dashed ${assinaturaUrl ? '#B8DFC8' : BORDER}`,
+                borderRadius: 10,
+                padding: '14px 16px',
+                background: assinaturaUrl ? '#F0FFF4' : '#FAFBFD',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}>
+                {/* Preview */}
+                {assinaturaPreview && (
+                  <div style={{
+                    background: '#fff',
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: 56,
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={assinaturaPreview}
+                      alt="Prévia da assinatura"
+                      style={{ maxHeight: 56, maxWidth: '100%', objectFit: 'contain' }}
+                    />
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleAssinaturaChange}
+                  style={{ display: 'none' }}
+                />
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={assinaturaLoading}
+                    style={{
+                      flex: 1, padding: '8px 12px', borderRadius: 7,
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      background: '#EEF1F8', color: PRIMARY, border: 'none',
+                      opacity: assinaturaLoading ? 0.6 : 1,
+                    }}
+                  >
+                    {assinaturaPreview && !assinaturaFile ? '↻ Trocar imagem' : '📁 Selecionar imagem'}
+                  </button>
+
+                  {assinaturaFile && (
+                    <button
+                      onClick={handleAssinaturaUpload}
+                      disabled={assinaturaLoading}
+                      style={{
+                        flex: 1, padding: '8px 12px', borderRadius: 7,
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        background: '#1A7A44', color: '#fff', border: 'none',
+                        opacity: assinaturaLoading ? 0.6 : 1,
+                      }}
+                    >
+                      {assinaturaLoading ? 'Salvando…' : '✓ Salvar assinatura'}
+                    </button>
+                  )}
+
+                  {(assinaturaUrl || assinaturaPreview) && !assinaturaFile && (
+                    <button
+                      onClick={handleAssinaturaRemover}
+                      disabled={assinaturaLoading}
+                      style={{
+                        padding: '8px 12px', borderRadius: 7,
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD`,
+                        opacity: assinaturaLoading ? 0.6 : 1,
+                      }}
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+
+                {assinaturaError && (
+                  <p style={{ margin: 0, fontSize: 12, color: DANGER }}>{assinaturaError}</p>
+                )}
+
+                <p style={{ margin: 0, fontSize: 11, color: SUBTEXT }}>
+                  PNG com fundo transparente recomendado · máx. 2 MB · usada automaticamente nos relatórios
+                </p>
               </div>
             </div>
           )}
@@ -438,6 +611,8 @@ export default function UsuariosPage() {
       full_name: user.user_metadata?.full_name ?? '',
       cargo: user.user_metadata?.cargo ?? '',
       role: user.user_metadata?.role ?? 'user',
+      crea: user.user_metadata?.crea ?? '',
+      assinatura_url: user.user_metadata?.assinatura_url ?? undefined,
     };
     setCurrentUser(cu);
     return cu;
@@ -497,6 +672,8 @@ export default function UsuariosPage() {
   const selfRow = (): UserRow => ({
     id: currentUser!.id, email: currentUser!.email, full_name: currentUser!.full_name,
     cargo: currentUser!.cargo, role: currentUser!.role, banned: false, created_at: '',
+    crea: currentUser!.crea ?? '',
+    assinatura_url: currentUser!.assinatura_url,
   });
 
   // ── Non-admin view ──
@@ -529,6 +706,14 @@ export default function UsuariosPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
               <InfoItem label="Cargo" value={currentUser.cargo || '—'} />
               <InfoItem label="Nível" value="Usuário" />
+              <InfoItem label="CREA" value={currentUser.crea || '—'} />
+              {currentUser.assinatura_url && (
+                <div style={{ backgroundColor: BG, borderRadius: 8, padding: '10px 14px', border: `1px solid ${BORDER}` }}>
+                  <p style={{ margin: 0, fontSize: 11, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Assinatura</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={currentUser.assinatura_url} alt="Assinatura" style={{ maxHeight: 36, maxWidth: '100%', objectFit: 'contain', marginTop: 6 }} />
+                </div>
+              )}
             </div>
             <button
               onClick={() => { setModalTarget(selfRow()); setModalMode('self-edit'); }}

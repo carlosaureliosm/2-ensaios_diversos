@@ -31,7 +31,7 @@ type AmostraRow = {
 
 type Cabecalho = {
   rlt: string; data: string; cliente: string; obra: string; att: string; endereco: string;
-  respNome: string; respCrea: string; notas: string; bigorna: string[];
+  notas: string; bigorna: string[];
 };
 
 type ObraPonto = { id: string; amostra: string; posicao: Posicao; impactosRaw: string[]; };
@@ -68,7 +68,19 @@ function calcularAmostra(amostra: string, posicao: Posicao, impactosStr: string[
 function fmt(v: number | null, dec = 2): string { return v === null ? '—' : v.toFixed(dec); }
 
 function salvarLocal(cab: Cabecalho, amostras: AmostraRow[]) { try { localStorage.setItem(LS_KEY, JSON.stringify({ cab, amostras })); } catch {} }
-function carregarLocal(): { cab: Cabecalho; amostras: AmostraRow[] } | null { try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; } catch { return null; } }
+function carregarLocal(): { cab: Cabecalho; amostras: AmostraRow[] } | null {
+  try {
+    const r = localStorage.getItem(LS_KEY);
+    if (!r) return null;
+    const parsed = JSON.parse(r);
+    // retrocompatibilidade: remove campos antigos que não existem mais no tipo
+    if (parsed.cab) {
+      delete parsed.cab.respNome;
+      delete parsed.cab.respCrea;
+    }
+    return parsed;
+  } catch { return null; }
+}
 function salvarGrupos(grupos: ObraGrupo[]) { try { localStorage.setItem(LS_OBRA_KEY, JSON.stringify(grupos)); } catch {} }
 function carregarGrupos(): ObraGrupo[] { try { const r = localStorage.getItem(LS_OBRA_KEY); return r ? JSON.parse(r) : []; } catch { return []; } }
 function newId() { return typeof crypto !== 'undefined' ? crypto.randomUUID() : String(Math.random()); }
@@ -214,12 +226,24 @@ async function gerarPDFOficial(cab: Cabecalho, amostras: AmostraRow[], mediaBigo
 
 export default function EsclerometriaPage() {
   const router = useRouter();
-  const [userName, setUserName]   = useState('');
-  const [userEmail, setUserEmail] = useState('');
-  const [userCargo, setUserCargo] = useState('');
+  const [userName,        setUserName]        = useState('');
+  const [userEmail,       setUserEmail]       = useState('');
+  const [userCargo,       setUserCargo]       = useState('');
+  const [userCrea,        setUserCrea]        = useState('');
+  const [userAssinatura,  setUserAssinatura]  = useState(''); // URL da assinatura salva no perfil
   const [aba, setAba] = useState<'cabecalho' | 'campo' | 'obra'>('cabecalho');
 
-  const [cab, setCab] = useState<Cabecalho>({ rlt: '', data: '', cliente: '', obra: '', att: '', endereco: '', respNome: '', respCrea: '', notas: '', bigorna: Array(10).fill('') });
+  const [cab, setCab] = useState<Cabecalho>({ rlt: '', data: '', cliente: '', obra: '', att: '', endereco: '', notas: '', bigorna: Array(10).fill('') });
+  const [mediaBigorna, setMediaBigorna] = useState(0);
+  const [coefBigorna,  setCoefBigorna]  = useState(1.0);
+
+  // Bloco responsável técnico
+  const [outroResp,        setOutroResp]        = useState(false);
+  const [outroRespNome,    setOutroRespNome]    = useState('');
+  const [outroRespCrea,    setOutroRespCrea]    = useState('');
+  const [outroRespFile,    setOutroRespFile]    = useState<File | null>(null);
+  const [outroRespPreview, setOutroRespPreview] = useState<string | null>(null);
+  const outroAssinaturaRef = useRef<HTMLInputElement>(null);
   const [mediaBigorna, setMediaBigorna] = useState(0);
   const [coefBigorna,  setCoefBigorna]  = useState(1.0);
 
@@ -256,6 +280,8 @@ export default function EsclerometriaPage() {
       const m = user.user_metadata ?? {};
       setUserName(m.full_name ?? m.name ?? user.email ?? '');
       setUserCargo(m.cargo ?? '');
+      setUserCrea(m.crea ?? '');
+      setUserAssinatura(m.assinatura_url ?? '');
     });
   }, [router]);
 
@@ -330,9 +356,11 @@ export default function EsclerometriaPage() {
 
   const limparTudo = () => {
     if (!confirm('Apagar TODOS os dados e começar do zero?')) return;
-    setCab({ rlt: '', data: '', cliente: '', obra: '', att: '', endereco: '', respNome: '', respCrea: '', notas: '', bigorna: Array(10).fill('') });
+    setCab({ rlt: '', data: '', cliente: '', obra: '', att: '', endereco: '', notas: '', bigorna: Array(10).fill('') });
     setAmostras([]); setCoefBigorna(1.0); setMediaBigorna(0);
     setNomeAmostra(''); setImpactos(Array(16).fill('')); setEditandoId(null);
+    setOutroResp(false); setOutroRespNome(''); setOutroRespCrea('');
+    setOutroRespFile(null); setOutroRespPreview(null);
     localStorage.removeItem(LS_KEY);
   };
 
@@ -343,11 +371,36 @@ export default function EsclerometriaPage() {
   const rltOficial = (() => { const n = cab.rlt.trim(); if (!n) return 'RLT.LAU-XXX.26-00'; if (/^\d+$/.test(n)) return `RLT.LAU-${n.padStart(3, '0')}.26-00`; return `RLT.LAU-${n}.26-00`; })();
   const initials = (() => { if (!userName) return userEmail.slice(0, 2).toUpperCase(); const p = userName.trim().split(/\s+/); return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase(); })();
 
+  // Resolve dados do responsável (padrão = perfil; outro = campos manuais)
+  const respNomeFinal = outroResp ? outroRespNome : userName;
+  const respCreaFinal = outroResp ? outroRespCrea : userCrea;
+
+  // Converte imagem "outro responsável" para base64 (se selecionada)
+  const lerOutroRespBase64 = (): Promise<string> =>
+    new Promise((resolve) => {
+      if (!outroRespFile) { resolve(''); return; }
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(outroRespFile);
+    });
+
   // ── Gerar Laudo DOCX ────────────────────────────────────────────
   const gerarDocx = async () => {
     if (amostras.length === 0) { alert('Nenhuma amostra na tabela.'); return; }
+    if (outroResp && !outroRespNome.trim()) { alert('Informe o nome do responsável.'); return; }
     setGerandoDocx(true);
     try {
+      // Assinatura: "outro" usa arquivo local (base64); padrão usa URL do perfil
+      let respAssinaturaBase64 = '';
+      let respAssinaturaContentType = 'image/png';
+      if (outroResp && outroRespFile) {
+        respAssinaturaBase64    = await lerOutroRespBase64();
+        respAssinaturaContentType = outroRespFile.type;
+      }
+      // Se padrão, a URL do perfil é enviada para a route buscar server-side
+      const respAssinaturaUrl = (!outroResp && userAssinatura) ? userAssinatura : '';
+
       const payload = {
         rlt: cab.rlt,
         data: cab.data,
@@ -355,8 +408,11 @@ export default function EsclerometriaPage() {
         obra: cab.obra,
         att: cab.att,
         endereco: cab.endereco,
-        respNome: cab.respNome,
-        respCrea: cab.respCrea,
+        respNome: respNomeFinal,
+        respCrea: respCreaFinal,
+        respAssinaturaUrl,       // URL (perfil padrão) — baixada server-side
+        respAssinaturaBase64,    // base64 (outro responsável) — enviada diretamente
+        respAssinaturaContentType,
         notas: cab.notas,
         bigorna: cab.bigorna,
         mediaBigorna,
@@ -417,6 +473,7 @@ export default function EsclerometriaPage() {
         .btn-gold:hover { background: #b08c18 !important; }
         .num-in:focus { border-color: ${PRIMARY} !important; background: #F0F4FC !important; }
         .ponto-row:hover { background: #F3F5FB !important; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
       <Header displayName={userName || userEmail} initials={initials} cargo={userCargo} onSignOut={handleSignOut} />
@@ -571,11 +628,122 @@ export default function EsclerometriaPage() {
             </section>
 
             <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Responsável Técnico TECOMAT</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 16 }}>
-                <Campo label="Nome completo"><input style={inputStyle} value={cab.respNome} onChange={e => setCab(c => ({ ...c, respNome: e.target.value }))} placeholder="Engenheiro responsável" /></Campo>
-                <Campo label="CREA"><input style={inputStyle} value={cab.respCrea} onChange={e => setCab(c => ({ ...c, respCrea: e.target.value }))} placeholder="Nº CREA" /></Campo>
+              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Responsável Técnico</h3>
+
+              {/* Bloco padrão — dados do perfil */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+                padding: '14px 16px', borderRadius: 10,
+                background: outroResp ? '#F8F9FA' : '#F0F4FC',
+                border: `1.5px solid ${outroResp ? BORDER : PRIMARY + '44'}`,
+                marginBottom: 14, opacity: outroResp ? 0.5 : 1,
+                transition: 'all 0.2s',
+              }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Engenheiro Responsável TECOMAT</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: TEXT }}>{userName || <span style={{ color: SUBTEXT }}>—</span>}</p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>CREA</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: userCrea ? TEXT : SUBTEXT }}>{userCrea || 'Não cadastrado'}</p>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Assinatura</p>
+                  {userAssinatura
+                    ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={userAssinatura} alt="Assinatura" style={{ maxHeight: 40, maxWidth: 200, objectFit: 'contain', marginTop: 6, display: 'block' }} />
+                    )
+                    : <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXT }}>Não cadastrada — <a href="/usuarios" style={{ color: PRIMARY, textDecoration: 'underline' }}>cadastrar no perfil</a></p>
+                  }
+                </div>
               </div>
+
+              {/* Checkbox outro responsável */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: outroResp ? 14 : 0 }}>
+                <input
+                  type="checkbox"
+                  checked={outroResp}
+                  onChange={e => {
+                    setOutroResp(e.target.checked);
+                    if (!e.target.checked) { setOutroRespNome(''); setOutroRespCrea(''); setOutroRespFile(null); setOutroRespPreview(null); }
+                  }}
+                  style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT }}>
+                  Outro responsável para este relatório
+                </span>
+              </label>
+
+              {/* Campos expandidos quando "outro responsável" marcado */}
+              {outroResp && (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                  padding: '16px', borderRadius: 10,
+                  background: '#F0F4FC',
+                  border: `1.5px solid ${PRIMARY}44`,
+                  animation: 'fadeIn 0.15s ease',
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 14 }}>
+                    <Campo label="Engenheiro Responsável TECOMAT">
+                      <input
+                        style={inputStyle}
+                        value={outroRespNome}
+                        onChange={e => setOutroRespNome(e.target.value)}
+                        placeholder="Nome completo do engenheiro"
+                      />
+                    </Campo>
+                    <Campo label="CREA">
+                      <input
+                        style={inputStyle}
+                        value={outroRespCrea}
+                        onChange={e => setOutroRespCrea(e.target.value)}
+                        placeholder="Nº CREA"
+                      />
+                    </Campo>
+                  </div>
+
+                  <Campo label="Imagem da Assinatura">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <input
+                        ref={outroAssinaturaRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        style={{ display: 'none' }}
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          setOutroRespFile(f);
+                          setOutroRespPreview(URL.createObjectURL(f));
+                        }}
+                      />
+                      <button
+                        onClick={() => outroAssinaturaRef.current?.click()}
+                        style={{
+                          padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                          background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}`,
+                        }}
+                      >
+                        {outroRespPreview ? '↻ Trocar imagem' : '📁 Selecionar assinatura'}
+                      </button>
+                      {outroRespPreview && (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={outroRespPreview} alt="Prévia" style={{ maxHeight: 40, maxWidth: 160, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 4, background: '#fff' }} />
+                          <button
+                            onClick={() => { setOutroRespFile(null); setOutroRespPreview(null); if (outroAssinaturaRef.current) outroAssinaturaRef.current.value = ''; }}
+                            style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}
+                          >
+                            Remover
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <p style={{ margin: '6px 0 0', fontSize: 11, color: SUBTEXT }}>PNG com fundo transparente recomendado · não será salva no perfil</p>
+                  </Campo>
+                </div>
+              )}
             </section>
 
             <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>

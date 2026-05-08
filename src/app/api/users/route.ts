@@ -26,6 +26,8 @@ export async function GET() {
     role: u.user_metadata?.role ?? 'user',
     banned: !!u.banned_until && new Date(u.banned_until) > new Date(),
     created_at: u.created_at,
+    crea: u.user_metadata?.crea ?? '',
+    assinatura_url: u.user_metadata?.assinatura_url ?? null,
   }));
 
   return NextResponse.json({ users });
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { email, password, full_name, cargo, role } = body;
+  const { email, password, full_name, cargo, crea, role } = body;
 
   if (!email || !password) {
     return NextResponse.json({ error: 'E-mail e senha são obrigatórios.' }, { status: 400 });
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: full_name ?? '', cargo: cargo ?? '', role: role ?? 'user' },
+    user_metadata: { full_name: full_name ?? '', cargo: cargo ?? '', crea: crea ?? '', role: role ?? 'user' },
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
