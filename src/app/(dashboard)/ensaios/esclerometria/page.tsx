@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// PDF via jsPDF mantido comentado — reservado para implementação futura com Gotenberg
+// import jsPDF from 'jspdf';
+// import autoTable from 'jspdf-autotable';
 
 const PRIMARY    = '#1E3264';
 const GOLD       = '#C8A020';
@@ -117,6 +118,8 @@ function Header({ displayName, initials, cargo, onSignOut }: { displayName: stri
   );
 }
 
+// ── gerarPDFOficial mantida comentada — reservada para implementação futura com Gotenberg ──
+/*
 async function gerarPDFOficial(cab: Cabecalho, amostras: AmostraRow[], mediaBigorna: number, coefBigorna: number, rltOficial: string) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW = 210, ML = 10, MR = 10;
@@ -207,6 +210,7 @@ async function gerarPDFOficial(cab: Cabecalho, amostras: AmostraRow[], mediaBigo
   hLine(288,ML,PW-MR,0.3,[200,205,215]);
   doc.save(`${rltOficial}.pdf`);
 }
+*/
 
 export default function EsclerometriaPage() {
   const router = useRouter();
@@ -224,7 +228,7 @@ export default function EsclerometriaPage() {
   const [nomeAmostra, setNomeAmostra] = useState('');
   const [posicao,     setPosicao]     = useState<Posicao>('0°');
   const [impactos,    setImpactos]    = useState<string[]>(Array(16).fill(''));
-  const [gerandoPdf,  setGerandoPdf]  = useState(false);
+  const [gerandoDocx, setGerandoDocx] = useState(false);
   const [salvoMsg,    setSalvoMsg]    = useState('');
 
   // Modo Obra
@@ -321,7 +325,6 @@ export default function EsclerometriaPage() {
     let proximoItem = amostras.length > 0 ? amostras[amostras.length - 1].item + 1 : 1;
     const novas = g.pontos.map(p => { const r = calcularAmostra(p.amostra, p.posicao, p.impactosRaw, coefBigorna, proximoItem); proximoItem++; return r; });
     setAmostras(prev => [...prev, ...novas]);
-    // Grupos do Modo Obra só são apagados pelo usuário na aba Modo Obra
     setShowImportar(false); setAba('campo');
   };
 
@@ -340,7 +343,59 @@ export default function EsclerometriaPage() {
   const rltOficial = (() => { const n = cab.rlt.trim(); if (!n) return 'RLT.LAU-XXX.26-00'; if (/^\d+$/.test(n)) return `RLT.LAU-${n.padStart(3, '0')}.26-00`; return `RLT.LAU-${n}.26-00`; })();
   const initials = (() => { if (!userName) return userEmail.slice(0, 2).toUpperCase(); const p = userName.trim().split(/\s+/); return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase(); })();
 
-  const handleGerarPDF = async () => { if (amostras.length === 0) { alert('Nenhuma amostra na tabela.'); return; } setGerandoPdf(true); try { await gerarPDFOficial(cab, amostras, mediaBigorna, coefBigorna, rltOficial); } catch (e) { console.error(e); alert('Erro ao gerar PDF.'); } finally { setGerandoPdf(false); } };
+  // ── Gerar Laudo DOCX ────────────────────────────────────────────
+  const gerarDocx = async () => {
+    if (amostras.length === 0) { alert('Nenhuma amostra na tabela.'); return; }
+    setGerandoDocx(true);
+    try {
+      const payload = {
+        rlt: cab.rlt,
+        data: cab.data,
+        cliente: cab.cliente,
+        obra: cab.obra,
+        att: cab.att,
+        endereco: cab.endereco,
+        respNome: cab.respNome,
+        respCrea: cab.respCrea,
+        notas: cab.notas,
+        bigorna: cab.bigorna,
+        mediaBigorna,
+        coefBigorna,
+        amostras: amostras.map(a => ({
+          amostra: a.amostra,
+          posicao: a.posicao,
+          ie_medio: fmt(a.ieMedio),
+          ie_efetivo: fmt(a.ieEfetivo),
+          resistencia: fmt(a.resistencia),
+          dispersao: a.dispersao,
+        })),
+      };
+
+      const res = await fetch('/api/ensaios/esclerometria/docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `Erro ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${rltOficial}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : 'Erro ao gerar DOCX.');
+    } finally {
+      setGerandoDocx(false);
+    }
+  };
 
   const validas  = amostras.filter(a => a.status === 'Amostra Válida');
   const perdidas = amostras.filter(a => a.status === 'Amostra Perdida');
@@ -425,9 +480,29 @@ export default function EsclerometriaPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {salvoMsg && <span style={{ fontSize: 12, color: SUCCESS, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>{salvoMsg}</span>}
               <button onClick={limparTudo} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>🗑 Limpar Tudo</button>
-              <button onClick={handleGerarPDF} disabled={gerandoPdf || amostras.length === 0} className="btn-gold" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: amostras.length === 0 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', backgroundColor: GOLD, color: PRIMARY, border: 'none', opacity: amostras.length === 0 ? 0.5 : 1, transition: 'background 0.15s' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                {gerandoPdf ? 'Gerando…' : 'Gerar PDF Oficial'}
+              <button
+                onClick={gerarDocx}
+                disabled={gerandoDocx || amostras.length === 0}
+                className="btn-gold"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '9px 18px', borderRadius: 7,
+                  fontSize: 13, fontWeight: 700,
+                  cursor: amostras.length === 0 ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  backgroundColor: GOLD, color: PRIMARY,
+                  border: 'none',
+                  opacity: amostras.length === 0 ? 0.5 : 1,
+                  transition: 'background 0.15s',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                {gerandoDocx ? 'Gerando…' : 'Gerar relatório'}
               </button>
             </div>
           </div>
