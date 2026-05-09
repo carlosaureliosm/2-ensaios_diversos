@@ -103,27 +103,27 @@ function StatusBadge({ status }: { status: AmostraRow['status'] }) {
 
 function Header({ displayName, initials, cargo, onSignOut }: { displayName: string; initials: string; cargo: string; onSignOut: () => void; }) {
   return (
-    <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 60, padding: '0 28px', backgroundColor: PRIMARY, boxShadow: '0 2px 12px rgba(30,50,100,0.25)', position: 'sticky', top: 0, zIndex: 50 }}>
+    <header className="header-root" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 60, padding: '0 28px', backgroundColor: PRIMARY, boxShadow: '0 2px 12px rgba(30,50,100,0.25)', position: 'sticky', top: 0, zIndex: 50 }}>
       <style>{`.sb-u:hover{background:rgba(255,255,255,0.12)!important}.nv-u:hover{color:#fff!important}`}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+      <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
         <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}><img src="/logo_tecomat.png" alt="TECOMAT" style={{ height: 34, objectFit: 'contain' }} /></a>
         <nav style={{ display: 'flex', gap: 6 }}>
           <a href="/dashboard" className="nv-u" style={{ fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, borderBottom: `2px solid ${GOLD}`, paddingBottom: 5 }}>Ensaios</a>
           <a href="/usuarios" className="nv-u" style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.65)', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, transition: 'color 0.15s' }}>Usuários</a>
         </nav>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: GOLD, color: PRIMARY, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.25)' }}>{initials}</div>
+          <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: GOLD, color: PRIMARY, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0 }}>{initials}</div>
           <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#fff', margin: 0 }}>{displayName}</p>
-            {cargo && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{cargo}</p>}
+            <p className="header-user-name" style={{ fontSize: 12, fontWeight: 700, color: '#fff', margin: 0 }}>{displayName}</p>
+            {cargo && <p className="header-cargo" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{cargo}</p>}
           </div>
         </div>
-        <div style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+        <div className="header-divider" style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
         <button className="sb-u" onClick={onSignOut} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 7, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.7)', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Sair
+          <span className="signout-text">Sair</span>
         </button>
       </div>
     </header>
@@ -472,6 +472,50 @@ export default function EsclerometriaPage() {
         .num-in:focus { border-color: ${PRIMARY} !important; background: #F0F4FC !important; }
         .ponto-row:hover { background: #F3F5FB !important; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Mobile ── */
+        @media (max-width: 600px) {
+          /* Header */
+          .header-root { padding: 0 14px !important; }
+          .header-left { gap: 12px !important; }
+          .header-right { gap: 8px !important; }
+          .header-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .header-cargo { display: none !important; }
+          .header-divider { display: none !important; }
+          .signout-text { display: none; }
+          /* Main padding */
+          .main-esclero { padding: 16px 14px !important; }
+          /* Page title area */
+          .page-title-row { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+          .page-action-btns { width: 100%; display: flex; gap: 8px; }
+          .page-action-btns button { flex: 1; justify-content: center; }
+          /* Abas */
+          .tabs-row { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .tabs-row button { padding: 10px 14px !important; font-size: 12px !important; white-space: nowrap; flex-shrink: 0; }
+          /* Section padding */
+          .section-pad { padding: 16px 14px !important; }
+          /* Grids */
+          .grid-rlt { grid-template-columns: 1fr 1fr !important; }
+          .grid-obra-atts { grid-template-columns: 1fr !important; }
+          .grid-outro-resp { grid-template-columns: 1fr !important; }
+          .grid-imposto-id { grid-template-columns: 1fr !important; }
+          /* Bigorna stats */
+          .bigorna-stats { flex-direction: column !important; }
+          .bigorna-stats > div { border-left: none !important; border-top: 1px solid #E8EAF0 !important; }
+          .bigorna-stats > div:first-child { border-top: none !important; }
+          /* Tabela resultados */
+          .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          /* Impactos grid */
+          .impactos-wrap input { width: 44px !important; }
+          /* Botões ação */
+          .action-btns-row { flex-wrap: wrap !important; }
+          /* Modo Obra grupo header */
+          .grupo-header { flex-wrap: wrap !important; gap: 8px !important; }
+        }
+        @media (max-width: 400px) {
+          .impactos-wrap input { width: 38px !important; padding: 6px 2px !important; font-size: 12px !important; }
+          .num-bigorna { width: 44px !important; }
+        }
       `}</style>
 
       <Header displayName={userName || userEmail} initials={initials} cargo={userCargo} onSignOut={handleSignOut} />
@@ -520,20 +564,20 @@ export default function EsclerometriaPage() {
         </div>
       )}
 
-      <main style={{ maxWidth: 1060, margin: '0 auto', padding: '24px 20px' }}>
+      <main className="main-esclero" style={{ maxWidth: 1060, margin: '0 auto', padding: '24px 20px' }}>
         <div style={{ marginBottom: 22 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <a href="/dashboard" style={{ fontSize: 12, color: SUBTEXT, textDecoration: 'none' }}>Ensaios</a>
             <span style={{ fontSize: 12, color: SUBTEXT }}>›</span>
             <span style={{ fontSize: 12, color: PRIMARY, fontWeight: 700 }}>Esclerometria</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+          <div className="page-title-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 14 }}>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Ensaio</p>
               <h1 style={{ margin: '3px 0 0', fontSize: 22, fontWeight: 800, color: TEXT }}>Esclerometria</h1>
               <p style={{ margin: '3px 0 0', fontSize: 12, color: SUBTEXT }}>NBR 7584:2012 — Concreto endurecido</p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="page-action-btns" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {salvoMsg && <span style={{ fontSize: 12, color: SUCCESS, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>{salvoMsg}</span>}
               <button onClick={limparTudo} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>🗑 Limpar Tudo</button>
               <button
@@ -565,7 +609,7 @@ export default function EsclerometriaPage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, marginBottom: 0 }}>
+        <div className="tabs-row" style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, marginBottom: 0 }}>
           <button className="tab-btn" onClick={() => setAba('cabecalho')} style={{ padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: aba === 'cabecalho' ? PRIMARY : SUBTEXT, borderBottom: aba === 'cabecalho' ? `3px solid ${GOLD}` : '3px solid transparent', marginBottom: -2 }}>
             1. Cabeçalho e Aparelho
           </button>
@@ -582,9 +626,9 @@ export default function EsclerometriaPage() {
         {/* ABA 1 */}
         {aba === 'cabecalho' && (
           <div style={{ paddingTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
+            <section className="section-pad" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
               <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Dados da Obra e Cliente</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 150px 1fr', gap: '12px 16px', marginBottom: 12 }}>
+              <div className="grid-rlt" style={{ display: 'grid', gridTemplateColumns: '140px 150px 1fr', gap: '12px 16px', marginBottom: 12 }}>
                 <Campo label="Nº do RLT"><input style={inputStyle} inputMode="numeric" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} /></Campo>
                 <Campo label="Data de Emissão"><input style={inputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} /></Campo>
                 <Campo label="Cliente"><input style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.cliente} onChange={e => setCab(c => ({ ...c, cliente: e.target.value.toUpperCase() }))} placeholder="NOME DO CLIENTE" /></Campo>
@@ -615,7 +659,7 @@ export default function EsclerometriaPage() {
                   </div>
                 ))}
               </div>
-              <div style={{ display: 'flex', gap: 0, background: '#F0F4FC', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+              <div className="bigorna-stats" style={{ display: 'flex', gap: 0, background: '#F0F4FC', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
                 {[{ label: 'Média dos Golpes', value: mediaBigorna > 0 ? mediaBigorna.toFixed(2) : '—', highlight: false }, { label: 'Coef. de Correção (80 / Média)', value: coefBigorna !== 1.0 ? coefBigorna.toFixed(6) : coefBigorna.toFixed(4), highlight: coefBigorna !== 1.0 }, { label: 'IE de Referência', value: '80,00', highlight: false }].map((item, i) => (
                   <div key={i} style={{ flex: 1, padding: '14px 20px', borderLeft: i > 0 ? `1px solid ${BORDER}` : 'none' }}>
                     <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{item.label}</p>
@@ -682,7 +726,7 @@ export default function EsclerometriaPage() {
                   border: `1.5px solid ${PRIMARY}44`,
                   animation: 'fadeIn 0.15s ease',
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 14 }}>
+                  <div className="grid-outro-resp" style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 14 }}>
                     <Campo label="Engenheiro Responsável TECOMAT">
                       <input
                         style={inputStyle}
@@ -769,7 +813,7 @@ export default function EsclerometriaPage() {
                   </button>
                 )}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, marginBottom: 16 }}>
+              <div className="grid-imposto-id" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, marginBottom: 16 }}>
                 <Campo label="Identificação da amostra (ex: P1 - Pilar Térreo)"><input style={inputStyle} value={nomeAmostra} onChange={e => setNomeAmostra(e.target.value)} placeholder="Ex: V1 - Viga Piso 2, P3 - Pilar Térreo…" onKeyDown={e => e.key === 'Enter' && impactoRefs.current[0]?.focus()} /></Campo>
                 <Campo label="Posição do Esclerômetro">
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -779,8 +823,7 @@ export default function EsclerometriaPage() {
               </div>
               <div style={{ marginBottom: 16 }}>
                 <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Impactos (máx. 16) — filtro automático ±10% da média bruta — mínimo 5 válidos</p>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {impactos.map((v, i) => (
+                <div className="impactos-wrap" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
                       <input ref={el => { impactoRefs.current[i] = el; }} type="text" inputMode="decimal" value={v}
@@ -802,7 +845,8 @@ export default function EsclerometriaPage() {
             </section>
 
             <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(30,50,100,0.06)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 72px', padding: '11px 16px', background: EXCEL_BLUE }}>
+              <div className="table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+              <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 72px', padding: '11px 16px', background: EXCEL_BLUE, minWidth: 760 }}>
                 {['#','ELEMENTO','POSIÇÃO','LIM. INF.','LIM. SUP.','I.E. MÉDIO','STATUS','I.E. EFETIVO','RESIST. (MPa)','DISP.','AÇÕES'].map(h => <span key={h} style={{ fontSize: 9.5, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>{h}</span>)}
               </div>
               {amostras.length === 0 ? (
@@ -814,7 +858,7 @@ export default function EsclerometriaPage() {
               ) : amostras.map((a, idx) => {
                 const valida = a.status === 'Amostra Válida', editing = editandoId === a.id;
                 return (
-                  <div key={a.id} className="row-h" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 72px', padding: '11px 16px', borderBottom: idx < amostras.length - 1 ? `1px solid ${BORDER}` : 'none', alignItems: 'center', background: editing ? '#FFFBEC' : idx % 2 === 1 ? '#F8F9FC' : '#fff', opacity: valida ? 1 : 0.72, transition: 'background 0.1s' }}>
+                  <div key={a.id} className="row-h" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 72px', padding: '11px 16px', borderBottom: idx < amostras.length - 1 ? `1px solid ${BORDER}` : 'none', alignItems: 'center', background: editing ? '#FFFBEC' : idx % 2 === 1 ? '#F8F9FC' : '#fff', opacity: valida ? 1 : 0.72, transition: 'background 0.1s', minWidth: 760 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: SUBTEXT, textAlign: 'center' }}>{a.item}</span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: TEXT, paddingRight: 8 }}>{a.amostra}</span>
                     <span style={{ fontSize: 12, color: SUBTEXT, textAlign: 'center' }}>{a.posicao}</span>
@@ -833,6 +877,7 @@ export default function EsclerometriaPage() {
                 );
               })}
 
+              </div>{/* /table-wrapper */}
             </section>
           </div>
         )}

@@ -62,6 +62,18 @@ export default function DashboardPage() {
 
         .signout-btn:hover { background: rgba(255,255,255,0.12) !important; }
 
+        /* ── Mobile header ── */
+        @media (max-width: 600px) {
+          .header-root { padding: 0 14px !important; height: auto !important; min-height: 56px; flex-wrap: wrap; gap: 0; }
+          .header-left { gap: 14px !important; }
+          .header-right { gap: 8px !important; }
+          .header-user-name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .header-cargo { display: none !important; }
+          .header-divider { display: none !important; }
+          .signout-text { display: none; }
+          .main-pad { padding: 20px 14px !important; }
+        }
+
         .ensaio-card {
           display: flex;
           flex-direction: column;
@@ -106,14 +118,14 @@ export default function DashboardPage() {
       `}</style>
 
       {/* Header */}
-      <header style={{
+      <header className="header-root" style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         height: 60, padding: '0 28px',
         backgroundColor: '#1E3264',
         boxShadow: '0 2px 12px rgba(30,50,100,0.25)',
         position: 'sticky', top: 0, zIndex: 50,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+        <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
           <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
             <img
               src="/logo_tecomat.png"
@@ -138,7 +150,7 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 34, height: 34, borderRadius: '50%',
@@ -146,20 +158,21 @@ export default function DashboardPage() {
               fontSize: 12, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: '2px solid rgba(255,255,255,0.25)',
+              flexShrink: 0,
             }}>{initials}</div>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1, margin: 0 }}>
+              <p className="header-user-name" style={{ fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1, margin: 0 }}>
                 {displayName || '...'}
               </p>
               {userCargo && (
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>
+                <p className="header-cargo" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>
                   {userCargo}
                 </p>
               )}
             </div>
           </div>
 
-          <div style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+          <div className="header-divider" style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
 
           <button
             className="signout-btn"
@@ -179,13 +192,13 @@ export default function DashboardPage() {
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            Sair
+            <span className="signout-text">Sair</span>
           </button>
         </div>
       </header>
 
       {/* Main */}
-      <main style={{ padding: '32px 28px', maxWidth: 960, margin: '0 auto' }}>
+      <main className="main-pad" style={{ padding: '32px 28px', maxWidth: 960, margin: '0 auto' }}>
         {/* Section header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>

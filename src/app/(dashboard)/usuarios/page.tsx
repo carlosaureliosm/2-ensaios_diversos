@@ -484,7 +484,7 @@ function Header({ displayName, initials, userCargo, onSignOut }: {
   onSignOut: () => void; isAdmin: boolean;
 }) {
   return (
-    <header style={{
+    <header className="header-root" style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       height: 60, padding: '0 28px',
       backgroundColor: PRIMARY,
@@ -492,7 +492,7 @@ function Header({ displayName, initials, userCargo, onSignOut }: {
       position: 'sticky', top: 0, zIndex: 50,
     }}>
       <style>{`.signout-btn-u:hover{background:rgba(255,255,255,0.12)!important}.nav-off-u:hover{color:#fff!important}`}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+      <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
         <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
             <img
               src="/logo_tecomat.png"
@@ -516,7 +516,7 @@ function Header({ displayName, initials, userCargo, onSignOut }: {
           </a>
         </nav>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 34, height: 34, borderRadius: '50%',
@@ -524,13 +524,14 @@ function Header({ displayName, initials, userCargo, onSignOut }: {
             fontSize: 12, fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '2px solid rgba(255,255,255,0.25)',
+            flexShrink: 0,
           }}>{initials}</div>
           <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1, margin: 0 }}>{displayName}</p>
-            {userCargo && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{userCargo}</p>}
+            <p className="header-user-name" style={{ fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1, margin: 0 }}>{displayName}</p>
+            {userCargo && <p className="header-cargo" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{userCargo}</p>}
           </div>
         </div>
-        <div style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+        <div className="header-divider" style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
         <button
           className="signout-btn-u"
           onClick={onSignOut}
@@ -549,7 +550,7 @@ function Header({ displayName, initials, userCargo, onSignOut }: {
             <polyline points="16 17 21 12 16 7"/>
             <line x1="21" y1="12" x2="9" y2="12"/>
           </svg>
-          Sair
+          <span className="signout-text">Sair</span>
         </button>
       </div>
     </header>
@@ -680,7 +681,19 @@ export default function UsuariosPage() {
   if (currentUser && !isAdmin) {
     return (
       <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+          @media (max-width: 600px) {
+            .header-root { padding: 0 14px !important; }
+            .header-left { gap: 12px !important; }
+            .header-right { gap: 8px !important; }
+            .header-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .header-cargo { display: none !important; }
+            .header-divider { display: none !important; }
+            .signout-text { display: none; }
+            .main-users { padding: 24px 14px !important; }
+          }
+        `}</style>
         {modalMode && currentUser && (
           <Modal mode={modalMode} target={modalTarget} currentUser={currentUser} onClose={closeModal} onSuccess={onModalSuccess} />
         )}
@@ -738,6 +751,19 @@ export default function UsuariosPage() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
         .usr-row:hover { background: #F4F6FC !important; }
         .action-btn:hover { filter: brightness(0.92); }
+        @media (max-width: 600px) {
+          .header-root { padding: 0 14px !important; }
+          .header-left { gap: 12px !important; }
+          .header-right { gap: 8px !important; }
+          .header-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .header-cargo { display: none !important; }
+          .header-divider { display: none !important; }
+          .signout-text { display: none; }
+          .main-users { padding: 20px 14px !important; }
+          .page-header-row { flex-direction: column !important; gap: 14px !important; align-items: flex-start !important; }
+          .page-header-row button { width: 100%; justify-content: center; }
+          .users-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
       `}</style>
 
       {modalMode && currentUser && (
@@ -749,9 +775,9 @@ export default function UsuariosPage() {
         <Header displayName={displayName} initials={initials} userCargo={currentUser.cargo} onSignOut={handleSignOut} isAdmin />
       )}
 
-      <main style={{ padding: '32px 28px', maxWidth: 960, margin: '0 auto' }}>
+      <main className="main-users" style={{ padding: '32px 28px', maxWidth: 960, margin: '0 auto' }}>
         {/* Page header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+        <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
           <div>
             <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 14 }}>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
@@ -799,6 +825,7 @@ export default function UsuariosPage() {
             overflow: 'hidden',
             boxShadow: '0 2px 12px rgba(30,50,100,0.06)',
           }}>
+            <div className="users-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
             {/* Table header */}
             <div style={{
               display: 'grid',
@@ -806,6 +833,7 @@ export default function UsuariosPage() {
               padding: '12px 20px',
               borderBottom: `2px solid ${BORDER}`,
               backgroundColor: '#F8F9FA',
+              minWidth: 560,
             }}>
               {['Nome', 'E-mail', 'Cargo', 'Nível', 'Ações'].map((h) => (
                 <span key={h} style={{
@@ -843,6 +871,7 @@ export default function UsuariosPage() {
                     transition: 'background 0.15s',
                     opacity: u.banned ? 0.65 : 1,
                     background: '#fff',
+                    minWidth: 560,
                   }}
                 >
                   {/* Name */}
@@ -963,6 +992,7 @@ export default function UsuariosPage() {
                 </div>
               );
             })}
+            </div>{/* /users-table-wrap */}
           </div>
         )}
       </main>

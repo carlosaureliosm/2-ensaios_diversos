@@ -28,7 +28,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
+    <div className="login-root" style={{
       minHeight: '100vh',
       display: 'flex',
       fontFamily: "'DM Sans', system-ui, sans-serif",
@@ -84,6 +84,28 @@ export default function LoginPage() {
           color: #A8AEBF;
         }
 
+        /* ── Mobile ── */
+        @media (max-width: 640px) {
+          .login-root {
+            flex-direction: column !important;
+          }
+          .login-left {
+            flex: 0 0 auto !important;
+            width: 100% !important;
+            min-height: 220px !important;
+            padding: 32px 24px !important;
+            justify-content: flex-start !important;
+          }
+          .login-left-logo { margin-bottom: 20px !important; }
+          .login-left-features { display: none !important; }
+          .login-left-bottom { display: none !important; }
+          .login-left-circles .blueprint-circle { display: none !important; }
+          .login-right {
+            flex: 1 !important;
+            padding: 32px 24px !important;
+          }
+        }
+
         .login-btn {
           width: 100%;
           padding: 13px;
@@ -128,7 +150,7 @@ export default function LoginPage() {
       `}</style>
 
       {/* Left panel — brand / decoration */}
-      <div style={{
+      <div className="login-left" style={{
         flex: '0 0 55%',
         position: 'relative',
         overflow: 'hidden',
@@ -142,9 +164,11 @@ export default function LoginPage() {
         <div className="bg-overlay" />
 
         {/* Decorative circles */}
-        <div className="blueprint-circle" style={{ width: 500, height: 500, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-        <div className="blueprint-circle" style={{ width: 340, height: 340, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-        <div className="blueprint-circle" style={{ width: 180, height: 180, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+        <div className="login-left-circles">
+          <div className="blueprint-circle" style={{ width: 500, height: 500, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+          <div className="blueprint-circle" style={{ width: 340, height: 340, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+          <div className="blueprint-circle" style={{ width: 180, height: 180, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+        </div>
 
         {/* Crosshair center */}
         <div style={{
@@ -162,7 +186,7 @@ export default function LoginPage() {
         {/* Content */}
         <div style={{ position: 'relative', zIndex: 2 }}>
           {/* Logo */}
-          <div style={{ marginBottom: 48 }}>
+          <div className="login-left-logo" style={{ marginBottom: 48 }}>
             <img
               src="/logo_tecomat.png"
               alt="TECOMAT Engenharia"
@@ -171,7 +195,7 @@ export default function LoginPage() {
           </div>
 
           {/* Feature list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="login-left-features" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {[
               { label: 'Gestão de ensaios não destrutivos', icon: '◈' },
               { label: 'Relatórios técnicos automatizados', icon: '⬡' },
@@ -196,7 +220,7 @@ export default function LoginPage() {
         </div>
 
         {/* Bottom label */}
-        <div style={{
+        <div className="login-left-bottom" style={{
           position: 'absolute', bottom: 32, left: 64,
           zIndex: 2,
           fontSize: 11, fontWeight: 600,
@@ -208,7 +232,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right panel — login form */}
-      <div style={{
+      <div className="login-right" style={{
         flex: 1,
         backgroundColor: '#F8F9FA',
         display: 'flex',
