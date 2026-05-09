@@ -1,7 +1,7 @@
 // src/modules/potencial-corrosao/types.ts
 // TODO: definir interfaces específicas do módulo potencial-corrosao
 
-export interface potencial-corrosaoEnsaio {
+export interface PotencialCorrosaoEnsaio {
   id: string
   obra_id: string
   data_ensaio: string
