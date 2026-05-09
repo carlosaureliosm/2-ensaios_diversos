@@ -824,6 +824,7 @@ export default function EsclerometriaPage() {
               <div style={{ marginBottom: 16 }}>
                 <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Impactos (máx. 16) — filtro automático ±10% da média bruta — mínimo 5 válidos</p>
                 <div className="impactos-wrap" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {impactos.map((v, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
                       <input ref={el => { impactoRefs.current[i] = el; }} type="text" inputMode="decimal" value={v}
