@@ -191,10 +191,9 @@ export async function POST(req: NextRequest) {
       injetarAssinatura(renderedZip, assinaturaBuffer, assinaturaContentType);
     }
 
-const output = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
-const uint8 = new Uint8Array(output.buffer, output.byteOffset, output.byteLength);
+const output: Buffer = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 
-return new NextResponse(uint8, {
+return new NextResponse(output as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
