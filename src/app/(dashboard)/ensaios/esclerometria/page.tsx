@@ -244,9 +244,7 @@ export default function EsclerometriaPage() {
   const [outroRespFile,    setOutroRespFile]    = useState<File | null>(null);
   const [outroRespPreview, setOutroRespPreview] = useState<string | null>(null);
   const outroAssinaturaRef = useRef<HTMLInputElement>(null);
-  const [mediaBigorna, setMediaBigorna] = useState(0);
-  const [coefBigorna,  setCoefBigorna]  = useState(1.0);
-
+  
   const [amostras,    setAmostras]    = useState<AmostraRow[]>([]);
   const [editandoId,  setEditandoId]  = useState<string | null>(null);
   const [nomeAmostra, setNomeAmostra] = useState('');
