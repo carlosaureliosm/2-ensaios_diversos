@@ -7,11 +7,12 @@ async function getAdminCount(): Promise<number> {
   const admin = createAdminClient();
   const { data } = await admin.auth.admin.listUsers();
   if (!data) return 0;
-  return data.users.filter(
-    (u) =>
-      u.user_metadata?.role === 'admin' &&
-      (!u.banned_until || new Date(u.banned_until) <= new Date())
-  ).length;
+  const users = (data as { users: Record<string, unknown>[] }).users;
+  return users.filter((u) => {
+    const meta = u.user_metadata as Record<string, unknown> | undefined;
+    const banned = u.banned_until as string | null | undefined;
+    return meta?.role === 'admin' && (!banned || new Date(banned) <= new Date());
+  }).length;
 }
 
 // PATCH /api/users/[id]
