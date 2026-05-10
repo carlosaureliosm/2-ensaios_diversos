@@ -263,6 +263,7 @@ export default function EsclerometriaPage() {
   const [pontEditId,    setPontEditId]    = useState<string | null>(null);
   const [obraSalvoMsg,  setObraSalvoMsg]  = useState('');
   const [showImportar,  setShowImportar]  = useState(false);
+  const [modalAmostra, setModalAmostra] = useState<AmostraRow | null>(null);
 
   const impactoRefs     = useRef<(HTMLInputElement | null)[]>([]);
   const pontImpactoRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -516,15 +517,23 @@ export default function EsclerometriaPage() {
           .bigorna-stats > div:first-child { border-top: none !important; }
           /* Tabela resultados */
           .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-          /* Impactos grid */
-          .impactos-wrap input { width: 44px !important; }
+          /* Impactos grid 4x4 no mobile */
+          .impactos-wrap { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; width: 100% !important; }
+          .impactos-wrap > div { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; }
+          .impactos-wrap input { width: 100% !important; box-sizing: border-box !important; }
+          /* Cards de amostras no mobile */
+          .amostras-table-section { display: none !important; }
+          .amostras-cards-section { display: flex !important; }
           /* Botões ação */
           .action-btns-row { flex-wrap: wrap !important; }
           /* Modo Obra grupo header */
           .grupo-header { flex-wrap: wrap !important; gap: 8px !important; }
         }
+        @media (min-width: 601px) {
+          .amostras-table-section { display: block !important; }
+          .amostras-cards-section { display: none !important; }
+        }
         @media (max-width: 400px) {
-          .impactos-wrap input { width: 38px !important; padding: 6px 2px !important; font-size: 12px !important; }
           .num-bigorna { width: 44px !important; }
         }
       `}</style>
@@ -902,7 +911,7 @@ export default function EsclerometriaPage() {
               </div>
               <div style={{ marginBottom: 16 }}>
                 <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Impactos (máx. 16) — filtro automático ±10% da média bruta — mínimo 5 válidos</p>
-                <div className="impactos-wrap" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div className="impactos-wrap" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                   {impactos.map((v, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
@@ -924,7 +933,74 @@ export default function EsclerometriaPage() {
               </div>
             </section>
 
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(30,50,100,0.06)' }}>
+            {/* Modal de detalhes da amostra (mobile) */}
+            {modalAmostra && (
+              <div onClick={e => { if (e.target === e.currentTarget) setModalAmostra(null); }} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30,50,100,0.40)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 300, padding: 0 }}>
+                <div style={{ backgroundColor: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 520, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(30,50,100,0.22)', animation: 'slideUp 0.22s ease' }}>
+                  <style>{`@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
+                  {/* Handle */}
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+                    <div style={{ width: 40, height: 4, borderRadius: 99, background: '#DDE1EC' }} />
+                  </div>
+                  {/* Header modal */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px 12px', borderBottom: `1px solid ${BORDER}` }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>{modalAmostra.amostra}</span>
+                        <StatusBadge status={modalAmostra.status} />
+                      </div>
+                      <p style={{ margin: '3px 0 0', fontSize: 11, color: SUBTEXT }}>Item {modalAmostra.item} · Posição {modalAmostra.posicao}</p>
+                    </div>
+                    <button onClick={() => setModalAmostra(null)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: '#F0F2F8', color: SUBTEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}>✕</button>
+                  </div>
+                  {/* Conteúdo scrollável */}
+                  <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Golpes */}
+                    <div>
+                      <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>16 Impactos</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                        {modalAmostra.impactosRaw.map((v, i) => (
+                          <div key={i} style={{ textAlign: 'center', padding: '7px 4px', borderRadius: 8, background: v.trim() ? '#F0F4FC' : '#F8F9FA', border: `1px solid ${v.trim() ? PRIMARY + '33' : BORDER}` }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: SUBTEXT, marginBottom: 2 }}>{i + 1}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: v.trim() ? TEXT : SUBTEXT }}>{v.trim() || '—'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Métricas */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      {[
+                        { label: 'I.E. Médio', value: fmt(modalAmostra.ieMedio) },
+                        { label: 'Lim. Inferior', value: fmt(modalAmostra.limInf) },
+                        { label: 'Lim. Superior', value: fmt(modalAmostra.limSup) },
+                        { label: 'I.E. Efetivo', value: fmt(modalAmostra.ieEfetivo), highlight: true },
+                        { label: 'Resistência (MPa)', value: fmt(modalAmostra.resistencia), highlight: true, wide: true },
+                        { label: 'Dispersão', value: modalAmostra.dispersao },
+                      ].map((m, i) => (
+                        <div key={i} style={{ gridColumn: (m as any).wide ? '1 / -1' : 'auto', padding: '10px 14px', borderRadius: 10, background: (m as any).highlight ? (modalAmostra.status === 'Amostra Válida' ? '#F0F4FC' : '#FFF4F4') : '#F8F9FA', border: `1px solid ${(m as any).highlight ? PRIMARY + '33' : BORDER}` }}>
+                          <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 800, color: (m as any).highlight ? (modalAmostra.status === 'Amostra Válida' ? PRIMARY : DANGER) : TEXT }}>{m.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Botões de ação */}
+                  <div style={{ padding: '14px 20px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: 10 }}>
+                    <button onClick={() => { carregarParaEdicao(modalAmostra); setModalAmostra(null); }} style={{ flex: 1, padding: '12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: PRIMARY, color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Editar
+                    </button>
+                    <button onClick={() => { if (confirm(`Apagar "${modalAmostra.amostra}"?`)) { apagarAmostra(modalAmostra.id); setModalAmostra(null); } }} style={{ flex: 1, padding: '12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      Apagar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tabela desktop */}
+            <section className="amostras-table-section" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(30,50,100,0.06)' }}>
               <div className="table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
               <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 72px', padding: '11px 16px', background: EXCEL_BLUE, minWidth: 760 }}>
                 {['#','ELEMENTO','POSIÇÃO','LIM. INF.','LIM. SUP.','I.E. MÉDIO','STATUS','I.E. EFETIVO','RESIST. (MPa)','DISP.','AÇÕES'].map(h => <span key={h} style={{ fontSize: 9.5, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>{h}</span>)}
@@ -956,9 +1032,36 @@ export default function EsclerometriaPage() {
                   </div>
                 );
               })}
-
               </div>{/* /table-wrapper */}
             </section>
+
+            {/* Cards mobile de amostras */}
+            <div className="amostras-cards-section" style={{ flexDirection: 'column', gap: 10, display: 'none' }}>
+              {amostras.length === 0 ? (
+                <div style={{ padding: '40px 0', textAlign: 'center', color: SUBTEXT, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12 }}>
+                  <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.15 }}>⬡</div>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhuma amostra inserida</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12 }}>Preencha o formulário acima para adicionar a primeira amostra</p>
+                </div>
+              ) : amostras.map((a) => {
+                const valida = a.status === 'Amostra Válida';
+                return (
+                  <div key={a.id} onClick={() => setModalAmostra(a)} style={{ background: '#fff', border: `1.5px solid ${valida ? BORDER : '#FADADD'}`, borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxShadow: '0 1px 4px rgba(30,50,100,0.05)', transition: 'box-shadow 0.15s', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: valida ? '#EEF1F8' : '#FFF0EE', color: valida ? PRIMARY : DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{a.item}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.amostra}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: SUBTEXT }}>{a.posicao} · {valida ? `${fmt(a.resistencia)} MPa` : 'Perdida'}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <StatusBadge status={a.status} />
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={SUBTEXT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
