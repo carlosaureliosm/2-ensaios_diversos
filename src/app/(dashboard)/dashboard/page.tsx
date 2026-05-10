@@ -62,15 +62,19 @@ export default function DashboardPage() {
 
         .signout-btn:hover { background: rgba(255,255,255,0.12) !important; }
 
+        /* ── Sem scroll horizontal ── */
+        html, body { overflow-x: hidden; max-width: 100vw; }
+
         /* ── Mobile header ── */
         @media (max-width: 600px) {
-          .header-root { padding: 0 14px !important; height: auto !important; min-height: 56px; flex-wrap: wrap; gap: 0; }
-          .header-left { gap: 14px !important; }
-          .header-right { gap: 8px !important; }
-          .header-user-name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .header-root { padding: 0 12px !important; flex-wrap: nowrap !important; }
+          .header-left { gap: 10px !important; flex-shrink: 1; min-width: 0; overflow: hidden; }
+          .header-right { gap: 4px !important; flex-shrink: 0; }
+          .header-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .header-cargo { display: none !important; }
           .header-divider { display: none !important; }
           .signout-text { display: none; }
+          .signout-btn { padding: 6px 8px !important; }
           .main-pad { padding: 20px 14px !important; }
         }
 
@@ -150,7 +154,7 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 34, height: 34, borderRadius: '50%',

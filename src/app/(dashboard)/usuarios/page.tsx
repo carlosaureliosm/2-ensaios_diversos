@@ -516,7 +516,7 @@ function Header({ displayName, initials, userCargo, onSignOut }: {
           </a>
         </nav>
       </div>
-      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 34, height: 34, borderRadius: '50%',
@@ -683,14 +683,16 @@ export default function UsuariosPage() {
       <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+          html, body { overflow-x: hidden; max-width: 100vw; }
           @media (max-width: 600px) {
-            .header-root { padding: 0 14px !important; }
-            .header-left { gap: 12px !important; }
-            .header-right { gap: 8px !important; }
-            .header-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .header-root { padding: 0 12px !important; flex-wrap: nowrap !important; }
+            .header-left { gap: 10px !important; flex-shrink: 1; min-width: 0; overflow: hidden; }
+            .header-right { gap: 4px !important; flex-shrink: 0; }
+            .header-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .header-cargo { display: none !important; }
             .header-divider { display: none !important; }
             .signout-text { display: none; }
+            .signout-btn-u { padding: 6px 8px !important; }
             .main-users { padding: 24px 14px !important; }
           }
         `}</style>
@@ -751,14 +753,16 @@ export default function UsuariosPage() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
         .usr-row:hover { background: #F4F6FC !important; }
         .action-btn:hover { filter: brightness(0.92); }
+        html, body { overflow-x: hidden; max-width: 100vw; }
         @media (max-width: 600px) {
-          .header-root { padding: 0 14px !important; }
-          .header-left { gap: 12px !important; }
-          .header-right { gap: 8px !important; }
-          .header-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .header-root { padding: 0 12px !important; flex-wrap: nowrap !important; }
+          .header-left { gap: 10px !important; flex-shrink: 1; min-width: 0; overflow: hidden; }
+          .header-right { gap: 4px !important; flex-shrink: 0; }
+          .header-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .header-cargo { display: none !important; }
           .header-divider { display: none !important; }
           .signout-text { display: none; }
+          .signout-btn-u { padding: 6px 8px !important; }
           .main-users { padding: 20px 14px !important; }
           .page-header-row { flex-direction: column !important; gap: 14px !important; align-items: flex-start !important; }
           .page-header-row button { width: 100%; justify-content: center; }

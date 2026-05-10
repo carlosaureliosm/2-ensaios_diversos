@@ -112,7 +112,7 @@ function Header({ displayName, initials, cargo, onSignOut }: { displayName: stri
           <a href="/usuarios" className="nv-u" style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.65)', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, transition: 'color 0.15s' }}>Usuários</a>
         </nav>
       </div>
-      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: GOLD, color: PRIMARY, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0 }}>{initials}</div>
           <div>
@@ -473,16 +473,20 @@ export default function EsclerometriaPage() {
         .ponto-row:hover { background: #F3F5FB !important; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* ── Sem scroll horizontal ── */
+        html, body { overflow-x: hidden; max-width: 100vw; }
+
         /* ── Mobile ── */
         @media (max-width: 600px) {
           /* Header */
-          .header-root { padding: 0 14px !important; }
-          .header-left { gap: 12px !important; }
-          .header-right { gap: 8px !important; }
-          .header-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .header-root { padding: 0 12px !important; flex-wrap: nowrap !important; }
+          .header-left { gap: 10px !important; flex-shrink: 1; min-width: 0; overflow: hidden; }
+          .header-right { gap: 4px !important; flex-shrink: 0; }
+          .header-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .header-cargo { display: none !important; }
           .header-divider { display: none !important; }
           .signout-text { display: none; }
+          .sb-u { padding: 6px 8px !important; }
           /* Main padding */
           .main-esclero { padding: 16px 14px !important; }
           /* Page title area */
