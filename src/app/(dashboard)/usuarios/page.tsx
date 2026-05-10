@@ -516,7 +516,7 @@ function Header({ displayName, initials, userCargo, onSignOut }: {
           </a>
         </nav>
       </div>
-      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 34, height: 34, borderRadius: '50%',
@@ -683,16 +683,14 @@ export default function UsuariosPage() {
       <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
-          html, body { overflow-x: hidden; max-width: 100vw; }
           @media (max-width: 600px) {
-            .header-root { padding: 0 12px !important; flex-wrap: nowrap !important; }
-            .header-left { gap: 10px !important; flex-shrink: 1; min-width: 0; overflow: hidden; }
-            .header-right { gap: 4px !important; flex-shrink: 0; }
-            .header-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .header-root { padding: 0 14px !important; }
+            .header-left { gap: 12px !important; }
+            .header-right { gap: 8px !important; }
+            .header-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .header-cargo { display: none !important; }
             .header-divider { display: none !important; }
             .signout-text { display: none; }
-            .signout-btn-u { padding: 6px 8px !important; }
             .main-users { padding: 24px 14px !important; }
           }
         `}</style>
@@ -753,12 +751,11 @@ export default function UsuariosPage() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
         .usr-row:hover { background: #F4F6FC !important; }
         .action-btn:hover { filter: brightness(0.92); }
-        html, body { overflow-x: hidden; max-width: 100vw; }
-        @media (max-width: 600px) {
-          .header-root { padding: 0 12px !important; flex-wrap: nowrap !important; }
-          .header-left { gap: 10px !important; flex-shrink: 1; min-width: 0; overflow: hidden; }
-          .header-right { gap: 4px !important; flex-shrink: 0; }
-          .header-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        @media (max-width: 768px) {
+          .header-root { padding: 0 14px !important; }
+          .header-left { gap: 12px !important; }
+          .header-right { gap: 8px !important; }
+          .header-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .header-cargo { display: none !important; }
           .header-divider { display: none !important; }
           .signout-text { display: none; }
@@ -766,7 +763,12 @@ export default function UsuariosPage() {
           .main-users { padding: 20px 14px !important; }
           .page-header-row { flex-direction: column !important; gap: 14px !important; align-items: flex-start !important; }
           .page-header-row button { width: 100%; justify-content: center; }
-          .users-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .users-table-section { display: none !important; }
+          .users-cards-section { display: flex !important; }
+        }
+        @media (min-width: 769px) {
+          .users-table-section { display: block !important; }
+          .users-cards-section { display: none !important; }
         }
       `}</style>
 
@@ -822,182 +824,251 @@ export default function UsuariosPage() {
         )}
 
         {!loading && !error && (
-          <div style={{
-            backgroundColor: '#fff',
-            border: `1px solid ${BORDER}`,
-            borderRadius: 14,
-            overflow: 'hidden',
-            boxShadow: '0 2px 12px rgba(30,50,100,0.06)',
-          }}>
-            <div className="users-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-            {/* Table header */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 140px 110px 110px',
-              padding: '12px 20px',
-              borderBottom: `2px solid ${BORDER}`,
-              backgroundColor: '#F8F9FA',
-              minWidth: 560,
+          <>
+            {/* ── Tabela (desktop ≥ 769px) ── */}
+            <div className="users-table-section" style={{
+              backgroundColor: '#fff',
+              border: `1px solid ${BORDER}`,
+              borderRadius: 14,
+              overflow: 'hidden',
+              boxShadow: '0 2px 12px rgba(30,50,100,0.06)',
             }}>
-              {['Nome', 'E-mail', 'Cargo', 'Nível', 'Ações'].map((h) => (
-                <span key={h} style={{
-                  fontSize: 11, fontWeight: 700,
-                  color: PRIMARY,
-                  textTransform: 'uppercase', letterSpacing: '0.08em',
-                }}>
-                  {h}
-                </span>
-              ))}
-            </div>
-
-            {users.length === 0 && (
-              <p style={{
-                textAlign: 'center', color: SUBTEXT,
-                padding: '48px 0', margin: 0, fontSize: 14,
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+              {/* Table header */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 140px 110px 110px',
+                padding: '12px 20px',
+                borderBottom: `2px solid ${BORDER}`,
+                backgroundColor: '#F8F9FA',
+                minWidth: 560,
               }}>
-                Nenhum usuário encontrado.
-              </p>
-            )}
-
-            {users.map((u, idx) => {
-              const isLastAdmin = u.role === 'admin' && !u.banned && adminCount <= 1;
-              const isSelf      = u.id === currentUser?.id;
-              return (
-                <div
-                  key={u.id}
-                  className="usr-row"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 140px 110px 110px',
-                    padding: '14px 20px',
-                    borderBottom: idx < users.length - 1 ? `1px solid ${BORDER}` : 'none',
-                    alignItems: 'center',
-                    transition: 'background 0.15s',
-                    opacity: u.banned ? 0.65 : 1,
-                    background: '#fff',
-                    minWidth: 560,
-                  }}
-                >
-                  {/* Name */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%',
-                      backgroundColor: isSelf ? GOLD : PRIMARY,
-                      color: isSelf ? PRIMARY : '#fff',
-                      fontSize: 11, fontWeight: 800,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      {u.full_name ? getInitials(u.full_name) : u.email.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>
-                        {u.full_name || '—'}
-                      </span>
-                      {isSelf && (
-                        <span style={{
-                          marginLeft: 6, fontSize: 10, fontWeight: 700,
-                          color: GOLD, background: '#FDF8EC',
-                          padding: '1px 6px', borderRadius: 10,
-                          border: '1px solid #F0E0A0',
-                        }}>
-                          você
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Email */}
-                  <span style={{
-                    fontSize: 12, color: SUBTEXT,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                {['Nome', 'E-mail', 'Cargo', 'Nível', 'Ações'].map((h) => (
+                  <span key={h} style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: PRIMARY,
+                    textTransform: 'uppercase', letterSpacing: '0.08em',
                   }}>
-                    {u.email}
+                    {h}
                   </span>
+                ))}
+              </div>
 
-                  {/* Cargo */}
-                  <span style={{ fontSize: 12, color: SUBTEXT }}>{u.cargo || '—'}</span>
+              {users.length === 0 && (
+                <p style={{ textAlign: 'center', color: SUBTEXT, padding: '48px 0', margin: 0, fontSize: 14 }}>
+                  Nenhum usuário encontrado.
+                </p>
+              )}
 
-                  {/* Badge */}
-                  <Badge role={u.role} banned={u.banned} />
+              {users.map((u, idx) => {
+                const isLastAdmin = u.role === 'admin' && !u.banned && adminCount <= 1;
+                const isSelf      = u.id === currentUser?.id;
+                return (
+                  <div
+                    key={u.id}
+                    className="usr-row"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr 140px 110px 110px',
+                      padding: '14px 20px',
+                      borderBottom: idx < users.length - 1 ? `1px solid ${BORDER}` : 'none',
+                      alignItems: 'center',
+                      transition: 'background 0.15s',
+                      opacity: u.banned ? 0.65 : 1,
+                      background: '#fff',
+                      minWidth: 560,
+                    }}
+                  >
+                    {/* Name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%',
+                        backgroundColor: isSelf ? GOLD : PRIMARY,
+                        color: isSelf ? PRIMARY : '#fff',
+                        fontSize: 11, fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        {u.full_name ? getInitials(u.full_name) : u.email.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>
+                          {u.full_name || '—'}
+                        </span>
+                        {isSelf && (
+                          <span style={{
+                            marginLeft: 6, fontSize: 10, fontWeight: 700,
+                            color: GOLD, background: '#FDF8EC',
+                            padding: '1px 6px', borderRadius: 10,
+                            border: '1px solid #F0E0A0',
+                          }}>
+                            você
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <ActionBtn
-                      title="Editar"
-                      color={PRIMARY}
-                      onClick={() => { setModalTarget(u); setModalMode('edit'); }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </ActionBtn>
+                    {/* Email */}
+                    <span style={{ fontSize: 12, color: SUBTEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {u.email}
+                    </span>
 
-                    {!isSelf && (
-                      u.banned
-                        ? (
-                          <ActionBtn
-                            title="Reativar"
-                            color="#1A7A44"
-                            onClick={() => setConfirm({
-                              message: `Reativar "${u.full_name || u.email}"?`,
-                              confirmLabel: 'Reativar',
-                              onConfirm: () => handleAction('unban', u.id),
-                            })}
-                          >
+                    {/* Cargo */}
+                    <span style={{ fontSize: 12, color: SUBTEXT }}>{u.cargo || '—'}</span>
+
+                    {/* Badge */}
+                    <Badge role={u.role} banned={u.banned} />
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <ActionBtn title="Editar" color={PRIMARY} onClick={() => { setModalTarget(u); setModalMode('edit'); }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </ActionBtn>
+
+                      {!isSelf && (
+                        u.banned ? (
+                          <ActionBtn title="Reativar" color="#1A7A44" onClick={() => setConfirm({ message: `Reativar "${u.full_name || u.email}"?`, confirmLabel: 'Reativar', onConfirm: () => handleAction('unban', u.id) })}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M9 12l2 2 4-4"/>
-                              <circle cx="12" cy="12" r="10"/>
+                              <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
                             </svg>
                           </ActionBtn>
                         ) : (
-                          <ActionBtn
-                            title={isLastAdmin ? 'Último admin — não pode desativar' : 'Desativar'}
-                            color="#B06A00"
-                            disabled={isLastAdmin}
-                            onClick={() => setConfirm({
-                              message: `Desativar "${u.full_name || u.email}"? O acesso será bloqueado.`,
-                              confirmLabel: 'Desativar',
-                              danger: true,
-                              onConfirm: () => handleAction('ban', u.id),
-                            })}
-                          >
+                          <ActionBtn title={isLastAdmin ? 'Último admin — não pode desativar' : 'Desativar'} color="#B06A00" disabled={isLastAdmin} onClick={() => setConfirm({ message: `Desativar "${u.full_name || u.email}"? O acesso será bloqueado.`, confirmLabel: 'Desativar', danger: true, onConfirm: () => handleAction('ban', u.id) })}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10"/>
-                              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                              <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                             </svg>
                           </ActionBtn>
                         )
-                    )}
+                      )}
 
-                    {!isSelf && (
-                      <ActionBtn
-                        title={isLastAdmin ? 'Último admin — não pode excluir' : 'Excluir'}
-                        color={DANGER}
-                        disabled={isLastAdmin}
-                        onClick={() => setConfirm({
-                          message: `Excluir permanentemente "${u.full_name || u.email}"? Esta ação não pode ser desfeita.`,
-                          confirmLabel: 'Excluir',
-                          danger: true,
-                          onConfirm: () => handleAction('delete', u.id),
-                        })}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6l-1 14H6L5 6"/>
-                          <path d="M10 11v6"/>
-                          <path d="M14 11v6"/>
-                          <path d="M9 6V4h6v2"/>
-                        </svg>
-                      </ActionBtn>
-                    )}
+                      {!isSelf && (
+                        <ActionBtn title={isLastAdmin ? 'Último admin — não pode excluir' : 'Excluir'} color={DANGER} disabled={isLastAdmin} onClick={() => setConfirm({ message: `Excluir permanentemente "${u.full_name || u.email}"? Esta ação não pode ser desfeita.`, confirmLabel: 'Excluir', danger: true, onConfirm: () => handleAction('delete', u.id) })}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                        </ActionBtn>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            </div>{/* /users-table-wrap */}
-          </div>
+                );
+              })}
+              </div>
+            </div>
+
+            {/* ── Cards (mobile ≤ 768px) ── */}
+            <div className="users-cards-section" style={{ flexDirection: 'column', gap: 12 }}>
+              {users.length === 0 && (
+                <p style={{ textAlign: 'center', color: SUBTEXT, padding: '48px 0', margin: 0, fontSize: 14 }}>
+                  Nenhum usuário encontrado.
+                </p>
+              )}
+              {users.map((u) => {
+                const isLastAdmin = u.role === 'admin' && !u.banned && adminCount <= 1;
+                const isSelf      = u.id === currentUser?.id;
+                return (
+                  <div key={u.id} style={{
+                    backgroundColor: '#fff',
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 14,
+                    padding: '16px',
+                    boxShadow: '0 2px 8px rgba(30,50,100,0.06)',
+                    opacity: u.banned ? 0.7 : 1,
+                  }}>
+                    {/* Topo: avatar + nome + cargo */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                        backgroundColor: isSelf ? GOLD : PRIMARY,
+                        color: isSelf ? PRIMARY : '#fff',
+                        fontSize: 13, fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {u.full_name ? getInitials(u.full_name) : u.email.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{u.full_name || '—'}</span>
+                          {isSelf && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: GOLD, background: '#FDF8EC', padding: '1px 6px', borderRadius: 10, border: '1px solid #F0E0A0' }}>
+                              você
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 12, color: SUBTEXT }}>{u.cargo || '—'}</span>
+                      </div>
+                    </div>
+
+                    {/* Divisória */}
+                    <div style={{ height: 1, backgroundColor: BORDER, marginBottom: 12 }} />
+
+                    {/* E-mail + badge */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 8 }}>
+                      <span style={{ fontSize: 12, color: SUBTEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {u.email}
+                      </span>
+                      <Badge role={u.role} banned={u.banned} />
+                    </div>
+
+                    {/* Ações */}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => { setModalTarget(u); setModalMode('edit'); }}
+                        style={{ flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', backgroundColor: PRIMARY, color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Editar
+                      </button>
+
+                      {!isSelf && (
+                        u.banned ? (
+                          <button
+                            onClick={() => setConfirm({ message: `Reativar "${u.full_name || u.email}"?`, confirmLabel: 'Reativar', onConfirm: () => handleAction('unban', u.id) })}
+                            style={{ flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', backgroundColor: '#1A7A44', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
+                            </svg>
+                            Reativar
+                          </button>
+                        ) : (
+                          <button
+                            disabled={isLastAdmin}
+                            onClick={() => setConfirm({ message: `Desativar "${u.full_name || u.email}"? O acesso será bloqueado.`, confirmLabel: 'Desativar', danger: true, onConfirm: () => handleAction('ban', u.id) })}
+                            style={{ flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: 'inherit', backgroundColor: isLastAdmin ? '#ddd' : '#B06A00', color: isLastAdmin ? '#aaa' : '#fff', border: 'none', cursor: isLastAdmin ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                            </svg>
+                            Desativar
+                          </button>
+                        )
+                      )}
+
+                      {!isSelf && (
+                        <button
+                          disabled={isLastAdmin}
+                          onClick={() => setConfirm({ message: `Excluir permanentemente "${u.full_name || u.email}"? Esta ação não pode ser desfeita.`, confirmLabel: 'Excluir', danger: true, onConfirm: () => handleAction('delete', u.id) })}
+                          style={{ padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: 'inherit', backgroundColor: isLastAdmin ? '#ddd' : '#FFF0EE', color: isLastAdmin ? '#aaa' : DANGER, border: `1px solid ${isLastAdmin ? '#ddd' : '#FADADD'}`, cursor: isLastAdmin ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </main>
     </div>
