@@ -1212,56 +1212,46 @@ export default function EsclerometriaPage() {
                         </>
                       )}
 
-                  {/* Formulário ponto — nome ocupa largura total */}
-                  {(
-                    <div style={{ padding: '18px 20px', background: '#FAFBFD', borderTop: g.pontos.length > 0 ? `1px solid ${BORDER}` : 'none' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                        <h4 style={{ margin: 0, fontSize: 11, fontWeight: 800, color: (pontEditId && ativo) ? '#8B6914' : GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{(pontEditId && ativo) ? '✎ Editando Ponto' : '+ Novo Ponto'}</h4>
-                      </div>
-                      {/* Nome campo largura total */}
-                      <div style={{ marginBottom: 12 }}>
-                        <Campo label="Identificação (ex: P1 - Pilar Térreo)"><input style={{ ...inputStyle, width: '100%' }} value={ativo ? pontNome : ''} onChange={e => { if (!ativo) setGrupoAtivoId(g.id); setPontNome(e.target.value); }} onFocus={() => { if (!ativo) setGrupoAtivoId(g.id); }} placeholder="Ex: V1 - Viga Piso 2…" onKeyDown={e => e.key === 'Enter' && pontImpactoRefs.current[0]?.focus()} /></Campo>
-                      </div>
-                      {/* Posição */}
-                      <div style={{ marginBottom: 12 }}>
-                        <Campo label="Posição do Aparelho">
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            {POSICOES.map(p => <button key={p} onClick={() => { if (!ativo) setGrupoAtivoId(g.id); setPontPosicao(p); }} style={{ flex: 1, padding: '10px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: pontPosicao === p ? GREEN : '#F0F2F8', color: pontPosicao === p ? '#fff' : SUBTEXT, border: `2px solid ${pontPosicao === p ? GREEN : 'transparent'}`, minHeight: 44 }}>{p}</button>)}
-                          </div>
-                        </Campo>
-                      </div>
-                    <div style={{ padding: '18px 20px', background: '#FAFBFD', borderTop: g.pontos.length > 0 ? `1px solid ${BORDER}` : 'none' }}>
-                      <h4 style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 800, color: pontEditId ? '#8B6914' : GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{pontEditId ? '✎ Editando Ponto' : '+ Novo Ponto'}</h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 14, marginBottom: 14 }}>
-                        <Campo label="Identificação (ex: P1 - Pilar Térreo)"><input style={inputStyle} value={pontNome} onChange={e => setPontNome(e.target.value)} placeholder="Ex: V1 - Viga Piso 2…" onKeyDown={e => e.key === 'Enter' && pontImpactoRefs.current[0]?.focus()} /></Campo>
-                        <Campo label="Posição">
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            {POSICOES.map(p => <button key={p} onClick={() => setPontPosicao(p)} style={{ flex: 1, padding: '8px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: pontPosicao === p ? GREEN : '#F0F2F8', color: pontPosicao === p ? '#fff' : SUBTEXT, border: `2px solid ${pontPosicao === p ? GREEN : 'transparent'}` }}>{p}</button>)}
-                          </div>
-                        </Campo>
-                      </div>
-                      <div style={{ marginBottom: 14 }}>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Golpes (máx. 16)</p>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {pontImpactos.map((v, i) => (
-                            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
-                              <input ref={el => { pontImpactoRefs.current[i] = el; }} type="text" inputMode="decimal" value={v}
-                                onChange={e => { const n = [...pontImpactos]; n[i] = e.target.value.replace(/\D/g, ''); setPontImpactos(n); }}
-                                onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = pontImpactoRefs.current[i - 1]; if (pv) pv.focus(); } else if (e.key === 'Enter') { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } }}
-                                style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? GREEN + '66' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? GREEN_LIGHT : '#fff', outline: 'none', transition: 'all 0.1s' }}
-                                onFocus={e => { e.target.style.borderColor = GREEN; e.target.style.background = '#E8F5EE'; }}
-                                onBlur={e => { e.target.style.borderColor = v ? GREEN + '66' : BORDER; e.target.style.background = v ? GREEN_LIGHT : '#fff'; }}
-                              />
-                            </div>
-                          ))}
+                      {/* Formulário ponto — nome ocupa largura total */}
+                      <div style={{ padding: '18px 20px', background: '#FAFBFD', borderTop: g.pontos.length > 0 ? `1px solid ${BORDER}` : 'none' }}>
+                        <h4 style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 800, color: (pontEditId && ativo) ? '#8B6914' : GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{(pontEditId && ativo) ? '✎ Editando Ponto' : '+ Novo Ponto'}</h4>
+                        {/* Nome campo largura total */}
+                        <div style={{ marginBottom: 12 }}>
+                          <Campo label="Identificação (ex: P1 - Pilar Térreo)"><input style={{ ...inputStyle, width: '100%' }} value={ativo ? pontNome : ''} onChange={e => { if (!ativo) { setGrupoAtivoId(g.id); } setPontNome(e.target.value); }} onFocus={() => { if (!ativo) setGrupoAtivoId(g.id); }} placeholder="Ex: V1 - Viga Piso 2…" onKeyDown={e => e.key === 'Enter' && pontImpactoRefs.current[0]?.focus()} /></Campo>
                         </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <button onClick={salvarPonto} disabled={!pontNome.trim() || !pontImpactos.some(v => v.trim())} style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: pontNome.trim() && pontImpactos.some(v => v.trim()) ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: pontEditId ? GOLD : GREEN, color: pontEditId ? PRIMARY : '#fff', border: 'none', opacity: pontNome.trim() && pontImpactos.some(v => v.trim()) ? 1 : 0.5 }}>{pontEditId ? '✓ Salvar Edição' : '+ Salvar Ponto'}</button>
-                        {pontEditId && <button onClick={cancelarEdicaoPonto} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>Cancelar</button>}
-                        <button onClick={() => { setPontNome(''); setPontImpactos(Array(16).fill('')); setPontPosicao('0°'); setPontEditId(null); }} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>Limpar</button>
-                        {obraSalvoMsg && <span style={{ fontSize: 12, color: GREEN, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>{obraSalvoMsg}</span>}
+                        {/* Posição */}
+                        <div style={{ marginBottom: 12 }}>
+                          <Campo label="Posição do Aparelho">
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {POSICOES.map(p => <button key={p} onClick={() => { if (!ativo) setGrupoAtivoId(g.id); setPontPosicao(p); }} style={{ flex: 1, padding: '10px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: pontPosicao === p ? GREEN : '#F0F2F8', color: pontPosicao === p ? '#fff' : SUBTEXT, border: `2px solid ${pontPosicao === p ? GREEN : 'transparent'}`, minHeight: 44 }}>{p}</button>)}
+                            </div>
+                          </Campo>
+                        </div>
+                        {/* Golpes 4×4 */}
+                        <div style={{ marginBottom: 14 }}>
+                          <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Golpes (máx. 16) — apenas inteiros</p>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, width: '100%' }}>
+                            {pontImpactos.map((v, i) => (
+                              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
+                                <input ref={el => { pontImpactoRefs.current[i] = el; }} type="text" inputMode="numeric" value={v}
+                                  onChange={e => { const n = [...pontImpactos]; n[i] = e.target.value.replace(/\D/g, ''); setPontImpactos(n); }}
+                                  onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = pontImpactoRefs.current[i - 1]; if (pv) pv.focus(); } else if (e.key === 'Enter') { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } }}
+                                  style={{ width: '100%', textAlign: 'center', padding: '9px 4px', border: `1.5px solid ${v ? GREEN + '66' : BORDER}`, borderRadius: 6, fontSize: 14, fontFamily: 'inherit', color: TEXT, background: v ? GREEN_LIGHT : '#fff', outline: 'none', transition: 'all 0.1s', minHeight: 44, boxSizing: 'border-box' as 'border-box' }}
+                                  onFocus={e => { e.target.style.borderColor = GREEN; e.target.style.background = '#E8F5EE'; }}
+                                  onBlur={e => { e.target.style.borderColor = v ? GREEN + '66' : BORDER; e.target.style.background = v ? GREEN_LIGHT : '#fff'; }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Botões */}
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <button onClick={() => { if (!ativo) setGrupoAtivoId(g.id); salvarPonto(); }} disabled={!pontNome.trim() || !pontImpactos.some(v => v.trim())} style={{ padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: pontNome.trim() && pontImpactos.some(v => v.trim()) ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: (pontEditId && ativo) ? GOLD : GREEN, color: (pontEditId && ativo) ? PRIMARY : '#fff', border: 'none', opacity: pontNome.trim() && pontImpactos.some(v => v.trim()) ? 1 : 0.5, minHeight: 44 }}>{(pontEditId && ativo) ? '✓ Salvar Edição' : '+ Salvar Ponto'}</button>
+                          {(pontEditId && ativo) && <button onClick={cancelarEdicaoPonto} style={{ padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none', minHeight: 44 }}>Cancelar</button>}
+                          <button onClick={() => { setPontNome(''); setPontImpactos(Array(16).fill('')); setPontPosicao('0°'); setPontEditId(null); }} style={{ padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none', minHeight: 44 }}>Limpar</button>
+                          {obraSalvoMsg && <span style={{ fontSize: 12, color: GREEN, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>{obraSalvoMsg}</span>}
+                        </div>
                       </div>
                     </div>
                   )}
