@@ -463,6 +463,9 @@ export default function EsclerometriaPage() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
         * { box-sizing: border-box; }
         input:focus, textarea:focus { outline: none; border-color: ${PRIMARY} !important; box-shadow: 0 0 0 3px rgba(30,50,100,0.07); }
+        .tab-icon { display: none; }
+        .tab-label-full { display: inline; }
+        .tab-label-short { display: none; }
         .tab-btn { transition: all 0.15s; border: none; background: transparent; }
         .tab-btn:hover { opacity: 0.8; }
         .row-h:hover { background: #F3F5FB !important; }
@@ -493,9 +496,13 @@ export default function EsclerometriaPage() {
           .page-title-row { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
           .page-action-btns { width: 100%; display: flex; gap: 8px; }
           .page-action-btns button { flex: 1; justify-content: center; }
-          /* Abas */
-          .tabs-row { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-          .tabs-row button { padding: 10px 14px !important; font-size: 12px !important; white-space: nowrap; flex-shrink: 0; }
+          /* Abas — Mobile: 3 blocos iguais com ícone + texto curto */
+          .tabs-row { background: #F1F3F8; padding: 6px 6px 0; gap: 4px !important; border-bottom: none !important; border-radius: 10px 10px 0 0; }
+          .tab-btn { flex: 1; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important; padding: 10px 4px 8px !important; font-size: 11px !important; white-space: nowrap; border-radius: 8px 8px 0 0 !important; background: rgba(255,255,255,0.6) !important; border-bottom: 3px solid transparent !important; margin-bottom: 0 !important; }
+          .tab-btn.tab-ativo { background: #fff !important; opacity: 1 !important; border-bottom: 4px solid currentColor !important; }
+          .tab-icon { display: block !important; }
+          .tab-label-full { display: none !important; }
+          .tab-label-short { display: block !important; }
           /* Section padding */
           .section-pad { padding: 16px 14px !important; }
           /* Grids */
@@ -614,17 +621,85 @@ export default function EsclerometriaPage() {
 
         {/* Abas */}
         <div className="tabs-row" style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, marginBottom: 0 }}>
-          <button className="tab-btn" onClick={() => setAba('cabecalho')} style={{ padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: aba === 'cabecalho' ? PRIMARY : SUBTEXT, borderBottom: aba === 'cabecalho' ? `3px solid ${GOLD}` : '3px solid transparent', marginBottom: -2 }}>
-            1. Cabeçalho e Aparelho
+
+          {/* Aba 1 — Cabeçalho */}
+          <button
+            className={`tab-btn${aba === 'cabecalho' ? ' tab-ativo' : ''}`}
+            onClick={() => setAba('cabecalho')}
+            style={{
+              padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit',
+              color: aba === 'cabecalho' ? PRIMARY : SUBTEXT,
+              borderBottom: aba === 'cabecalho' ? `3px solid ${GOLD}` : '3px solid transparent',
+              marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            {/* Ícone — só visível no mobile via CSS */}
+            <svg className="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: aba === 'cabecalho' ? '#1A2B56' : SUBTEXT }}>
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            <span className="tab-label-full">1. Cabeçalho e Aparelho</span>
+            <span className="tab-label-short" style={{ color: aba === 'cabecalho' ? '#1A2B56' : SUBTEXT, fontWeight: 700, fontSize: 11 }}>Cabeçalho</span>
           </button>
-          <button className="tab-btn" onClick={() => bigornaPronta ? setAba('campo') : undefined} title={!bigornaPronta ? 'Preencha os 10 golpes da bigorna para liberar' : undefined} style={{ padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: bigornaPronta ? 'pointer' : 'not-allowed', fontFamily: 'inherit', color: aba === 'campo' ? PRIMARY : bigornaPronta ? SUBTEXT : '#C0C8D8', borderBottom: aba === 'campo' ? `3px solid ${GOLD}` : '3px solid transparent', marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, opacity: bigornaPronta ? 1 : 0.55 }}>
-            {!bigornaPronta && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
-            2. Dados de Campo{amostras.length > 0 ? ` (${amostras.length})` : ''}
+
+          {/* Aba 2 — Dados de Campo */}
+          <button
+            className={`tab-btn${aba === 'campo' ? ' tab-ativo' : ''}`}
+            onClick={() => bigornaPronta ? setAba('campo') : undefined}
+            title={!bigornaPronta ? 'Preencha os 10 golpes da bigorna para liberar' : undefined}
+            style={{
+              padding: '10px 24px', fontSize: 13, fontWeight: 700,
+              cursor: bigornaPronta ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+              color: aba === 'campo' ? PRIMARY : bigornaPronta ? SUBTEXT : '#C0C8D8',
+              borderBottom: aba === 'campo' ? `3px solid ${GOLD}` : '3px solid transparent',
+              marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6,
+              opacity: bigornaPronta ? 1 : 0.55,
+            }}
+          >
+            {/* Ícone mobile */}
+            {bigornaPronta
+              ? <svg className="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: aba === 'campo' ? '#1A2B56' : SUBTEXT }}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
+              : <svg className="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            }
+            {/* Cadeado desktop — só quando bloqueado */}
+            {!bigornaPronta && <svg className="tab-icon-lock-desktop" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'none' }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
+            <span className="tab-label-full" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {!bigornaPronta && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
+              2. Dados de Campo{amostras.length > 0 ? ` (${amostras.length})` : ''}
+            </span>
+            <span className="tab-label-short" style={{ color: aba === 'campo' ? '#1A2B56' : SUBTEXT, fontWeight: 700, fontSize: 11 }}>Dados</span>
           </button>
-          <button className="tab-btn" onClick={() => setAba('obra')} style={{ padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: aba === 'obra' ? GREEN : SUBTEXT, borderBottom: aba === 'obra' ? `3px solid ${GREEN}` : '3px solid transparent', marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6 }}>
-            3. Modo Obra
-            {totalPontos > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', fontSize: 10, fontWeight: 800, background: aba === 'obra' ? GREEN : SUBTEXT, color: '#fff' }}>{totalPontos}</span>}
+
+          {/* Aba 3 — Modo Obra */}
+          <button
+            className={`tab-btn${aba === 'obra' ? ' tab-ativo' : ''}`}
+            onClick={() => setAba('obra')}
+            style={{
+              padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit',
+              color: aba === 'obra' ? GREEN : SUBTEXT,
+              borderBottom: aba === 'obra' ? `3px solid ${GREEN}` : '3px solid transparent',
+              marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            {/* Capacete de obra */}
+            <svg className="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: aba === 'obra' ? GREEN : SUBTEXT }}>
+              <path d="M2 20h20"/><path d="M6 20v-4a6 6 0 0 1 12 0v4"/><path d="M12 4v4"/><path d="M4 12a8 8 0 0 1 16 0"/>
+            </svg>
+            <span className="tab-label-full" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              3. Modo Obra
+              {totalPontos > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', fontSize: 10, fontWeight: 800, background: aba === 'obra' ? GREEN : SUBTEXT, color: '#fff' }}>{totalPontos}</span>}
+            </span>
+            <span className="tab-label-short" style={{ color: aba === 'obra' ? GREEN : SUBTEXT, fontWeight: 700, fontSize: 11 }}>
+              Obra{totalPontos > 0 ? ` (${totalPontos})` : ''}
+            </span>
           </button>
+
         </div>
 
         {/* ABA 1 */}
