@@ -408,16 +408,29 @@ export default function EsclerometriaPage() {
       reader.readAsDataURL(outroRespFile);
     });
 
-  // Lê arquivo de imagem como base64 + dimensões
+  // Lê arquivo de imagem como base64 + dimensões (com compressão para reduzir payload)
   const lerImagemComDimensoes = (file: File): Promise<{ base64: string; width: number; height: number; contentType: string }> =>
     new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
-        const base64 = dataUrl.split(',')[1] ?? '';
         const img = new window.Image();
-        img.onload = () => resolve({ base64, width: img.width, height: img.height, contentType: file.type });
-        img.onerror = () => resolve({ base64, width: 800, height: 600, contentType: file.type });
+        img.onload = () => {
+          // Redimensiona para no máximo 1200px mantendo proporção
+          const MAX = 1200;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+            else { width = Math.round(width * MAX / height); height = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+          // JPEG com qualidade 0.82 para reduzir tamanho
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          resolve({ base64: compressed.split(',')[1] ?? '', width, height, contentType: 'image/jpeg' });
+        };
+        img.onerror = () => resolve({ base64: dataUrl.split(',')[1] ?? '', width: 800, height: 600, contentType: file.type });
         img.src = dataUrl;
       };
       reader.onerror = () => resolve({ base64: '', width: 800, height: 600, contentType: file.type });

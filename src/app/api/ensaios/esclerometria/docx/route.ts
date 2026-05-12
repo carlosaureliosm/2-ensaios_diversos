@@ -12,6 +12,10 @@ import Docxtemplater from 'docxtemplater';
 import path from 'path';
 import fs from 'fs';
 
+export const config = {
+  api: { bodyParser: { sizeLimit: '20mb' } },
+};
+
 // ── Tipos ──────────────────────────────────────────────────────
 type AmostraPayload = {
   item: number; amostra: string; posicao: string;
