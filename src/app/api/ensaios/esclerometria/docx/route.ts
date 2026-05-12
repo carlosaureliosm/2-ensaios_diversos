@@ -507,7 +507,7 @@ export async function POST(req: NextRequest) {
 
     const output = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 
-    return new NextResponse(output, {
+    return new NextResponse(output as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
