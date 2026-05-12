@@ -27,6 +27,11 @@ type AmostraRow = {
   limInf: number | null; limSup: number | null; ieMedio: number | null;
   status: 'Amostra Válida' | 'Amostra Perdida';
   ieEfetivo: number | null; resistencia: number | null; dispersao: string; impactosRaw: string[];
+  // Memorial fotográfico
+  fotoFile?: File | null;
+  fotoPreview?: string | null;
+  fotoWidth?: number;
+  fotoHeight?: number;
 };
 
 type Cabecalho = {
@@ -245,6 +250,22 @@ export default function EsclerometriaPage() {
   const [outroRespPreview, setOutroRespPreview] = useState<string | null>(null);
   const outroAssinaturaRef = useRef<HTMLInputElement>(null);
   
+  // Coordenadas para mapa
+  const [coordenadas,   setCoordenadas]   = useState('');
+  // Motivação
+  const [usarMotivacao, setUsarMotivacao] = useState(false);
+  const [motivacao,     setMotivacao]     = useState('');
+  // Foto geral
+  const [usarFotoGeral,    setUsarFotoGeral]    = useState(false);
+  const [fotoGeralFile,    setFotoGeralFile]    = useState<File | null>(null);
+  const [fotoGeralPreview, setFotoGeralPreview] = useState<string | null>(null);
+  const fotoGeralRef = useRef<HTMLInputElement>(null);
+  // Croqui
+  const [usarCroqui,    setUsarCroqui]    = useState(false);
+  const [croquiFile,    setCroquiFile]    = useState<File | null>(null);
+  const [croquiPreview, setCroquiPreview] = useState<string | null>(null);
+  const croquiRef = useRef<HTMLInputElement>(null);
+
   const [amostras,    setAmostras]    = useState<AmostraRow[]>([]);
   const [editandoId,  setEditandoId]  = useState<string | null>(null);
   const [nomeAmostra, setNomeAmostra] = useState('');
@@ -263,10 +284,6 @@ export default function EsclerometriaPage() {
   const [pontEditId,    setPontEditId]    = useState<string | null>(null);
   const [obraSalvoMsg,  setObraSalvoMsg]  = useState('');
   const [showImportar,  setShowImportar]  = useState(false);
-  const [modalAmostra,  setModalAmostra]  = useState<AmostraRow | null>(null);
-  const [modalObraPonto, setModalObraPonto] = useState<{ ponto: ObraPonto; grupoId: string } | null>(null);
-  const [gruposExpandidos, setGruposExpandidos] = useState<Set<string>>(new Set());
-  const toggleGrupo = (id: string) => setGruposExpandidos(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const impactoRefs     = useRef<(HTMLInputElement | null)[]>([]);
   const pontImpactoRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -326,7 +343,7 @@ export default function EsclerometriaPage() {
     if (!novoGrupoNome.trim()) return;
     const g: ObraGrupo = { id: newId(), nome: novoGrupoNome.trim(), pontos: [], savedAt: new Date().toISOString() };
     const novos = [...grupos, g]; setGrupos(novos); salvarGrupos(novos);
-    setNovoGrupoNome('');
+    setGrupoAtivoId(g.id); setNovoGrupoNome('');
   };
   const removerGrupo = (id: string) => { const novos = grupos.filter(g => g.id !== id); setGrupos(novos); salvarGrupos(novos); if (grupoAtivoId === id) setGrupoAtivoId(null); };
   const atualizarGrupos = (novos: ObraGrupo[]) => { setGrupos(novos); salvarGrupos(novos); };
@@ -363,6 +380,10 @@ export default function EsclerometriaPage() {
     setNomeAmostra(''); setImpactos(Array(16).fill('')); setEditandoId(null);
     setOutroResp(false); setOutroRespNome(''); setOutroRespCrea('');
     setOutroRespFile(null); setOutroRespPreview(null);
+    setCoordenadas('');
+    setUsarMotivacao(false); setMotivacao('');
+    setUsarFotoGeral(false); setFotoGeralFile(null); setFotoGeralPreview(null);
+    setUsarCroqui(false); setCroquiFile(null); setCroquiPreview(null);
     localStorage.removeItem(LS_KEY);
   };
 
@@ -385,6 +406,22 @@ export default function EsclerometriaPage() {
       reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
       reader.onerror = () => resolve('');
       reader.readAsDataURL(outroRespFile);
+    });
+
+  // Lê arquivo de imagem como base64 + dimensões
+  const lerImagemComDimensoes = (file: File): Promise<{ base64: string; width: number; height: number; contentType: string }> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const base64 = dataUrl.split(',')[1] ?? '';
+        const img = new window.Image();
+        img.onload = () => resolve({ base64, width: img.width, height: img.height, contentType: file.type });
+        img.onerror = () => resolve({ base64, width: 800, height: 600, contentType: file.type });
+        img.src = dataUrl;
+      };
+      reader.onerror = () => resolve({ base64: '', width: 800, height: 600, contentType: file.type });
+      reader.readAsDataURL(file);
     });
 
   // ── Gerar Laudo DOCX ────────────────────────────────────────────
@@ -410,26 +447,52 @@ export default function EsclerometriaPage() {
         obra: cab.obra,
         att: cab.att,
         endereco: cab.endereco,
+        coordenadas: coordenadas.trim() || undefined,
         respNome: respNomeFinal,
         respCrea: respCreaFinal,
-        respAssinaturaUrl,       // URL (perfil padrão) — baixada server-side
-        respAssinaturaBase64,    // base64 (outro responsável) — enviada diretamente
+        respAssinaturaUrl,
+        respAssinaturaBase64,
         respAssinaturaContentType,
         notas: cab.notas,
         bigorna: cab.bigorna,
         mediaBigorna,
         coefBigorna,
-        amostras: amostras
-          .filter(a => a.status === 'Amostra Válida')
-          .map((a, i) => ({
-            item: i + 1,
-            amostra: a.amostra,
-            posicao: a.posicao,
-            ie_medio: fmt(a.ieMedio),
-            ie_efetivo: fmt(a.ieEfetivo),
-            resistencia: fmt(a.resistencia),
-            dispersao: a.dispersao,
-          })),
+        // Motivação
+        motivacao: usarMotivacao ? motivacao : undefined,
+        // Foto geral
+        ...(usarFotoGeral && fotoGeralFile ? await (async () => {
+          const r = await lerImagemComDimensoes(fotoGeralFile);
+          return { fotoGeralBase64: r.base64, fotoGeralContentType: r.contentType, fotoGeralWidth: r.width, fotoGeralHeight: r.height };
+        })() : {}),
+        // Croqui
+        ...(usarCroqui && croquiFile ? await (async () => {
+          const r = await lerImagemComDimensoes(croquiFile);
+          return { croquiBase64: r.base64, croquiContentType: r.contentType, croquiWidth: r.width, croquiHeight: r.height };
+        })() : {}),
+        // Amostras (apenas válidas) + fotos do memorial
+        amostras: await Promise.all(
+          amostras
+            .filter(a => a.status === 'Amostra Válida')
+            .map(async (a, i) => {
+              const base: Record<string, unknown> = {
+                item: i + 1,
+                amostra: a.amostra,
+                posicao: a.posicao,
+                ie_medio: fmt(a.ieMedio),
+                ie_efetivo: fmt(a.ieEfetivo),
+                resistencia: fmt(a.resistencia),
+                dispersao: a.dispersao,
+              };
+              if (a.fotoFile) {
+                const r = await lerImagemComDimensoes(a.fotoFile);
+                base.fotoBase64 = r.base64;
+                base.fotoContentType = r.contentType;
+                base.fotoWidth = r.width;
+                base.fotoHeight = r.height;
+              }
+              return base;
+            })
+        ),
       };
 
       const res = await fetch('/api/ensaios/esclerometria/docx', {
@@ -520,14 +583,6 @@ export default function EsclerometriaPage() {
           .bigorna-stats > div:first-child { border-top: none !important; }
           /* Tabela resultados */
           .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-          /* Cards de amostras no mobile */
-          .amostras-table-section { display: none !important; }
-          .amostras-cards-section { display: flex !important; }
-          /* Obra pontos mobile */
-          .obra-pontos-table { display: none !important; }
-          .obra-pontos-cards { display: flex !important; }
-          /* Botões touch 44px */
-          .tab-btn, button { min-height: 44px; }
           /* Impactos grid */
           .impactos-wrap input { width: 44px !important; }
           /* Botões ação */
@@ -541,131 +596,13 @@ export default function EsclerometriaPage() {
         }
       `}</style>
 
-      {/* Modal bottom-sheet — detalhes de amostra (aba 2, mobile) */}
-      {modalAmostra && (
-        <div onClick={e => { if (e.target === e.currentTarget) setModalAmostra(null); }} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30,50,100,0.40)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 300, padding: 0 }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 520, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(30,50,100,0.22)', animation: 'slideUp 0.22s ease' }}>
-            <style>{`@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-              <div style={{ width: 40, height: 4, borderRadius: 99, background: '#DDE1EC' }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px 12px', borderBottom: `1px solid ${BORDER}` }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>{modalAmostra.amostra}</span>
-                  <StatusBadge status={modalAmostra.status} />
-                </div>
-                <p style={{ margin: '3px 0 0', fontSize: 11, color: SUBTEXT }}>Item {modalAmostra.item} · Posição {modalAmostra.posicao}</p>
-              </div>
-              <button onClick={() => setModalAmostra(null)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: '#F0F2F8', color: SUBTEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}>✕</button>
-            </div>
-            <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* 16 Impactos */}
-              <div>
-                <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>16 Impactos</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                  {modalAmostra.impactosRaw.map((v, i) => (
-                    <div key={i} style={{ textAlign: 'center', padding: '7px 4px', borderRadius: 8, background: v.trim() ? '#F0F4FC' : '#F8F9FA', border: `1px solid ${v.trim() ? PRIMARY + '33' : BORDER}` }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: SUBTEXT, marginBottom: 2 }}>{i + 1}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: v.trim() ? TEXT : SUBTEXT }}>{v.trim() || '—'}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Métricas — ordem: Lim.Inf, Lim.Sup, IE Médio, IE Efetivo, Resistência, Dispersão */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {[
-                  { label: 'Lim. Inferior', value: fmt(modalAmostra.limInf) },
-                  { label: 'Lim. Superior', value: fmt(modalAmostra.limSup) },
-                  { label: 'I.E. Médio', value: fmt(modalAmostra.ieMedio) },
-                  { label: 'I.E. Efetivo', value: fmt(modalAmostra.ieEfetivo), highlight: true },
-                  { label: 'Resistência (MPa)', value: fmt(modalAmostra.resistencia), highlight: true },
-                  { label: 'Dispersão (%)', value: modalAmostra.dispersao },
-                ].map((m, i) => (
-                  <div key={i} style={{ padding: '10px 14px', borderRadius: 10, background: (m as any).highlight ? (modalAmostra.status === 'Amostra Válida' ? '#F0F4FC' : '#FFF4F4') : '#F8F9FA', border: `1px solid ${(m as any).highlight ? PRIMARY + '33' : BORDER}` }}>
-                    <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</p>
-                    <p style={{ margin: '3px 0 0', fontSize: 18, fontWeight: 800, color: (m as any).highlight ? (modalAmostra.status === 'Amostra Válida' ? PRIMARY : DANGER) : TEXT }}>{m.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ padding: '14px 20px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: 10 }}>
-              <button onClick={() => { carregarParaEdicao(modalAmostra); setModalAmostra(null); }} style={{ flex: 1, padding: '12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: PRIMARY, color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Editar
-              </button>
-              <button onClick={() => { if (confirm(`Apagar "${modalAmostra.amostra}"?`)) { apagarAmostra(modalAmostra.id); setModalAmostra(null); } }} style={{ flex: 1, padding: '12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                Apagar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal bottom-sheet — detalhes do ponto da Obra */}
-      {modalObraPonto && (
-        <div onClick={e => { if (e.target === e.currentTarget) setModalObraPonto(null); }} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30,50,100,0.40)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 301, padding: 0 }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 520, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(30,50,100,0.22)', animation: 'slideUp 0.22s ease' }}>
-            {/* Handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-              <div style={{ width: 40, height: 4, borderRadius: 99, background: '#DDE1EC' }} />
-            </div>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px 12px', borderBottom: `1px solid ${BORDER}` }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: TEXT }}>{modalObraPonto.ponto.amostra}</p>
-                <p style={{ margin: '3px 0 0', fontSize: 11, color: SUBTEXT }}>Posição {modalObraPonto.ponto.posicao} · {modalObraPonto.ponto.impactosRaw.filter(v => v.trim()).length} golpes</p>
-              </div>
-              <button onClick={() => setModalObraPonto(null)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: '#F0F2F8', color: SUBTEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}>✕</button>
-            </div>
-            {/* Conteúdo */}
-            <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Golpes 4x4 */}
-              <div>
-                <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>16 Impactos</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                  {modalObraPonto.ponto.impactosRaw.map((v, i) => (
-                    <div key={i} style={{ textAlign: 'center', padding: '7px 4px', borderRadius: 8, background: v.trim() ? GREEN_LIGHT : '#F8F9FA', border: `1px solid ${v.trim() ? GREEN + '33' : BORDER}` }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: SUBTEXT, marginBottom: 2 }}>{i + 1}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: v.trim() ? TEXT : SUBTEXT }}>{v.trim() || '—'}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Posição badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: SUBTEXT }}>Posição do aparelho:</p>
-                <span style={{ fontSize: 13, fontWeight: 800, padding: '4px 12px', borderRadius: 99, background: GREEN_LIGHT, color: GREEN, border: `1px solid ${GREEN_BORDER}` }}>{modalObraPonto.ponto.posicao}</span>
-              </div>
-            </div>
-            {/* Botões */}
-            <div style={{ padding: '14px 20px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: 10 }}>
-              <button onClick={() => {
-                editarPonto(modalObraPonto.ponto);
-                setGrupoAtivoId(modalObraPonto.grupoId);
-                if (!gruposExpandidos.has(modalObraPonto.grupoId)) toggleGrupo(modalObraPonto.grupoId);
-                setModalObraPonto(null);
-              }} style={{ flex: 1, padding: '12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: GREEN, color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Editar
-              </button>
-              <button onClick={() => { if (confirm(`Apagar "${modalObraPonto.ponto.amostra}"?`)) { removerPonto(modalObraPonto.grupoId, modalObraPonto.ponto.id); setModalObraPonto(null); } }} style={{ flex: 1, padding: '12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                Apagar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <Header displayName={userName || userEmail} initials={initials} cargo={userCargo} onSignOut={handleSignOut} />
 
       {showImportar && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowImportar(false); }} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30,50,100,0.35)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
           <div style={{ backgroundColor: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: '28px 24px', width: '100%', maxWidth: 560, boxShadow: '0 20px 60px rgba(30,50,100,0.18)', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, marginBottom: 6 }}>
-              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: TEXT }}>Importar da Obra</h2>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: TEXT }}>Importar do Modo Obra</h2>
             </div>
             <p style={{ margin: '0 0 16px 16px', fontSize: 12, color: SUBTEXT }}>
               Coeficiente de bigorna: <strong style={{ color: PRIMARY }}>{coefBigorna.toFixed(4)}</strong> — será aplicado em todos os pontos.
@@ -822,7 +759,7 @@ export default function EsclerometriaPage() {
               <path d="M2 20h20"/><path d="M6 20v-4a6 6 0 0 1 12 0v4"/><path d="M12 4v4"/><path d="M4 12a8 8 0 0 1 16 0"/>
             </svg>
             <span className="tab-label-full" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              3. Obra
+              3. Modo Obra
               {totalPontos > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', fontSize: 10, fontWeight: 800, background: aba === 'obra' ? GREEN : SUBTEXT, color: '#fff' }}>{totalPontos}</span>}
             </span>
             <span className="tab-label-short" style={{ color: aba === 'obra' ? GREEN : SUBTEXT, fontWeight: 700, fontSize: 11 }}>
@@ -847,6 +784,15 @@ export default function EsclerometriaPage() {
                 <Campo label="A/C (Att.)"><input style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.att} onChange={e => setCab(c => ({ ...c, att: e.target.value.toUpperCase() }))} placeholder="A/C DE…" /></Campo>
               </div>
               <Campo label="Endereço"><input style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.endereco} onChange={e => setCab(c => ({ ...c, endereco: e.target.value.toUpperCase() }))} placeholder="ENDEREÇO COMPLETO DA OBRA" /></Campo>
+              <Campo label="Coordenadas GPS (opcional — prioridade sobre endereço no mapa)">
+                <input
+                  style={inputStyle}
+                  value={coordenadas}
+                  onChange={e => setCoordenadas(e.target.value)}
+                  placeholder="Ex: -8.0522,-34.9286"
+                />
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: SUBTEXT }}>Se preenchido, o pino do mapa será posicionado nas coordenadas informadas.</p>
+              </Campo>
             </section>
 
             <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
@@ -998,6 +944,75 @@ export default function EsclerometriaPage() {
             </section>
 
             <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
+              <h3 style={{ margin: '0 0 14px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Conteúdo Opcional do Relatório</h3>
+
+              {/* Motivação */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarMotivacao ? 12 : 0 }}>
+                  <input type="checkbox" checked={usarMotivacao} onChange={e => { setUsarMotivacao(e.target.checked); if (!e.target.checked) setMotivacao(''); }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: usarMotivacao ? PRIMARY : SUBTEXT }}>Incluir motivação do ensaio</span>
+                </label>
+                {usarMotivacao && (
+                  <div style={{ animation: 'fadeIn 0.15s ease' }}>
+                    <textarea
+                      value={motivacao}
+                      onChange={e => setMotivacao(e.target.value)}
+                      rows={3}
+                      placeholder="Descreva a motivação do ensaio…"
+                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Foto geral */}
+              <div style={{ marginBottom: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarFotoGeral ? 12 : 0 }}>
+                  <input type="checkbox" checked={usarFotoGeral} onChange={e => { setUsarFotoGeral(e.target.checked); if (!e.target.checked) { setFotoGeralFile(null); setFotoGeralPreview(null); if (fotoGeralRef.current) fotoGeralRef.current.value = ''; } }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: usarFotoGeral ? PRIMARY : SUBTEXT }}>Incluir foto geral da estrutura (Figura 2)</span>
+                </label>
+                {usarFotoGeral && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', animation: 'fadeIn 0.15s ease' }}>
+                    <input ref={fotoGeralRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; setFotoGeralFile(f); setFotoGeralPreview(URL.createObjectURL(f)); }} />
+                    <button onClick={() => fotoGeralRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
+                      {fotoGeralPreview ? '↻ Trocar foto' : '📁 Selecionar foto geral'}
+                    </button>
+                    {fotoGeralPreview && (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={fotoGeralPreview} alt="Prévia foto geral" style={{ maxHeight: 60, maxWidth: 200, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 4, background: '#fff' }} />
+                        <button onClick={() => { setFotoGeralFile(null); setFotoGeralPreview(null); if (fotoGeralRef.current) fotoGeralRef.current.value = ''; }} style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>Remover</button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Croqui */}
+              <div style={{ paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarCroqui ? 12 : 0 }}>
+                  <input type="checkbox" checked={usarCroqui} onChange={e => { setUsarCroqui(e.target.checked); if (!e.target.checked) { setCroquiFile(null); setCroquiPreview(null); if (croquiRef.current) croquiRef.current.value = ''; } }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: usarCroqui ? PRIMARY : SUBTEXT }}>Incluir croqui com indicação dos elementos (Figura 3)</span>
+                </label>
+                {usarCroqui && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', animation: 'fadeIn 0.15s ease' }}>
+                    <input ref={croquiRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; setCroquiFile(f); setCroquiPreview(URL.createObjectURL(f)); }} />
+                    <button onClick={() => croquiRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
+                      {croquiPreview ? '↻ Trocar croqui' : '📁 Selecionar croqui'}
+                    </button>
+                    {croquiPreview && (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={croquiPreview} alt="Prévia croqui" style={{ maxHeight: 60, maxWidth: 200, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 4, background: '#fff' }} />
+                        <button onClick={() => { setCroquiFile(null); setCroquiPreview(null); if (croquiRef.current) croquiRef.current.value = ''; }} style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>Remover</button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Notas / Observações</h3>
               <textarea value={cab.notas} onChange={e => setCab(c => ({ ...c, notas: e.target.value }))} rows={3} placeholder="Observações gerais sobre o ensaio…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
             </section>
@@ -1018,7 +1033,7 @@ export default function EsclerometriaPage() {
                 <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, color: editandoId ? '#8B6914' : PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{editandoId ? '✎  Editando Amostra' : '+  Inserir Nova Amostra'}</h3>
                 {grupos.filter(g => g.pontos.length > 0).length > 0 && !editandoId && (
                   <button onClick={() => setShowImportar(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: GREEN_LIGHT, color: GREEN, border: `1.5px solid ${GREEN_BORDER}` }}>
-                    Importar da Obra ({grupos.reduce((s, g) => s + g.pontos.length, 0)})
+                    Importar do Modo Obra ({grupos.reduce((s, g) => s + g.pontos.length, 0)})
                   </button>
                 )}
               </div>
@@ -1036,8 +1051,8 @@ export default function EsclerometriaPage() {
                   {impactos.map((v, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
-                      <input ref={el => { impactoRefs.current[i] = el; }} type="text" inputMode="numeric" value={v}
-                        onChange={e => { const n = [...impactos]; n[i] = e.target.value.replace(/\D/g, ''); setImpactos(n); }}
+                      <input ref={el => { impactoRefs.current[i] = el; }} type="text" inputMode="decimal" value={v}
+                        onChange={e => { const n = [...impactos]; n[i] = onlyDecimal(e.target.value); setImpactos(n); }}
                         onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const nx = impactoRefs.current[i + 1]; if (nx) nx.focus(); else processarAmostra(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = impactoRefs.current[i - 1]; if (pv) pv.focus(); } else if (e.key === 'Enter') { e.preventDefault(); const nx = impactoRefs.current[i + 1]; if (nx) nx.focus(); else processarAmostra(); } }}
                         style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? '#F0F4FC' : '#fff', outline: 'none', transition: 'all 0.1s' }}
                         onFocus={e => { e.target.style.borderColor = PRIMARY; e.target.style.background = '#E8EFFE'; }}
@@ -1054,10 +1069,10 @@ export default function EsclerometriaPage() {
               </div>
             </section>
 
-            <section className="amostras-table-section" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(30,50,100,0.06)' }}>
+            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(30,50,100,0.06)' }}>
               <div className="table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-              <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 72px', padding: '11px 16px', background: EXCEL_BLUE, minWidth: 760 }}>
-                {['#','ELEMENTO','POSIÇÃO','LIM. INF.','LIM. SUP.','I.E. MÉDIO','STATUS','I.E. EFETIVO','RESIST. (MPa)','DISP.','AÇÕES'].map(h => <span key={h} style={{ fontSize: 9.5, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>{h}</span>)}
+              <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 60px 72px', padding: '11px 16px', background: EXCEL_BLUE, minWidth: 820 }}>
+                {['#','ELEMENTO','POSIÇÃO','LIM. INF.','LIM. SUP.','I.E. MÉDIO','STATUS','I.E. EFETIVO','RESIST. (MPa)','DISP.','FOTO','AÇÕES'].map(h => <span key={h} style={{ fontSize: 9.5, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>{h}</span>)}
               </div>
               {amostras.length === 0 ? (
                 <div style={{ padding: '48px 0', textAlign: 'center', color: SUBTEXT }}>
@@ -1068,7 +1083,7 @@ export default function EsclerometriaPage() {
               ) : amostras.map((a, idx) => {
                 const valida = a.status === 'Amostra Válida', editing = editandoId === a.id;
                 return (
-                  <div key={a.id} className="row-h" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 72px', padding: '11px 16px', borderBottom: idx < amostras.length - 1 ? `1px solid ${BORDER}` : 'none', alignItems: 'center', background: editing ? '#FFFBEC' : idx % 2 === 1 ? '#F8F9FC' : '#fff', opacity: valida ? 1 : 0.72, transition: 'background 0.1s', minWidth: 760 }}>
+                  <div key={a.id} className="row-h" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 60px 72px', padding: '11px 16px', borderBottom: idx < amostras.length - 1 ? `1px solid ${BORDER}` : 'none', alignItems: 'center', background: editing ? '#FFFBEC' : idx % 2 === 1 ? '#F8F9FC' : '#fff', opacity: valida ? 1 : 0.72, transition: 'background 0.1s', minWidth: 820 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: SUBTEXT, textAlign: 'center' }}>{a.item}</span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: TEXT, paddingRight: 8 }}>{a.amostra}</span>
                     <span style={{ fontSize: 12, color: SUBTEXT, textAlign: 'center' }}>{a.posicao}</span>
@@ -1079,6 +1094,30 @@ export default function EsclerometriaPage() {
                     <span style={{ fontSize: 12, fontWeight: valida ? 700 : 400, color: valida ? PRIMARY : SUBTEXT, textAlign: 'center' }}>{fmt(a.ieEfetivo)}</span>
                     <span style={{ fontSize: 13, fontWeight: valida ? 800 : 400, color: valida ? TEXT : SUBTEXT, textAlign: 'center' }}>{fmt(a.resistencia)}</span>
                     <span style={{ fontSize: 12, color: SUBTEXT, textAlign: 'center' }}>{a.dispersao}</span>
+                    {/* Coluna foto memorial */}
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <label title={a.fotoFile ? `Foto: ${a.fotoFile.name}` : 'Adicionar foto para o memorial'} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, background: a.fotoFile ? '#E8F5EE' : '#F0F2F8', border: `1.5px solid ${a.fotoFile ? SUCCESS : BORDER}`, position: 'relative' }}>
+                        <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const preview = URL.createObjectURL(f);
+                          const img = new window.Image();
+                          img.onload = () => {
+                            setAmostras(prev => prev.map(am => am.id !== a.id ? am : { ...am, fotoFile: f, fotoPreview: preview, fotoWidth: img.width, fotoHeight: img.height }));
+                          };
+                          img.src = preview;
+                        }} />
+                        {a.fotoFile
+                          ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={SUCCESS} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={SUBTEXT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        }
+                      </label>
+                      {a.fotoFile && (
+                        <button title="Remover foto" onClick={() => setAmostras(prev => prev.map(am => am.id !== a.id ? am : { ...am, fotoFile: null, fotoPreview: null, fotoWidth: undefined, fotoHeight: undefined }))} style={{ marginLeft: 2, width: 18, height: 18, borderRadius: 4, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
                       <button className="icon-btn" title="Editar" onClick={() => carregarParaEdicao(a)} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                       <button className="icon-btn" title="Apagar" onClick={() => { if (confirm(`Apagar "${a.amostra}"?`)) apagarAmostra(a.id); }} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
@@ -1089,34 +1128,6 @@ export default function EsclerometriaPage() {
 
               </div>{/* /table-wrapper */}
             </section>
-
-            {/* Cards mobile de amostras (≤600px) */}
-            <div className="amostras-cards-section" style={{ flexDirection: 'column', gap: 10, display: 'none' }}>
-              {amostras.length === 0 ? (
-                <div style={{ padding: '40px 0', textAlign: 'center', color: SUBTEXT, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12 }}>
-                  <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.15 }}>⬡</div>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhuma amostra inserida</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12 }}>Preencha o formulário acima para adicionar a primeira amostra</p>
-                </div>
-              ) : amostras.map((a) => {
-                const valida = a.status === 'Amostra Válida';
-                return (
-                  <div key={a.id} onClick={() => setModalAmostra(a)} style={{ background: '#fff', border: `1.5px solid ${valida ? BORDER : '#FADADD'}`, borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxShadow: '0 1px 4px rgba(30,50,100,0.05)', gap: 12, minHeight: 44 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 9, background: valida ? '#EEF1F8' : '#FFF0EE', color: valida ? PRIMARY : DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{a.item}</div>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.amostra}</p>
-                        <p style={{ margin: '2px 0 0', fontSize: 11, color: SUBTEXT }}>{a.posicao} · {valida ? `${fmt(a.resistencia)} MPa` : 'Perdida'}</p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      <StatusBadge status={a.status} />
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={SUBTEXT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         )}
 
@@ -1125,133 +1136,93 @@ export default function EsclerometriaPage() {
           <div style={{ paddingTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', background: GREEN_LIGHT, border: `1.5px solid ${GREEN_BORDER}`, borderRadius: 10 }}>
               <div>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: GREEN }}>Obra — Registro rápido em campo</p>
-                <p style={{ margin: '3px 0 0', fontSize: 12, color: '#4A7A54', lineHeight: 1.5 }}>Crie obras, adicione pontos e importe para <strong>Dados de Campo</strong> com o coeficiente de bigorna aplicado automaticamente.</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: GREEN }}>Modo Obra — Registro rápido em campo</p>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: '#4A7A54', lineHeight: 1.5 }}>Crie grupos de ensaio (por obra/visita) e adicione pontos. Na aba <strong>Dados de Campo</strong>, importe um grupo inteiro com o coeficiente de bigorna aplicado automaticamente.</p>
               </div>
             </div>
 
             <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '18px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              {/* Linha: título + botão criar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-                <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, color: GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Nova Obra</h3>
-                <button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: novoGrupoNome.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: GREEN, color: '#fff', border: 'none', opacity: novoGrupoNome.trim() ? 1 : 0.5, whiteSpace: 'nowrap', minHeight: 44 }}>+ Criar Obra</button>
+              <h3 style={{ margin: '0 0 14px', fontSize: 12, fontWeight: 800, color: GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Novo Grupo de Ensaio</h3>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input style={{ ...inputStyle, flex: 1 }} value={novoGrupoNome} onChange={e => setNovoGrupoNome(e.target.value)} placeholder="Ex: Edifício Central — Visita 07/05" onKeyDown={e => e.key === 'Enter' && criarGrupo()} />
+                <button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: novoGrupoNome.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: GREEN, color: '#fff', border: 'none', opacity: novoGrupoNome.trim() ? 1 : 0.5, whiteSpace: 'nowrap' }}>+ Criar Grupo</button>
               </div>
-              {/* Input largura total */}
-              <input style={{ ...inputStyle, width: '100%' }} value={novoGrupoNome} onChange={e => setNovoGrupoNome(e.target.value)} placeholder="Ex: Edifício Central — Visita 07/05" onKeyDown={e => e.key === 'Enter' && criarGrupo()} />
             </section>
 
             {grupos.length === 0 ? (
               <div style={{ padding: '40px 0', textAlign: 'center', color: SUBTEXT, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12 }}>
                 <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.15 }}>📋</div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhuma obra criada</p>
-                <p style={{ margin: '4px 0 0', fontSize: 12 }}>Crie uma obra acima para começar a registrar pontos</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhum grupo criado</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12 }}>Crie um grupo acima para começar a registrar pontos</p>
               </div>
-            ) : grupos.map((g, gi) => {
-              const expandido = gruposExpandidos.has(g.id);
+            ) : grupos.map(g => {
               const ativo = grupoAtivoId === g.id;
               return (
-                <section key={g.id} style={{ background: '#fff', border: `1.5px solid ${expandido ? GREEN : BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: expandido ? `0 0 0 3px ${GREEN}22` : '0 1px 4px rgba(30,50,100,0.04)', transition: 'border-color 0.15s' }}>
-                  {/* Cabeçalho accordion — clique expande/colapsa */}
-                  <div className="grupo-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: expandido ? '#F0FFF4' : '#F8F9FA', cursor: 'pointer', minHeight: 44 }} onClick={() => toggleGrupo(g.id)}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 8, background: expandido ? GREEN : '#EEF1F8', color: expandido ? '#fff' : SUBTEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, flexShrink: 0, transition: 'all 0.15s' }}>{expandido ? '▾' : '▸'}</div>
+                <section key={g.id} style={{ background: '#fff', border: `1.5px solid ${ativo ? GREEN : BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: ativo ? `0 0 0 3px ${GREEN}22` : '0 1px 4px rgba(30,50,100,0.04)', transition: 'border-color 0.15s' }}>
+                  {/* Cabeçalho grupo */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: ativo ? '#F0FFF4' : '#F8F9FA', borderBottom: `1px solid ${BORDER}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => setGrupoAtivoId(ativo ? null : g.id)}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: ativo ? GREEN : '#EEF1F8', color: ativo ? '#fff' : SUBTEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{ativo ? '▾' : '▸'}</div>
                       <div>
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: expandido ? GREEN : TEXT }}>
-                          <span style={{ color: SUBTEXT, fontWeight: 600, marginRight: 6 }}>#{gi + 1}</span>{g.nome}
-                        </p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: ativo ? GREEN : TEXT }}>{g.nome}</p>
                         <p style={{ margin: '2px 0 0', fontSize: 11, color: SUBTEXT }}>{g.pontos.length} ponto{g.pontos.length !== 1 ? 's' : ''} · {fmtData(g.savedAt)}</p>
                       </div>
                     </div>
-                    {/* Botão apagar — só visível expandido */}
-                    {expandido && (
-                      <button onClick={e => { e.stopPropagation(); if (confirm(`Apagar obra "${g.nome}" e todos os seus pontos?`)) removerGrupo(g.id); }} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, minHeight: 44, minWidth: 44 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => setGrupoAtivoId(ativo ? null : g.id)} style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: ativo ? GREEN : '#EEF1F8', color: ativo ? '#fff' : PRIMARY, border: 'none' }}>{ativo ? 'Fechar' : 'Editar pontos'}</button>
+                      <button onClick={() => { if (confirm(`Apagar grupo "${g.nome}" e todos os seus pontos?`)) removerGrupo(g.id); }} style={{ width: 30, height: 30, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+                    </div>
                   </div>
 
-                  {/* Conteúdo expandido */}
-                  {expandido && (
-                    <div style={{ borderTop: `1px solid ${BORDER}` }}>
-                      {/* Lista de pontos — cards no mobile, linhas no desktop */}
-                      {g.pontos.length === 0 ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: SUBTEXT, fontSize: 13 }}>Nenhum ponto ainda. Adicione abaixo.</div>
-                      ) : (
-                        <>
-                          {/* Desktop: linhas */}
-                          <div className="obra-pontos-table">
-                            {g.pontos.map((p, pi) => (
-                              <div key={p.id} className="ponto-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 20px', borderBottom: `1px solid ${BORDER}`, background: pontEditId === p.id ? '#FFFBEC' : '#fff', transition: 'background 0.1s' }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, width: 20, textAlign: 'center', flexShrink: 0 }}>{pi + 1}</span>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{p.amostra}</span>
-                                  <span style={{ fontSize: 11, color: SUBTEXT, marginLeft: 10 }}>{p.posicao} · {p.impactosRaw.filter(v => v.trim()).length} golpes:{' '}<strong style={{ color: TEXT }}>{p.impactosRaw.filter(v => v.trim()).map((v, i, arr) => <span key={i}>{v}{i < arr.length - 1 && <span style={{ color: '#C8CEDF', margin: '0 2px' }}> | </span>}</span>)}</strong></span>
-                                </div>
-                                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                                  <button onClick={() => { editarPonto(p); setGrupoAtivoId(g.id); }} title="Editar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                  <button onClick={() => { if (confirm(`Apagar "${p.amostra}"?`)) removerPonto(g.id, p.id); }} title="Apagar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {/* Mobile: cards de pontos */}
-                          <div className="obra-pontos-cards" style={{ display: 'none', flexDirection: 'column', gap: 8, padding: '12px 16px' }}>
-                            {g.pontos.map((p, pi) => (
-                              <div key={p.id} onClick={() => setModalObraPonto({ ponto: p, grupoId: g.id })} style={{ background: '#F8F9FA', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, gap: 10 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                                  <div style={{ width: 30, height: 30, borderRadius: 8, background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{pi + 1}</div>
-                                  <div style={{ minWidth: 0 }}>
-                                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.amostra}</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: 11, color: SUBTEXT }}>{p.posicao} · {p.impactosRaw.filter(v => v.trim()).length} golpes</p>
-                                  </div>
-                                </div>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={SUBTEXT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
+                  {/* Pontos existentes */}
+                  {g.pontos.map((p, pi) => (
+                    <div key={p.id} className="ponto-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 20px', borderBottom: `1px solid ${BORDER}`, background: pontEditId === p.id ? '#FFFBEC' : '#fff', transition: 'background 0.1s' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, width: 20, textAlign: 'center', flexShrink: 0 }}>{pi + 1}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{p.amostra}</span>
+                        <span style={{ fontSize: 11, color: SUBTEXT, marginLeft: 10 }}>{p.posicao} · {p.impactosRaw.filter(v => v.trim()).length} golpes:{' '}<strong style={{ color: TEXT }}>{p.impactosRaw.filter(v => v.trim()).map((v, i, arr) => <span key={i}>{v}{i < arr.length - 1 && <span style={{ color: '#C8CEDF', margin: '0 2px' }}> | </span>}</span>)}</strong></span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                        <button onClick={() => { editarPonto(p); setGrupoAtivoId(g.id); }} title="Editar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                        <button onClick={() => { if (confirm(`Apagar "${p.amostra}"?`)) removerPonto(g.id, p.id); }} title="Apagar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+                      </div>
+                    </div>
+                  ))}
 
-                      {/* Formulário ponto — nome ocupa largura total */}
-                      <div style={{ padding: '18px 20px', background: '#FAFBFD', borderTop: g.pontos.length > 0 ? `1px solid ${BORDER}` : 'none' }}>
-                        <h4 style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 800, color: (pontEditId && ativo) ? '#8B6914' : GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{(pontEditId && ativo) ? '✎ Editando Ponto' : '+ Novo Ponto'}</h4>
-                        {/* Nome campo largura total */}
-                        <div style={{ marginBottom: 12 }}>
-                          <Campo label="Identificação (ex: P1 - Pilar Térreo)"><input style={{ ...inputStyle, width: '100%' }} value={ativo ? pontNome : ''} onChange={e => { if (!ativo) { setGrupoAtivoId(g.id); } setPontNome(e.target.value); }} onFocus={() => { if (!ativo) setGrupoAtivoId(g.id); }} placeholder="Ex: V1 - Viga Piso 2…" onKeyDown={e => e.key === 'Enter' && pontImpactoRefs.current[0]?.focus()} /></Campo>
-                        </div>
-                        {/* Posição */}
-                        <div style={{ marginBottom: 12 }}>
-                          <Campo label="Posição do Aparelho">
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              {POSICOES.map(p => <button key={p} onClick={() => { if (!ativo) setGrupoAtivoId(g.id); setPontPosicao(p); }} style={{ flex: 1, padding: '10px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: pontPosicao === p ? GREEN : '#F0F2F8', color: pontPosicao === p ? '#fff' : SUBTEXT, border: `2px solid ${pontPosicao === p ? GREEN : 'transparent'}`, minHeight: 44 }}>{p}</button>)}
-                            </div>
-                          </Campo>
-                        </div>
-                        {/* Golpes 4×4 */}
-                        <div style={{ marginBottom: 14 }}>
-                          <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Golpes (máx. 16) — apenas inteiros</p>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, width: '100%' }}>
-                            {pontImpactos.map((v, i) => (
-                              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
-                                <input ref={el => { pontImpactoRefs.current[i] = el; }} type="text" inputMode="numeric" value={v}
-                                  onChange={e => { const n = [...pontImpactos]; n[i] = e.target.value.replace(/\D/g, ''); setPontImpactos(n); }}
-                                  onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = pontImpactoRefs.current[i - 1]; if (pv) pv.focus(); } else if (e.key === 'Enter') { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } }}
-                                  style={{ width: '100%', textAlign: 'center', padding: '9px 4px', border: `1.5px solid ${v ? GREEN + '66' : BORDER}`, borderRadius: 6, fontSize: 14, fontFamily: 'inherit', color: TEXT, background: v ? GREEN_LIGHT : '#fff', outline: 'none', transition: 'all 0.1s', minHeight: 44, boxSizing: 'border-box' as 'border-box' }}
-                                  onFocus={e => { e.target.style.borderColor = GREEN; e.target.style.background = '#E8F5EE'; }}
-                                  onBlur={e => { e.target.style.borderColor = v ? GREEN + '66' : BORDER; e.target.style.background = v ? GREEN_LIGHT : '#fff'; }}
-                                />
-                              </div>
-                            ))}
+                  {/* Formulário ponto (só quando ativo) */}
+                  {ativo && (
+                    <div style={{ padding: '18px 20px', background: '#FAFBFD', borderTop: g.pontos.length > 0 ? `1px solid ${BORDER}` : 'none' }}>
+                      <h4 style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 800, color: pontEditId ? '#8B6914' : GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{pontEditId ? '✎ Editando Ponto' : '+ Novo Ponto'}</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 14, marginBottom: 14 }}>
+                        <Campo label="Identificação (ex: P1 - Pilar Térreo)"><input style={inputStyle} value={pontNome} onChange={e => setPontNome(e.target.value)} placeholder="Ex: V1 - Viga Piso 2…" onKeyDown={e => e.key === 'Enter' && pontImpactoRefs.current[0]?.focus()} /></Campo>
+                        <Campo label="Posição">
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {POSICOES.map(p => <button key={p} onClick={() => setPontPosicao(p)} style={{ flex: 1, padding: '8px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: pontPosicao === p ? GREEN : '#F0F2F8', color: pontPosicao === p ? '#fff' : SUBTEXT, border: `2px solid ${pontPosicao === p ? GREEN : 'transparent'}` }}>{p}</button>)}
                           </div>
+                        </Campo>
+                      </div>
+                      <div style={{ marginBottom: 14 }}>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Golpes (máx. 16)</p>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {pontImpactos.map((v, i) => (
+                            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
+                              <input ref={el => { pontImpactoRefs.current[i] = el; }} type="text" inputMode="decimal" value={v}
+                                onChange={e => { const n = [...pontImpactos]; n[i] = onlyDecimal(e.target.value); setPontImpactos(n); }}
+                                onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = pontImpactoRefs.current[i - 1]; if (pv) pv.focus(); } else if (e.key === 'Enter') { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } }}
+                                style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? GREEN + '66' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? GREEN_LIGHT : '#fff', outline: 'none', transition: 'all 0.1s' }}
+                                onFocus={e => { e.target.style.borderColor = GREEN; e.target.style.background = '#E8F5EE'; }}
+                                onBlur={e => { e.target.style.borderColor = v ? GREEN + '66' : BORDER; e.target.style.background = v ? GREEN_LIGHT : '#fff'; }}
+                              />
+                            </div>
+                          ))}
                         </div>
-                        {/* Botões */}
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <button onClick={() => { if (!ativo) setGrupoAtivoId(g.id); salvarPonto(); }} disabled={!pontNome.trim() || !pontImpactos.some(v => v.trim())} style={{ padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: pontNome.trim() && pontImpactos.some(v => v.trim()) ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: (pontEditId && ativo) ? GOLD : GREEN, color: (pontEditId && ativo) ? PRIMARY : '#fff', border: 'none', opacity: pontNome.trim() && pontImpactos.some(v => v.trim()) ? 1 : 0.5, minHeight: 44 }}>{(pontEditId && ativo) ? '✓ Salvar Edição' : '+ Salvar Ponto'}</button>
-                          {(pontEditId && ativo) && <button onClick={cancelarEdicaoPonto} style={{ padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none', minHeight: 44 }}>Cancelar</button>}
-                          <button onClick={() => { setPontNome(''); setPontImpactos(Array(16).fill('')); setPontPosicao('0°'); setPontEditId(null); }} style={{ padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none', minHeight: 44 }}>Limpar</button>
-                          {obraSalvoMsg && <span style={{ fontSize: 12, color: GREEN, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>{obraSalvoMsg}</span>}
-                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <button onClick={salvarPonto} disabled={!pontNome.trim() || !pontImpactos.some(v => v.trim())} style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: pontNome.trim() && pontImpactos.some(v => v.trim()) ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: pontEditId ? GOLD : GREEN, color: pontEditId ? PRIMARY : '#fff', border: 'none', opacity: pontNome.trim() && pontImpactos.some(v => v.trim()) ? 1 : 0.5 }}>{pontEditId ? '✓ Salvar Edição' : '+ Salvar Ponto'}</button>
+                        {pontEditId && <button onClick={cancelarEdicaoPonto} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>Cancelar</button>}
+                        <button onClick={() => { setPontNome(''); setPontImpactos(Array(16).fill('')); setPontPosicao('0°'); setPontEditId(null); }} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>Limpar</button>
+                        {obraSalvoMsg && <span style={{ fontSize: 12, color: GREEN, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>{obraSalvoMsg}</span>}
                       </div>
                     </div>
                   )}
