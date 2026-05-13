@@ -86,9 +86,13 @@ function formatarRlt(rlt: string): string {
 }
 
 function prepararXml(xml: string): string {
+  // Converte delimiters e marca TOC como dirty para forçar atualização ao abrir
   return xml
     .replace(/\{\{/g, '[[').replace(/\}\}/g, ']]')
-    .replace(/\{#([^}]+)\}/g, '[#$1]').replace(/\{\/([^}]+)\}/g, '[/$1]');
+    .replace(/\{#([^}]+)\}/g, '[#$1]').replace(/\{\/([^}]+)\}/g, '[/$1]')
+    // Marca todos os campos TOC como dirty (atualiza sumário ao abrir no Word)
+    .replace(/<w:fldChar\s+w:fldCharType="begin"(?!\s+w:dirty)/g,
+      '<w:fldChar w:fldCharType="begin" w:dirty="true"');
 }
 
 /** Converte cm para EMU (English Metric Units): 1 cm = 914400/2.54 EMU */
@@ -239,8 +243,8 @@ function injetarMemorial(
     registrarImagem(zip, foto.buffer, foto.contentType, `memorial_foto_${i + 1}`, `rId${910 + i}`);
   });
 
-  // Altura fixa 5 cm, largura proporcional
-  const cyFixo = cmParaEmu(5);
+  // Altura fixa 4,5 cm, largura proporcional
+  const cyFixo = cmParaEmu(4.5);
 
   // Largura de cada célula: metade da área útil (A4 com margens 2,5cm cada lado)
   // Área útil ≈ 21 - 5 = 16 cm → célula = 8 cm
@@ -250,9 +254,18 @@ function injetarMemorial(
   const rPrLegenda = `<w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>`;
   const pPrCentro = `<w:pPr><w:jc w:val="center"/></w:pPr>`;
 
-  // Propriedades de célula compartilhadas
+  // Bordas "none" para as células
+  const tcBordersNone =
+    `<w:tcBorders>` +
+    `<w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `<w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `<w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `<w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `</w:tcBorders>`;
+
+  // Propriedades de célula compartilhadas (sem bordas)
   const tcPr = (w: number) =>
-    `<w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>`;
+    `<w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${tcBordersNone}<w:vAlign w:val="center"/></w:tcPr>`;
 
   // Monta linhas da tabela (pares de fotos)
   let linhas = '';
@@ -285,19 +298,19 @@ function injetarMemorial(
     linhas += `<w:tr>${celulaEsq}${celulaDir}</w:tr>`;
   }
 
-  // Tabela completa
+  // Tabela completa (sem bordas)
   const novaTabela =
     `<w:tbl>` +
     `<w:tblPr>` +
     `<w:tblW w:w="${cxCelula * 2}" w:type="dxa"/>` +
     `<w:jc w:val="center"/>` +
     `<w:tblBorders>` +
-    `<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>` +
-    `<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>` +
-    `<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>` +
-    `<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>` +
-    `<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>` +
-    `<w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>` +
+    `<w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `<w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `<w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `<w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `<w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
+    `<w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
     `</w:tblBorders>` +
     `</w:tblPr>` +
     `<w:tblGrid><w:gridCol w:w="5027"/><w:gridCol w:w="5027"/></w:tblGrid>` +
@@ -336,7 +349,7 @@ async function buscarImagemMapa(
   // Dimensões da imagem: 600×400 px (proporção usada para calcular EMU)
   const width = 600, height = 400;
   const size = `${width}x${height}`;
-  const zoom = 16;
+  const zoom = 18;
   const maptype = 'satellite';
 
   let center: string;
@@ -455,7 +468,7 @@ export async function POST(req: NextRequest) {
       b7: body.bigorna[6] ?? '', b8: body.bigorna[7] ?? '',
       b9: body.bigorna[8] ?? '', b10: body.bigorna[9] ?? '',
       media:        body.mediaBigorna > 0 ? body.mediaBigorna.toFixed(2) : '—',
-      coef:         body.coefBigorna !== 1 ? body.coefBigorna.toFixed(6) : '1,0000',
+      coef:         body.coefBigorna !== 1 ? body.coefBigorna.toFixed(3) : '1,000',
       amostras:     body.amostras,
       notas:        body.notas || '',
       resp_nome:    body.respNome || '—',
