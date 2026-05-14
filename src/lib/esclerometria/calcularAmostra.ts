@@ -11,6 +11,16 @@ export type AmostraRow = {
   fotoHeight?: number;
 };
 
+/**
+ * Processa uma amostra esclerométrica aplicando os critérios da NBR 7584:
+ * descarta leituras fora de ±10% da média bruta e exige mínimo de 5 válidas.
+ * @param amostra - Identificador textual da amostra (ex: "P1").
+ * @param posicao - Posição do esclerômetro: '0°', '+90°' ou '-90°'.
+ * @param impactosStr - Leituras IE brutas como strings (aceita vírgula decimal).
+ * @param coefBigorna - Coeficiente de correção da bigorna do esclerômetro.
+ * @param item - Número sequencial do item na tabela de resultados.
+ * @returns AmostraRow com IE médio, IE efetivo, resistência estimada e status de validade.
+ */
 export function calcularAmostra(amostra: string, posicao: Posicao, impactosStr: string[], coefBigorna: number, item: number): AmostraRow {
   const id = typeof crypto !== 'undefined' ? crypto.randomUUID() : String(Math.random());
   const validos = impactosStr.map(v => parseFloat(v.replace(',', '.'))).filter(v => !isNaN(v) && v > 0);

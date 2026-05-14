@@ -30,6 +30,12 @@ export function formatarRlt(rlt: string): string {
   return `RLT.LAU-${n}.26-00`;
 }
 
+/**
+ * Adapta o XML interno do DOCX para o docxtemplater usar colchetes como delimitadores
+ * e marca campos de fórmula com `w:dirty="true"` para forçar recálculo ao abrir.
+ * @param xml - String XML do `word/document.xml` original.
+ * @returns XML transformado com delimitadores `[[...]]` e campos atualizados.
+ */
 export function prepararXml(xml: string): string {
   return xml
     .replace(/\{\{/g, '[[').replace(/\}\}/g, ']]')
@@ -95,8 +101,10 @@ export function registrarImagem(
 }
 
 /**
- * Injeta assinatura (5 cm × 2 cm fixo).
- * Placeholder no template: ASSINATURA_PLACEHOLDER
+ * Injeta a imagem de assinatura (5 cm × 2 cm) no placeholder `ASSINATURA_PLACEHOLDER`.
+ * @param zip - Arquivo DOCX aberto como PizZip.
+ * @param imgBuffer - Buffer com os bytes da imagem.
+ * @param contentType - MIME type da imagem (ex: `'image/png'`).
  */
 export function injetarAssinatura(zip: PizZip, imgBuffer: Buffer, contentType: string): void {
   registrarImagem(zip, imgBuffer, contentType, 'assinatura_resp', 'rId901');
@@ -112,8 +120,11 @@ export function injetarAssinatura(zip: PizZip, imgBuffer: Buffer, contentType: s
 }
 
 /**
- * Injeta imagem do mapa (10 cm largura, altura proporcional).
- * Placeholder no template: MAPA_PLACEHOLDER
+ * Injeta a imagem de mapa (10 cm de largura, altura proporcional) no placeholder `MAPA_PLACEHOLDER`.
+ * @param zip - Arquivo DOCX aberto como PizZip.
+ * @param imgBuffer - Buffer com os bytes da imagem PNG.
+ * @param imgWidth - Largura original da imagem em pixels.
+ * @param imgHeight - Altura original da imagem em pixels.
  */
 export function injetarMapa(zip: PizZip, imgBuffer: Buffer, imgWidth: number, imgHeight: number): void {
   registrarImagem(zip, imgBuffer, 'image/png', 'mapa_localizacao', 'rId902');
@@ -130,8 +141,12 @@ export function injetarMapa(zip: PizZip, imgBuffer: Buffer, imgWidth: number, im
 }
 
 /**
- * Injeta foto geral da estrutura (15 cm largura, altura proporcional).
- * Placeholder no template: FOTO_GERAL_PLACEHOLDER
+ * Injeta foto geral da estrutura (15 cm de largura, altura proporcional) no placeholder `FOTO_GERAL_PLACEHOLDER`.
+ * @param zip - Arquivo DOCX aberto como PizZip.
+ * @param imgBuffer - Buffer com os bytes da imagem.
+ * @param contentType - MIME type da imagem.
+ * @param imgWidth - Largura original da imagem em pixels.
+ * @param imgHeight - Altura original da imagem em pixels.
  */
 export function injetarFotoGeral(zip: PizZip, imgBuffer: Buffer, contentType: string, imgWidth: number, imgHeight: number): void {
   registrarImagem(zip, imgBuffer, contentType, 'foto_geral', 'rId903');
@@ -148,8 +163,12 @@ export function injetarFotoGeral(zip: PizZip, imgBuffer: Buffer, contentType: st
 }
 
 /**
- * Injeta croqui com indicação dos elementos (15 cm largura, altura proporcional).
- * Placeholder no template: CROQUI_PLACEHOLDER
+ * Injeta croqui dos elementos inspecionados (15 cm de largura, altura proporcional) no placeholder `CROQUI_PLACEHOLDER`.
+ * @param zip - Arquivo DOCX aberto como PizZip.
+ * @param imgBuffer - Buffer com os bytes da imagem.
+ * @param contentType - MIME type da imagem.
+ * @param imgWidth - Largura original da imagem em pixels.
+ * @param imgHeight - Altura original da imagem em pixels.
  */
 export function injetarCroqui(zip: PizZip, imgBuffer: Buffer, contentType: string, imgWidth: number, imgHeight: number): void {
   registrarImagem(zip, imgBuffer, contentType, 'croqui_elementos', 'rId904');
@@ -166,12 +185,10 @@ export function injetarCroqui(zip: PizZip, imgBuffer: Buffer, contentType: strin
 }
 
 /**
- * Injeta memorial fotográfico como tabela 2 colunas.
- * Cada foto: 5 cm de altura, largura proporcional.
- * Placeholder no template: MEMORIAL_PLACEHOLDER (dentro de [[#fotos_memorial]]..[[/fotos_memorial]])
- *
- * Estrutura gerada: substitui a <w:tbl> inteira que contém MEMORIAL_PLACEHOLDER
- * por uma nova tabela com todas as fotos em grid 2×N.
+ * Injeta memorial fotográfico em grade 2×N substituindo a tabela que contém `MEMORIAL_PLACEHOLDER`.
+ * Cada foto é renderizada com 4,5 cm de altura e largura proporcional.
+ * @param zip - Arquivo DOCX aberto como PizZip.
+ * @param fotos - Lista de fotos com buffer, contentType, largura, altura e legenda.
  */
 export function injetarMemorial(
   zip: PizZip,
