@@ -349,7 +349,7 @@ async function buscarImagemMapa(
   // Dimensões da imagem: 600×400 px (proporção usada para calcular EMU)
   const width = 600, height = 400;
   const size = `${width}x${height}`;
-  const zoom = 18;
+  const zoom = 19;
   const maptype = 'satellite';
 
   let center: string;
