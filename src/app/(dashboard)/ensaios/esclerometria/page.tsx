@@ -90,10 +90,10 @@ function salvarGrupos(grupos: ObraGrupo[]) { try { localStorage.setItem(LS_OBRA_
 function carregarGrupos(): ObraGrupo[] { try { const r = localStorage.getItem(LS_OBRA_KEY); return r ? JSON.parse(r) : []; } catch { return []; } }
 function newId() { return typeof crypto !== 'undefined' ? crypto.randomUUID() : String(Math.random()); }
 
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+function Campo({ label, children, htmlFor }: { label: string; children: React.ReactNode; htmlFor?: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
+      <label htmlFor={htmlFor} style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
       {children}
     </div>
   );
@@ -306,7 +306,15 @@ export default function EsclerometriaPage() {
 
   useEffect(() => { const s = carregarLocal(); if (!s) return; setCab(s.cab); setAmostras(s.amostras); recalcularBigorna(s.cab.bigorna); }, []);
   useEffect(() => { setGrupos(carregarGrupos()); }, []);
-  useEffect(() => { salvarLocal(cab, amostras); setSalvoMsg('Salvo'); const t = setTimeout(() => setSalvoMsg(''), 1800); return () => clearTimeout(t); }, [cab, amostras]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      salvarLocal(cab, amostras);
+      setSalvoMsg('Salvo');
+      const t2 = setTimeout(() => setSalvoMsg(''), 1800);
+      return () => clearTimeout(t2);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [cab, amostras]);
 
   const handleSignOut = async () => { localStorage.removeItem(LS_KEY); const sb = createClient(); await sb.auth.signOut(); router.push('/login'); };
 
@@ -1133,8 +1141,8 @@ export default function EsclerometriaPage() {
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
-                      <button className="icon-btn" title="Editar" onClick={() => carregarParaEdicao(a)} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                      <button className="icon-btn" title="Apagar" onClick={() => { if (confirm(`Apagar "${a.amostra}"?`)) apagarAmostra(a.id); }} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+                      <button className="icon-btn" title="Editar" aria-label="Editar amostra" onClick={() => carregarParaEdicao(a)} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                      <button className="icon-btn" title="Apagar" aria-label="Apagar amostra" onClick={() => { if (confirm(`Apagar "${a.amostra}"?`)) apagarAmostra(a.id); }} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
                     </div>
                   </div>
                 );
@@ -1184,7 +1192,7 @@ export default function EsclerometriaPage() {
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => setGrupoAtivoId(ativo ? null : g.id)} style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: ativo ? GREEN : '#EEF1F8', color: ativo ? '#fff' : PRIMARY, border: 'none' }}>{ativo ? 'Fechar' : 'Editar pontos'}</button>
-                      <button onClick={() => { if (confirm(`Apagar grupo "${g.nome}" e todos os seus pontos?`)) removerGrupo(g.id); }} style={{ width: 30, height: 30, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+                      <button aria-label="Remover grupo" onClick={() => { if (confirm(`Apagar grupo "${g.nome}" e todos os seus pontos?`)) removerGrupo(g.id); }} style={{ width: 30, height: 30, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
                     </div>
                   </div>
 
@@ -1197,8 +1205,8 @@ export default function EsclerometriaPage() {
                         <span style={{ fontSize: 11, color: SUBTEXT, marginLeft: 10 }}>{p.posicao} · {p.impactosRaw.filter(v => v.trim()).length} golpes:{' '}<strong style={{ color: TEXT }}>{p.impactosRaw.filter(v => v.trim()).map((v, i, arr) => <span key={i}>{v}{i < arr.length - 1 && <span style={{ color: '#C8CEDF', margin: '0 2px' }}> | </span>}</span>)}</strong></span>
                       </div>
                       <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                        <button onClick={() => { editarPonto(p); setGrupoAtivoId(g.id); }} title="Editar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                        <button onClick={() => { if (confirm(`Apagar "${p.amostra}"?`)) removerPonto(g.id, p.id); }} title="Apagar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+                        <button onClick={() => { editarPonto(p); setGrupoAtivoId(g.id); }} title="Editar" aria-label="Editar ponto" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                        <button onClick={() => { if (confirm(`Apagar "${p.amostra}"?`)) removerPonto(g.id, p.id); }} title="Apagar" aria-label="Apagar ponto" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
                       </div>
                     </div>
                   ))}
