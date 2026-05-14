@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import type { UserMetadata } from '@/types/user';
 // PDF via jsPDF mantido comentado — reservado para implementação futura com Gotenberg
 // import jsPDF from 'jspdf';
 // import autoTable from 'jspdf-autotable';
@@ -296,7 +297,7 @@ export default function EsclerometriaPage() {
     sb.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push('/login'); return; }
       setUserEmail(user.email ?? '');
-      const m = user.user_metadata ?? {};
+      const m = (user.user_metadata ?? {}) as UserMetadata;
       setUserName(m.full_name ?? m.name ?? user.email ?? '');
       setUserCargo(m.cargo ?? '');
       setUserCrea(m.crea ?? '');

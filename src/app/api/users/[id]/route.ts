@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import type { UserMetadata } from '@/types/user';
 
 // Conta admins ativos (não banidos)
 async function getAdminCount(): Promise<number> {
@@ -64,7 +65,7 @@ export async function PATCH(
   if (fetchError || !targetData?.user) {
     return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
   }
-  const existingMeta = targetData.user.user_metadata ?? {};
+  const existingMeta = (targetData.user.user_metadata ?? {}) as UserMetadata;
 
   // Monta novos metadados fazendo merge com os existentes
   const newMeta: Record<string, unknown> = { ...existingMeta };
@@ -93,14 +94,15 @@ export async function PATCH(
   const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(id, updates);
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
 
+  const updatedMeta = (updated.user.user_metadata ?? {}) as UserMetadata;
   return NextResponse.json({
     success: true,
     user: {
       id: updated.user.id,
       email: updated.user.email,
-      full_name: updated.user.user_metadata?.full_name ?? '',
-      cargo: updated.user.user_metadata?.cargo ?? '',
-      role: updated.user.user_metadata?.role ?? 'user',
+      full_name: updatedMeta.full_name ?? '',
+      cargo: updatedMeta.cargo ?? '',
+      role: updatedMeta.role ?? 'user',
     },
   });
 }

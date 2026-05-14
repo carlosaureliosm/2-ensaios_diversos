@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import type { UserMetadata } from '@/types/user';
 
 // GET /api/users — lista todos os usuários (admin only)
 export async function GET() {
@@ -18,17 +19,20 @@ export async function GET() {
   const { data, error } = await admin.auth.admin.listUsers();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const users = data.users.map((u) => ({
-    id: u.id,
-    email: u.email,
-    full_name: u.user_metadata?.full_name ?? '',
-    cargo: u.user_metadata?.cargo ?? '',
-    role: u.user_metadata?.role ?? 'user',
-    banned: !!u.banned_until && new Date(u.banned_until) > new Date(),
-    created_at: u.created_at,
-    crea: u.user_metadata?.crea ?? '',
-    assinatura_url: u.user_metadata?.assinatura_url ?? null,
-  }));
+  const users = data.users.map((u) => {
+    const meta = (u.user_metadata ?? {}) as UserMetadata;
+    return {
+      id: u.id,
+      email: u.email,
+      full_name: meta.full_name ?? '',
+      cargo: meta.cargo ?? '',
+      role: meta.role ?? 'user',
+      banned: !!u.banned_until && new Date(u.banned_until) > new Date(),
+      created_at: u.created_at,
+      crea: meta.crea ?? '',
+      assinatura_url: meta.assinatura_url ?? null,
+    };
+  });
 
   return NextResponse.json({ users });
 }
