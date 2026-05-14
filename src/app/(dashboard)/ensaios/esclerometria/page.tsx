@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import type { UserMetadata } from '@/types/user';
+import Header from '@/components/Header';
+import { useUserStore } from '@/store/userStore';
 // PDF via jsPDF mantido comentado — reservado para implementação futura com Gotenberg
 // import jsPDF from 'jspdf';
 // import autoTable from 'jspdf-autotable';
@@ -107,34 +108,6 @@ function StatusBadge({ status }: { status: AmostraRow['status'] }) {
   return <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 99, background: ok ? '#E8F5EE' : '#FFF0EE', color: ok ? SUCCESS : DANGER, border: `1px solid ${ok ? '#B8DFC8' : '#FADADD'}`, whiteSpace: 'nowrap' }}>{ok ? '✓ Válida' : '✗ Perdida'}</span>;
 }
 
-function Header({ displayName, initials, cargo, onSignOut }: { displayName: string; initials: string; cargo: string; onSignOut: () => void; }) {
-  return (
-    <header className="header-root" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 60, padding: '0 28px', backgroundColor: PRIMARY, boxShadow: '0 2px 12px rgba(30,50,100,0.25)', position: 'sticky', top: 0, zIndex: 50 }}>
-      <style>{`.sb-u:hover{background:rgba(255,255,255,0.12)!important}.nv-u:hover{color:#fff!important}`}</style>
-      <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-        <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}><img src="/logo_tecomat.png" alt="TECOMAT" style={{ height: 34, objectFit: 'contain' }} /></a>
-        <nav style={{ display: 'flex', gap: 6 }}>
-          <a href="/dashboard" className="nv-u" style={{ fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, borderBottom: `2px solid ${GOLD}`, paddingBottom: 5 }}>Ensaios</a>
-          <a href="/usuarios" className="nv-u" style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.65)', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, transition: 'color 0.15s' }}>Usuários</a>
-        </nav>
-      </div>
-      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: GOLD, color: PRIMARY, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0 }}>{initials}</div>
-          <div>
-            <p className="header-user-name" style={{ fontSize: 12, fontWeight: 700, color: '#fff', margin: 0 }}>{displayName}</p>
-            {cargo && <p className="header-cargo" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{cargo}</p>}
-          </div>
-        </div>
-        <div className="header-divider" style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
-        <button className="sb-u" onClick={onSignOut} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 7, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.7)', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          <span className="signout-text">Sair</span>
-        </button>
-      </div>
-    </header>
-  );
-}
 
 // ── gerarPDFOficial mantida comentada — reservada para implementação futura com Gotenberg ──
 /*
@@ -232,11 +205,7 @@ async function gerarPDFOficial(cab: Cabecalho, amostras: AmostraRow[], mediaBigo
 
 export default function EsclerometriaPage() {
   const router = useRouter();
-  const [userName,        setUserName]        = useState('');
-  const [userEmail,       setUserEmail]       = useState('');
-  const [userCargo,       setUserCargo]       = useState('');
-  const [userCrea,        setUserCrea]        = useState('');
-  const [userAssinatura,  setUserAssinatura]  = useState(''); // URL da assinatura salva no perfil
+  const { userCrea, userAssinatura, userName, loaded, fetchUser } = useUserStore();
   const [aba, setAba] = useState<'cabecalho' | 'campo' | 'obra'>('cabecalho');
 
   const [cab, setCab] = useState<Cabecalho>({ rlt: '', data: '', cliente: '', obra: '', att: '', endereco: '', notas: '', bigorna: Array(10).fill('') });
@@ -296,14 +265,9 @@ export default function EsclerometriaPage() {
     const sb = createClient();
     sb.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push('/login'); return; }
-      setUserEmail(user.email ?? '');
-      const m = (user.user_metadata ?? {}) as UserMetadata;
-      setUserName(m.full_name ?? m.name ?? user.email ?? '');
-      setUserCargo(m.cargo ?? '');
-      setUserCrea(m.crea ?? '');
-      setUserAssinatura(m.assinatura_url ?? '');
+      if (!loaded) fetchUser();
     });
-  }, [router]);
+  }, [router, loaded, fetchUser]);
 
   useEffect(() => { const s = carregarLocal(); if (!s) return; setCab(s.cab); setAmostras(s.amostras); recalcularBigorna(s.cab.bigorna); }, []);
   useEffect(() => { setGrupos(carregarGrupos()); }, []);
@@ -317,7 +281,6 @@ export default function EsclerometriaPage() {
     return () => clearTimeout(t);
   }, [cab, amostras]);
 
-  const handleSignOut = async () => { localStorage.removeItem(LS_KEY); const sb = createClient(); await sb.auth.signOut(); router.push('/login'); };
 
   const recalcularBigorna = useCallback((vals: string[]) => {
     const nums = vals.map(v => parseFloat(v.replace(',', '.'))).filter(v => !isNaN(v) && v > 0);
@@ -401,7 +364,6 @@ export default function EsclerometriaPage() {
   const maskData = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 8); if (d.length <= 2) return d; if (d.length <= 4) return `${d.slice(0,2)}/${d.slice(2)}`; return `${d.slice(0,2)}/${d.slice(2,4)}/${d.slice(4)}`; };
 
   const rltOficial = (() => { const n = cab.rlt.trim(); if (!n) return 'RLT.LAU-XXX.26-00'; if (/^\d+$/.test(n)) return `RLT.LAU-${n.padStart(3, '0')}.26-00`; return `RLT.LAU-${n}.26-00`; })();
-  const initials = (() => { if (!userName) return userEmail.slice(0, 2).toUpperCase(); const p = userName.trim().split(/\s+/); return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase(); })();
 
   // Resolve dados do responsável (padrão = perfil; outro = campos manuais)
   const respNomeFinal = outroResp ? outroRespNome : userName;
@@ -619,7 +581,7 @@ export default function EsclerometriaPage() {
         }
       `}</style>
 
-      <Header displayName={userName || userEmail} initials={initials} cargo={userCargo} onSignOut={handleSignOut} />
+      <Header paginaAtiva="ensaios" />
 
       {showImportar && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowImportar(false); }} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30,50,100,0.35)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>

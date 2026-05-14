@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import Header from '@/components/Header';
 
 type UserRow = {
   id: string;
@@ -478,85 +479,6 @@ function ConfirmDialog({ message, confirmLabel, danger, onConfirm, onClose }: {
   );
 }
 
-// ── Header ───────────────────────────────────────────────────────
-function Header({ displayName, initials, userCargo, onSignOut }: {
-  displayName: string; initials: string; userCargo: string;
-  onSignOut: () => void; isAdmin: boolean;
-}) {
-  return (
-    <header className="header-root" style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      height: 60, padding: '0 28px',
-      backgroundColor: PRIMARY,
-      boxShadow: '0 2px 12px rgba(30,50,100,0.25)',
-      position: 'sticky', top: 0, zIndex: 50,
-    }}>
-      <style>{`.signout-btn-u:hover{background:rgba(255,255,255,0.12)!important}.nav-off-u:hover{color:#fff!important}`}</style>
-      <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-        <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <img
-              src="/logo_tecomat.png"
-              alt="TECOMAT Engenharia"
-              style={{ height: 34, width: 'auto', objectFit: 'contain' }}
-            />
-          </a>
-        <nav style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <a href="/dashboard" className="nav-off-u" style={{
-            fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.65)',
-            textDecoration: 'none', padding: '4px 10px', borderRadius: 6, transition: 'color 0.15s',
-          }}>
-            Ensaios
-          </a>
-          <a href="/usuarios" style={{
-            fontSize: 13, fontWeight: 600, color: '#fff',
-            textDecoration: 'none', padding: '4px 10px', borderRadius: 6,
-            borderBottom: `2px solid ${GOLD}`, paddingBottom: 5,
-          }}>
-            Usuários
-          </a>
-        </nav>
-      </div>
-      <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: '50%',
-            backgroundColor: GOLD, color: PRIMARY,
-            fontSize: 12, fontWeight: 800,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '2px solid rgba(255,255,255,0.25)',
-            flexShrink: 0,
-          }}>{initials}</div>
-          <div>
-            <p className="header-user-name" style={{ fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1, margin: 0 }}>{displayName}</p>
-            {userCargo && <p className="header-cargo" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{userCargo}</p>}
-          </div>
-        </div>
-        <div className="header-divider" style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
-        <button
-          className="signout-btn-u"
-          onClick={onSignOut}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 7,
-            fontSize: 13, fontWeight: 600,
-            color: 'rgba(255,255,255,0.7)',
-            background: 'transparent', border: 'none',
-            cursor: 'pointer', fontFamily: 'inherit',
-            transition: 'background 0.15s',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-          <span className="signout-text">Sair</span>
-        </button>
-      </div>
-    </header>
-  );
-}
-
 // ── Action Button ────────────────────────────────────────────────
 function ActionBtn({ children, title, color, bg, onClick, disabled }: {
   children: React.ReactNode; title: string; color: string; bg?: string;
@@ -641,12 +563,6 @@ export default function UsuariosPage() {
     });
   }, [loadCurrentUser, loadUsers]);
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
-
   const handleAction = async (action: string, userId: string) => {
     try {
       const res = await fetch(`/api/users/${userId}`, {
@@ -668,7 +584,6 @@ export default function UsuariosPage() {
   const isAdmin    = currentUser?.role === 'admin';
   const adminCount = users.filter((u) => u.role === 'admin' && !u.banned).length;
   const initials   = currentUser?.full_name ? getInitials(currentUser.full_name) : (currentUser?.email?.slice(0, 2).toUpperCase() ?? '··');
-  const displayName = currentUser?.full_name || currentUser?.email || '...';
 
   const selfRow = (): UserRow => ({
     id: currentUser!.id, email: currentUser!.email, full_name: currentUser!.full_name,
@@ -697,7 +612,7 @@ export default function UsuariosPage() {
         {modalMode && currentUser && (
           <Modal mode={modalMode} target={modalTarget} currentUser={currentUser} onClose={closeModal} onSuccess={onModalSuccess} />
         )}
-        <Header displayName={displayName} initials={initials} userCargo={currentUser.cargo} onSignOut={handleSignOut} isAdmin={false} />
+        <Header paginaAtiva="usuarios" />
         <main style={{ maxWidth: 520, margin: '48px auto', padding: '0 24px' }}>
           <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 14, marginBottom: 28 }}>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Conta</p>
@@ -777,9 +692,7 @@ export default function UsuariosPage() {
       )}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
 
-      {currentUser && (
-        <Header displayName={displayName} initials={initials} userCargo={currentUser.cargo} onSignOut={handleSignOut} isAdmin />
-      )}
+      <Header paginaAtiva="usuarios" />
 
       <main className="main-users" style={{ padding: '32px 28px', maxWidth: 960, margin: '0 auto' }}>
         {/* Page header */}
