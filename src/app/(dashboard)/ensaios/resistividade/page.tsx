@@ -237,6 +237,14 @@ export default function ResistividadePage() {
   const [outroRespPreview, setOutroRespPreview] = useState<string | null>(null);
   const outroAssinaturaRef = useRef<HTMLInputElement>(null);
 
+  // Opções do relatório
+  const [usaMotivacao,  setUsaMotivacao]  = useState(false);
+  const [motivacao,     setMotivacao]     = useState('');
+  const [usaFotoGeral,  setUsaFotoGeral]  = useState(false);
+  const [fotoGeralFile, setFotoGeralFile] = useState<File | null>(null);
+  const [usaCroqui,     setUsaCroqui]     = useState(false);
+  const [croquiFile,    setCroquiFile]    = useState<File | null>(null);
+
   // Modo Obra
   const [grupos, setGrupos]               = useState<ObraGrupo[]>([]);
   const [grupoAtivoId, setGrupoAtivoId]   = useState<string | null>(null);
@@ -456,12 +464,37 @@ export default function ResistividadePage() {
         };
       }));
 
+      // Foto geral — compressão antes do envio
+      let fotoGeralBase64: string | null = null;
+      let fotoGeralContentType: string | null = null;
+      if (usaFotoGeral && fotoGeralFile) {
+        const comp = await comprimirImagem(fotoGeralFile);
+        fotoGeralBase64 = comp.base64;
+        fotoGeralContentType = comp.contentType;
+      }
+
+      // Croqui
+      let croquiBase64: string | null = null;
+      let croquiContentType: string | null = null;
+      let croquiWidth: number | null = null;
+      let croquiHeight: number | null = null;
+      if (usaCroqui && croquiFile) {
+        const { base64, contentType, width, height } = await lerImagemComDimensoes(croquiFile);
+        croquiBase64 = base64;
+        croquiContentType = contentType;
+        croquiWidth = width;
+        croquiHeight = height;
+      }
+
       const payload = {
         rlt: cab.rlt, data: cab.data, cliente: cab.cliente, obra: cab.obra,
         att: cab.att, endereco: cab.endereco, notas: cab.notas,
         aparMarca: cab.aparMarca, aparModelo: cab.aparModelo, aparSerie: cab.aparSerie,
         respNome: respNomeFinal, respCrea: respCreaFinal,
         respAssinaturaUrl, respAssinaturaBase64, respAssinaturaContentType,
+        motivacao: usaMotivacao ? motivacao : null,
+        fotoGeralBase64, fotoGeralContentType,
+        croquiBase64, croquiContentType, croquiWidth, croquiHeight,
         medicoes: medicoesPayload,
       };
 
@@ -741,6 +774,63 @@ export default function ResistividadePage() {
                   </Campo>
                 </div>
               )}
+            </section>
+
+            {/* Opções do Relatório */}
+            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Opções do Relatório</h3>
+
+              {/* Motivação */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: TEXT }}>
+                  <input type="checkbox" checked={usaMotivacao} onChange={e => setUsaMotivacao(e.target.checked)} />
+                  Incluir motivação do ensaio
+                </label>
+                {usaMotivacao && (
+                  <textarea
+                    aria-label="Motivação do ensaio"
+                    value={motivacao}
+                    onChange={e => setMotivacao(e.target.value)}
+                    placeholder="Descreva a motivação do ensaio..."
+                    rows={3}
+                    style={{ marginTop: 8, width: '100%', padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${BORDER}`, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                )}
+              </div>
+
+              {/* Foto geral */}
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: TEXT }}>
+                  <input type="checkbox" checked={usaFotoGeral} onChange={e => setUsaFotoGeral(e.target.checked)} />
+                  Incluir foto geral da estrutura
+                </label>
+                {usaFotoGeral && (
+                  <input
+                    type="file"
+                    aria-label="Foto geral da estrutura"
+                    accept="image/*"
+                    onChange={e => setFotoGeralFile(e.target.files?.[0] ?? null)}
+                    style={{ marginTop: 8, display: 'block', fontSize: 13 }}
+                  />
+                )}
+              </div>
+
+              {/* Croqui */}
+              <div style={{ marginTop: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#1A2340' }}>
+                  <input type="checkbox" checked={usaCroqui} onChange={e => setUsaCroqui(e.target.checked)} />
+                  Incluir croqui com indicação dos elementos ensaiados
+                </label>
+                {usaCroqui && (
+                  <input
+                    type="file"
+                    aria-label="Croqui dos elementos ensaiados"
+                    accept="image/*"
+                    onChange={e => setCroquiFile(e.target.files?.[0] ?? null)}
+                    style={{ marginTop: 8, display: 'block', fontSize: 13 }}
+                  />
+                )}
+              </div>
             </section>
 
             {/* Notas */}
