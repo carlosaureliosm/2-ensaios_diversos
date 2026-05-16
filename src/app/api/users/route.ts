@@ -6,7 +6,12 @@ import type { UserMetadata } from '@/types/user';
 // GET /api/users — lista todos os usuários (admin only)
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const admin = createAdminClient();
+
+  const [{ data: { user } }, { data, error }] = await Promise.all([
+    supabase.auth.getUser(),
+    admin.auth.admin.listUsers(),
+  ]);
 
   if (!user) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
@@ -14,9 +19,6 @@ export async function GET() {
   if (user.user_metadata?.role !== 'admin') {
     return NextResponse.json({ error: 'Acesso restrito a administradores.' }, { status: 403 });
   }
-
-  const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.listUsers();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const users = data.users.map((u) => {
