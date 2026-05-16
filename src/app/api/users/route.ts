@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import type { UserMetadata } from '@/types/user';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'gru1';
+
 // GET /api/users — lista todos os usuários (admin only)
 export async function GET() {
   const supabase = await createClient();
@@ -36,7 +39,11 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ users });
+  return NextResponse.json({ users }, {
+    headers: {
+      'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+    },
+  });
 }
 
 // POST /api/users — cria novo usuário (admin only)
