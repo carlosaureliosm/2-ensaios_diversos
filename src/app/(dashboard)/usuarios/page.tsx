@@ -526,7 +526,8 @@ export default function UsuariosPage() {
 
   const loadCurrentUser = useCallback(async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) { router.push('/login'); return undefined; }
     const cu: CurrentUser = {
       id: user.id,
@@ -557,10 +558,11 @@ export default function UsuariosPage() {
   }, []);
 
   useEffect(() => {
-    loadCurrentUser().then((cu) => {
-      if (cu?.role === 'admin') loadUsers();
+    (async () => {
+      const cu = await loadCurrentUser();
+      if (cu?.role === 'admin') await loadUsers();
       else setLoading(false);
-    });
+    })();
   }, [loadCurrentUser, loadUsers]);
 
   const handleAction = async (action: string, userId: string) => {
