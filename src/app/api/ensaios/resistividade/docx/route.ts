@@ -135,7 +135,6 @@ export async function POST(req: NextRequest) {
       tem_notas:      !!body.notas?.trim(),
       medicoes: body.medicoes.map(m => ({
         item:          String(m.item),
-        elemento:      m.elemento,
         posicao:       m.posicao,
         l1:            m.l1,
         l2:            m.l2,
