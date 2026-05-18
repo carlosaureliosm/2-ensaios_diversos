@@ -309,15 +309,21 @@ export async function buscarImagemMapa(
   }
 
   try {
-    const res = await fetch(mapUrl.toString());
+    const urlStr = mapUrl.toString();
+    console.log('[buscarImagemMapa] URL:', urlStr);
+    const res = await fetch(urlStr);
+    console.log('[buscarImagemMapa] status:', res.status, res.statusText);
+    console.log('[buscarImagemMapa] content-type:', res.headers.get('content-type'));
     if (!res.ok) {
-      console.warn(`[docx route] Maps Static API retornou ${res.status} — mapa omitido.`);
+      const body = await res.text();
+      console.warn('[buscarImagemMapa] body erro:', body.slice(0, 500));
       return null;
     }
     const buffer = Buffer.from(await res.arrayBuffer());
+    console.log('[buscarImagemMapa] buffer size:', buffer.length);
     return { buffer, width, height };
   } catch (err) {
-    console.warn('[docx route] Falha ao buscar mapa:', err);
+    console.warn('[buscarImagemMapa] exceção:', err);
     return null;
   }
 }
