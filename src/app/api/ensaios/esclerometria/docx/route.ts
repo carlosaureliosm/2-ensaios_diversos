@@ -22,6 +22,7 @@ import {
   injetarFotoGeral,
   injetarCroqui,
   injetarMemorial,
+  atualizarSumario,
 } from '@/lib/docx/esclerometria';
 
 export const config = {
@@ -202,6 +203,9 @@ export async function POST(req: NextRequest) {
     if (fotosMemorial.length > 0) {
       injetarMemorial(renderedZip, fotosMemorial);
     }
+
+    // ── Atualiza campos de sumário/numeração ─────────────────────
+    atualizarSumario(renderedZip);
 
     const output = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 

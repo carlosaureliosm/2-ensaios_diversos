@@ -274,6 +274,28 @@ export function injetarMemorial(
 }
 
 /**
+ * Marca todos os campos de fórmula no documento com w:dirty="true"
+ * para forçar o Word a recalcular sumários, numeração de páginas, etc. ao abrir.
+ * @param zip - Arquivo DOCX aberto como PizZip.
+ */
+export function atualizarSumario(zip: PizZip): void {
+  const arquivos = ['word/document.xml', 'word/header1.xml', 'word/footer1.xml'];
+
+  for (const arqPath of arquivos) {
+    const arq = zip.file(arqPath);
+    if (!arq) continue;
+
+    let xml = arq.asText();
+    xml = xml.replace(
+      /<w:fldChar\s+w:fldCharType="begin"(?!\s+w:dirty)/g,
+      '<w:fldChar w:fldCharType="begin" w:dirty="true"'
+    );
+
+    zip.file(arqPath, xml);
+  }
+}
+
+/**
  * Busca imagem do mapa via Google Maps Static API.
  * Se coordenadas fornecidas, usa-as como centro+pino.
  * Caso contrário, usa o endereço textual.
