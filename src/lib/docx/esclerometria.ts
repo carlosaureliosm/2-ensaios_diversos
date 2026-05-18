@@ -290,28 +290,26 @@ export async function buscarImagemMapa(
   }
 
   const width = 600, height = 400;
-  const size = `${width}x${height}`;
   const zoom = 19;
   const maptype = 'satellite';
 
-  let center: string;
-  let markers: string;
+  const mapUrl = new URL('https://maps.googleapis.com/maps/api/staticmap');
+  mapUrl.searchParams.set('zoom', String(zoom));
+  mapUrl.searchParams.set('size', `${width}x${height}`);
+  mapUrl.searchParams.set('maptype', maptype);
+  mapUrl.searchParams.set('key', apiKey);
 
   if (coordenadas && coordenadas.trim()) {
-    center = coordenadas.trim();
-    markers = `color:red|${coordenadas.trim()}`;
+    const coord = coordenadas.trim();
+    mapUrl.searchParams.set('center', coord);
+    mapUrl.searchParams.set('markers', `color:red|${coord}`);
   } else {
-    center = encodeURIComponent(endereco);
-    markers = `color:red|${encodeURIComponent(endereco)}`;
+    mapUrl.searchParams.set('center', endereco);
+    mapUrl.searchParams.set('markers', `color:red|${endereco}`);
   }
 
-  const url =
-    `https://maps.googleapis.com/maps/api/staticmap` +
-    `?center=${center}&zoom=${zoom}&size=${size}&maptype=${maptype}` +
-    `&markers=${markers}&key=${apiKey}`;
-
   try {
-    const res = await fetch(url);
+    const res = await fetch(mapUrl.toString());
     if (!res.ok) {
       console.warn(`[docx route] Maps Static API retornou ${res.status} — mapa omitido.`);
       return null;
