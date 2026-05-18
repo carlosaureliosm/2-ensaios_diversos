@@ -335,7 +335,7 @@ export default function EsclerometriaPage() {
   // Converte imagem "outro responsável" para base64 (se selecionada)
   const lerOutroRespBase64 = (): Promise<string> =>
     new Promise((resolve) => {
-      if (!outroRespFile) { resolve(''); return; }
+      if (!outroRespFile || !(outroRespFile instanceof Blob)) { resolve(''); return; }
       const reader = new FileReader();
       reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
       reader.onerror = () => resolve('');
