@@ -923,7 +923,7 @@ export default function EsclerometriaPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', animation: 'fadeIn 0.15s ease' }}>
                     <input ref={fotoGeralRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; setFotoGeralFile(f); setFotoGeralPreview(URL.createObjectURL(f)); }} />
                     <button onClick={() => fotoGeralRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
-                      {fotoGeralPreview ? '↻ Trocar foto' : '📁 Selecionar foto geral'}
+                      {fotoGeralPreview ? '↻ Trocar arquivo' : 'Escolher arquivo'}
                     </button>
                     {fotoGeralPreview && (
                       <>
@@ -946,7 +946,7 @@ export default function EsclerometriaPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', animation: 'fadeIn 0.15s ease' }}>
                     <input ref={croquiRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; setCroquiFile(f); setCroquiPreview(URL.createObjectURL(f)); }} />
                     <button onClick={() => croquiRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
-                      {croquiPreview ? '↻ Trocar croqui' : '📁 Selecionar croqui'}
+                      {croquiPreview ? '↻ Trocar arquivo' : 'Escolher arquivo'}
                     </button>
                     {croquiPreview && (
                       <>

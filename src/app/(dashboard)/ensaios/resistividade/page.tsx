@@ -237,13 +237,20 @@ export default function ResistividadePage() {
   const [outroRespPreview, setOutroRespPreview] = useState<string | null>(null);
   const outroAssinaturaRef = useRef<HTMLInputElement>(null);
 
+  // Coordenadas GPS
+  const [gps, setGps] = useState('');
+
   // Opções do relatório
   const [usaMotivacao,  setUsaMotivacao]  = useState(false);
   const [motivacao,     setMotivacao]     = useState('');
   const [usaFotoGeral,  setUsaFotoGeral]  = useState(false);
   const [fotoGeralFile, setFotoGeralFile] = useState<File | null>(null);
+  const [fotoGeralPreview, setFotoGeralPreview] = useState<string | null>(null);
+  const fotoGeralRef = useRef<HTMLInputElement>(null);
   const [usaCroqui,     setUsaCroqui]     = useState(false);
   const [croquiFile,    setCroquiFile]    = useState<File | null>(null);
+  const [croquiPreview, setCroquiPreview] = useState<string | null>(null);
+  const croquiRef = useRef<HTMLInputElement>(null);
 
   // Modo Obra
   const [grupos, setGrupos]               = useState<ObraGrupo[]>([]);
@@ -421,9 +428,12 @@ export default function ResistividadePage() {
   const limparTudo = () => {
     if (!confirm('Apagar TODOS os dados e começar do zero?')) return;
     setCab({ rlt: '', data: '', cliente: '', obra: '', att: '', endereco: '', notas: '', aparMarca: '', aparModelo: '', aparSerie: '' });
+    setGps('');
     setMedicoes([]); setElemento(''); setLeituras(Array(N_LEITURAS).fill('')); setPosicao('Superior');
     setEditandoId(null); setOutroResp(false); setOutroRespNome(''); setOutroRespCrea('');
     setOutroRespFile(null); setOutroRespPreview(null);
+    setFotoGeralFile(null); setFotoGeralPreview(null); setUsaFotoGeral(false);
+    setCroquiFile(null); setCroquiPreview(null); setUsaCroqui(false);
     localStorage.removeItem(LS_KEY);
   };
 
@@ -488,7 +498,7 @@ export default function ResistividadePage() {
 
       const payload = {
         rlt: cab.rlt, data: cab.data, cliente: cab.cliente, obra: cab.obra,
-        att: cab.att, endereco: cab.endereco, notas: cab.notas,
+        att: cab.att, endereco: cab.endereco, gps: gps.trim() || null, notas: cab.notas,
         aparMarca: cab.aparMarca, aparModelo: cab.aparModelo, aparSerie: cab.aparSerie,
         respNome: respNomeFinal, respCrea: respCreaFinal,
         respAssinaturaUrl, respAssinaturaBase64, respAssinaturaContentType,
@@ -727,33 +737,72 @@ export default function ResistividadePage() {
                 <Campo label="A/C (Att.)" htmlFor="att-input"><input id="att-input" style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.att} onChange={e => setCab(c => ({ ...c, att: e.target.value.toUpperCase() }))} placeholder="A/C DE…" /></Campo>
               </div>
               <Campo label="Endereço" htmlFor="end-input"><input id="end-input" style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.endereco} onChange={e => setCab(c => ({ ...c, endereco: e.target.value.toUpperCase() }))} placeholder="ENDEREÇO COMPLETO DA OBRA" /></Campo>
-            </section>
-
-            {/* Dados do Aparelho */}
-            <section className="section-pad" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Equipamento Utilizado</h3>
-              <div className="grid-aparat" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px 16px' }}>
-                <Campo label="Marca" htmlFor="apar-marca"><input id="apar-marca" style={inputStyle} value={cab.aparMarca} onChange={e => setCab(c => ({ ...c, aparMarca: e.target.value }))} placeholder="Ex: Proceq" /></Campo>
-                <Campo label="Modelo" htmlFor="apar-modelo"><input id="apar-modelo" style={inputStyle} value={cab.aparModelo} onChange={e => setCab(c => ({ ...c, aparModelo: e.target.value }))} placeholder="Ex: Resipod" /></Campo>
-                <Campo label="Nº de Série" htmlFor="apar-serie"><input id="apar-serie" style={inputStyle} value={cab.aparSerie} onChange={e => setCab(c => ({ ...c, aparSerie: e.target.value }))} placeholder="Ex: 12345" /></Campo>
+              <div style={{ marginTop: 12 }}>
+                <Campo label="Coordenadas GPS (Opcional — Prioridade Sobre Endereço no Mapa)" htmlFor="gps-input">
+                  <input id="gps-input" style={inputStyle} value={gps} onChange={e => setGps(e.target.value)} placeholder="Ex: -8.0522,-34.9286" />
+                </Campo>
+                <p style={{ margin: '5px 0 0', fontSize: 11, color: SUBTEXT }}>Se preenchido, o pino do mapa será posicionado nas coordenadas informadas.</p>
               </div>
             </section>
 
             {/* Responsável técnico */}
             <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Responsável Técnico</h3>
-              {!outroResp ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#F0F4FC', borderRadius: 8, border: `1px solid ${BORDER}` }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: TEXT }}>{userName || '—'}</p>
-                    {userCrea && <p style={{ margin: '2px 0 0', fontSize: 12, color: SUBTEXT }}>CREA: {userCrea}</p>}
-                    {userAssinatura && <p style={{ margin: '2px 0 0', fontSize: 11, color: SUCCESS, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>Assinatura cadastrada</p>}
-                  </div>
-                  <button onClick={() => setOutroResp(true)} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>Usar outro responsável</button>
+              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Responsável Técnico</h3>
+
+              {/* Bloco padrão — dados do perfil */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+                padding: '14px 16px', borderRadius: 10,
+                background: outroResp ? '#F8F9FA' : '#F0F4FC',
+                border: `1.5px solid ${outroResp ? BORDER : PRIMARY + '44'}`,
+                marginBottom: 14, opacity: outroResp ? 0.5 : 1,
+                transition: 'all 0.2s',
+              }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Engenheiro Responsável TECOMAT</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: TEXT }}>{userName || <span style={{ color: SUBTEXT }}>—</span>}</p>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <button onClick={() => { setOutroResp(false); setOutroRespNome(''); setOutroRespCrea(''); setOutroRespFile(null); setOutroRespPreview(null); }} style={{ alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>← Voltar ao responsável do perfil</button>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>CREA</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: userCrea ? TEXT : SUBTEXT }}>{userCrea || 'Não cadastrado'}</p>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Assinatura</p>
+                  {userAssinatura
+                    ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={userAssinatura} alt="Assinatura" style={{ maxHeight: 40, maxWidth: 200, objectFit: 'contain', marginTop: 6, display: 'block' }} />
+                    )
+                    : <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXT }}>Não cadastrada — <a href="/usuarios" style={{ color: PRIMARY, textDecoration: 'underline' }}>cadastrar no perfil</a></p>
+                  }
+                </div>
+              </div>
+
+              {/* Checkbox outro responsável */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: outroResp ? 14 : 0 }}>
+                <input
+                  type="checkbox"
+                  checked={outroResp}
+                  onChange={e => {
+                    setOutroResp(e.target.checked);
+                    if (!e.target.checked) { setOutroRespNome(''); setOutroRespCrea(''); setOutroRespFile(null); setOutroRespPreview(null); }
+                  }}
+                  style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT }}>
+                  Outro responsável para este relatório
+                </span>
+              </label>
+
+              {/* Campos expandidos quando "outro responsável" marcado */}
+              {outroResp && (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                  padding: '16px', borderRadius: 10,
+                  background: '#F0F4FC',
+                  border: `1.5px solid ${PRIMARY}44`,
+                  animation: 'fadeIn 0.15s ease',
+                }}>
                   <div className="grid-outro-resp" style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '12px 16px' }}>
                     <Campo label="Nome completo" htmlFor="outro-nome"><input id="outro-nome" style={inputStyle} value={outroRespNome} onChange={e => setOutroRespNome(e.target.value)} placeholder="Nome do engenheiro" /></Campo>
                     <Campo label="CREA" htmlFor="outro-crea"><input id="outro-crea" style={inputStyle} value={outroRespCrea} onChange={e => setOutroRespCrea(e.target.value)} placeholder="Nº CREA" /></Campo>
@@ -775,7 +824,6 @@ export default function ResistividadePage() {
                 </div>
               )}
             </section>
-
             {/* Opções do Relatório */}
             <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
               <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Opções do Relatório</h3>
@@ -801,34 +849,40 @@ export default function ResistividadePage() {
               {/* Foto geral */}
               <div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: TEXT }}>
-                  <input type="checkbox" checked={usaFotoGeral} onChange={e => setUsaFotoGeral(e.target.checked)} />
+                  <input type="checkbox" checked={usaFotoGeral} onChange={e => { setUsaFotoGeral(e.target.checked); if (!e.target.checked) { setFotoGeralFile(null); setFotoGeralPreview(null); } }} />
                   Incluir foto geral da estrutura
                 </label>
                 {usaFotoGeral && (
-                  <input
-                    type="file"
-                    aria-label="Foto geral da estrutura"
-                    accept="image/*"
-                    onChange={e => setFotoGeralFile(e.target.files?.[0] ?? null)}
-                    style={{ marginTop: 8, display: 'block', fontSize: 13 }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                    <input ref={fotoGeralRef} type="file" aria-label="Foto geral da estrutura" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0] ?? null; setFotoGeralFile(f); setFotoGeralPreview(f ? URL.createObjectURL(f) : null); }} />
+                    <button onClick={() => fotoGeralRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
+                      {fotoGeralPreview ? '↻ Trocar arquivo' : 'Escolher arquivo'}
+                    </button>
+                    {fotoGeralPreview
+                      ? <><img src={fotoGeralPreview} alt="Prévia foto geral" style={{ maxHeight: 36, maxWidth: 120, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 3, background: '#fff' }} /><span style={{ fontSize: 12, color: SUBTEXT }}>{fotoGeralFile?.name}</span><button onClick={() => { setFotoGeralFile(null); setFotoGeralPreview(null); if (fotoGeralRef.current) fotoGeralRef.current.value = ''; }} style={{ padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>Remover</button></>
+                      : <span style={{ fontSize: 12, color: SUBTEXT }}>Nenhum arquivo escolhido</span>
+                    }
+                  </div>
                 )}
               </div>
 
               {/* Croqui */}
               <div style={{ marginTop: 16 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#1A2340' }}>
-                  <input type="checkbox" checked={usaCroqui} onChange={e => setUsaCroqui(e.target.checked)} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: TEXT }}>
+                  <input type="checkbox" checked={usaCroqui} onChange={e => { setUsaCroqui(e.target.checked); if (!e.target.checked) { setCroquiFile(null); setCroquiPreview(null); } }} />
                   Incluir croqui com indicação dos elementos ensaiados
                 </label>
                 {usaCroqui && (
-                  <input
-                    type="file"
-                    aria-label="Croqui dos elementos ensaiados"
-                    accept="image/*"
-                    onChange={e => setCroquiFile(e.target.files?.[0] ?? null)}
-                    style={{ marginTop: 8, display: 'block', fontSize: 13 }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                    <input ref={croquiRef} type="file" aria-label="Croqui dos elementos ensaiados" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0] ?? null; setCroquiFile(f); setCroquiPreview(f ? URL.createObjectURL(f) : null); }} />
+                    <button onClick={() => croquiRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
+                      {croquiPreview ? '↻ Trocar arquivo' : 'Escolher arquivo'}
+                    </button>
+                    {croquiPreview
+                      ? <><img src={croquiPreview} alt="Prévia croqui" style={{ maxHeight: 36, maxWidth: 120, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 3, background: '#fff' }} /><span style={{ fontSize: 12, color: SUBTEXT }}>{croquiFile?.name}</span><button onClick={() => { setCroquiFile(null); setCroquiPreview(null); if (croquiRef.current) croquiRef.current.value = ''; }} style={{ padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>Remover</button></>
+                      : <span style={{ fontSize: 12, color: SUBTEXT }}>Nenhum arquivo escolhido</span>
+                    }
+                  </div>
                 )}
               </div>
             </section>
