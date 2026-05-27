@@ -47,6 +47,10 @@ type AmostraRow = {
   // Calculados
   cobMedio: number | null;
   cobMinimo: number | null;
+  cobMaximo: number | null;
+  cobDesvio: number | null;
+  cobCV: number | null;
+  cobModa: number | null;
   // Foto
   fotoFile?: File | null;
   fotoPreview?: string | null;
@@ -92,15 +96,29 @@ function carregarLocal(): { cab: Cabecalho; amostras: AmostraRow[] } | null {
   try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
 }
 
-function calcularCobrimentos(facesData: Record<string, FaceData>): { cobMedio: number | null; cobMinimo: number | null } {
+function calcularCobrimentos(facesData: Record<string, FaceData>): {
+  cobMedio: number | null; cobMinimo: number | null; cobMaximo: number | null;
+  cobDesvio: number | null; cobCV: number | null; cobModa: number | null;
+} {
   const todos: number[] = [];
   Object.values(facesData).forEach(fd => {
-    fd.cob.forEach(v => { const n = parseFloat(v); if (!isNaN(n) && n > 0) todos.push(n); });
+    fd.cob.forEach(v => { const n = parseFloat(v.replace(',', '.')); if (!isNaN(n) && n > 0) todos.push(n); });
   });
-  if (todos.length === 0) return { cobMedio: null, cobMinimo: null };
+  const nil = { cobMedio: null, cobMinimo: null, cobMaximo: null, cobDesvio: null, cobCV: null, cobModa: null };
+  if (todos.length === 0) return nil;
   const cobMedio = todos.reduce((a, b) => a + b, 0) / todos.length;
   const cobMinimo = Math.min(...todos);
-  return { cobMedio, cobMinimo };
+  const cobMaximo = Math.max(...todos);
+  const cobDesvio = todos.length < 2 ? 0
+    : Math.sqrt(todos.reduce((acc, v) => acc + (v - cobMedio) ** 2, 0) / (todos.length - 1));
+  const cobCV = cobMedio > 0 ? (cobDesvio / cobMedio) * 100 : 0;
+  // Moda por arredondamento (Opção B)
+  const freq: Record<number, number> = {};
+  todos.forEach(v => { const r = Math.round(v); freq[r] = (freq[r] || 0) + 1; });
+  const maxFreq = Math.max(...Object.values(freq));
+  const modas = Object.entries(freq).filter(([, f]) => f === maxFreq).map(([v]) => Number(v));
+  const cobModa = maxFreq > 1 ? modas[0] : null;
+  return { cobMedio, cobMinimo, cobMaximo, cobDesvio, cobCV, cobModa };
 }
 
 function initFaceData(): FaceData {
@@ -141,16 +159,105 @@ function comprimirImagem(file: File): Promise<{ base64: string; width: number; h
 
 // ── SVG Helpers ─────────────────────────────────────────────────
 function svgOpcao(id: OpcaoAcessibilidade): string {
-  const s = 36, m = 4, w = 10;
-  const defs = `<defs><pattern id="h${id}" width="4" height="4" patternUnits="userSpaceOnUse"><line x1="0" y1="4" x2="4" y2="0" stroke="#888" stroke-width=".7"/></pattern></defs>`;
-  const free = '#BFDBFE', obst = '#D1D5DB';
-  let rects = '';
-  if (id === 'A') rects = `<rect x="${m}" y="${m}" width="${s - 2 * m}" height="${s - 2 * m}" fill="${free}" stroke="${PRIMARY}" stroke-width="1.2"/>`;
-  else if (id === 'B') rects = `<rect x="0" y="0" width="${s}" height="${s}" fill="${obst}"/><rect x="${m}" y="${m}" width="${s - 2 * m}" height="${s - 2 * m}" fill="white" stroke="${PRIMARY}" stroke-width="1.2"/><rect x="${m}" y="${m}" width="${s - 2 * m}" height="${w}" fill="${free}"/><rect x="${m}" y="${m + w}" width="${w}" height="${s - 2 * m - w}" fill="${obst}"/><rect x="${s - m - w}" y="${m + w}" width="${w}" height="${s - 2 * m - w}" fill="${obst}"/><rect x="${m + w}" y="${s - m - w}" width="${s - 2 * m - 2 * w}" height="${w}" fill="${obst}"/>`;
-  else if (id === 'C') rects = `<rect x="0" y="0" width="${s}" height="${s}" fill="${obst}"/><rect x="${m}" y="${m}" width="${s - 2 * m}" height="${s - 2 * m}" fill="white" stroke="${PRIMARY}" stroke-width="1.2"/><rect x="${m}" y="${m}" width="${s - 2 * m}" height="${w}" fill="${free}"/><rect x="${m}" y="${m + w}" width="${w}" height="${s - 2 * m - w}" fill="${free}"/><rect x="${m + w}" y="${m + w}" width="${s - 2 * m - w}" height="${s - 2 * m - w}" fill="${obst}"/>`;
-  else if (id === 'D') rects = `<rect x="0" y="0" width="${s}" height="${s}" fill="${obst}"/><rect x="${m}" y="${m}" width="${s - 2 * m}" height="${s - 2 * m}" fill="white" stroke="${PRIMARY}" stroke-width="1.2"/><rect x="${m}" y="${m}" width="${s - 2 * m}" height="${w}" fill="${free}"/><rect x="${m}" y="${m + w}" width="${w}" height="${s - 2 * m - w}" fill="${free}"/><rect x="${s - m - w}" y="${m}" width="${w}" height="${s - 2 * m}" fill="${obst}"/><rect x="${m + w}" y="${s - m - w}" width="${s - 2 * m - 2 * w}" height="${w}" fill="${obst}"/>`;
-  else if (id === 'E') rects = `<circle cx="${s / 2}" cy="${s / 2}" r="${s / 2 - m}" fill="${free}" stroke="${PRIMARY}" stroke-width="1.2"/>`;
-  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${defs}${rects}</svg>`;
+  // Dimensões do card SVG
+  const W = 80, H = 64;
+  // Elemento concreto centrado
+  const ex = 14, ey = 8, ew = 52, eh = 38;
+  // Cobrimento visual
+  const cv = 7;
+  // Raio das barras
+  const br = 3;
+  // Hachura de obstrução
+  const hatch = `<defs><pattern id="hx${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#999" stroke-width="1.2"/></pattern></defs>`;
+  const hFill = `url(#hx${id})`;
+  const concrete = '#E8EAF0';
+  const barFill = '#1A2340';
+
+  // Barras padrão para seção retangular: 3 em cima, 3 embaixo, 1 lateral cada lado
+  function barras3x3() {
+    const xs = [ex + cv, ex + ew / 2, ex + ew - cv];
+    const yTop = ey + cv, yBot = ey + eh - cv;
+    const yMid = ey + eh / 2;
+    let b = '';
+    xs.forEach(x => {
+      b += `<circle cx="${x}" cy="${yTop}" r="${br}" fill="${barFill}"/>`;
+      b += `<circle cx="${x}" cy="${yBot}" r="${br}" fill="${barFill}"/>`;
+    });
+    // Laterais intermediárias
+    b += `<circle cx="${ex + cv}" cy="${yMid}" r="${br}" fill="${barFill}"/>`;
+    b += `<circle cx="${ex + ew - cv}" cy="${yMid}" r="${br}" fill="${barFill}"/>`;
+    return b;
+  }
+
+  // Cotas X e Y
+  const cotaX = `<line x1="${ex}" y1="${ey + eh + 5}" x2="${ex + ew}" y2="${ey + eh + 5}" stroke="#1A2340" stroke-width="0.8" marker-start="url(#arr${id})" marker-end="url(#arr${id})"/>
+    <text x="${ex + ew / 2}" y="${ey + eh + 14}" text-anchor="middle" font-size="7" fill="#1A2340" font-family="sans-serif">X</text>`;
+  const cotaY = `<line x1="${ex - 5}" y1="${ey}" x2="${ex - 5}" y2="${ey + eh}" stroke="#1A2340" stroke-width="0.8" marker-start="url(#arr${id})" marker-end="url(#arr${id})"/>
+    <text x="${ex - 12}" y="${ey + eh / 2 + 3}" text-anchor="middle" font-size="7" fill="#1A2340" font-family="sans-serif">Y</text>`;
+  const arrows = `<defs><marker id="arr${id}" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L0,4 L4,2 z" fill="#1A2340"/></marker></defs>`;
+
+  if (id === 'A') {
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
+      <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
+      ${barras3x3()}
+      ${cotaX}${cotaY}
+    </svg>`;
+  }
+
+  if (id === 'B') {
+    // Obstrução: topo, esquerda, direita
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
+      <rect x="0" y="0" width="${W}" height="${H}" fill="${hFill}"/>
+      <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
+      ${barras3x3()}
+      ${cotaX}
+    </svg>`;
+  }
+
+  if (id === 'C') {
+    // Obstrução: topo e direita
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
+      <rect x="0" y="0" width="${W}" height="${H}" fill="${hFill}"/>
+      <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
+      ${barras3x3()}
+      ${cotaX}${cotaY}
+    </svg>`;
+  }
+
+  if (id === 'D') {
+    // Obstrução: apenas topo
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
+      <rect x="0" y="0" width="${W}" height="${ey + 2}" fill="${hFill}"/>
+      <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
+      ${barras3x3()}
+      ${cotaX}${cotaY}
+    </svg>`;
+  }
+
+  if (id === 'E') {
+    // Circular
+    const cx = W / 2, cy = H / 2 - 4, r = 22, rb = r - 6;
+    const nb = 8;
+    let bcirc = '';
+    for (let i = 0; i < nb; i++) {
+      const ang = (2 * Math.PI / nb) * i - Math.PI / 2;
+      bcirc += `<circle cx="${(cx + rb * Math.cos(ang)).toFixed(1)}" cy="${(cy + rb * Math.sin(ang)).toFixed(1)}" r="${br}" fill="${barFill}"/>`;
+    }
+    // Diâmetro com seta diagonal
+    const x1 = (cx - r * 0.6).toFixed(1), y1 = (cy + r * 0.6).toFixed(1);
+    const x2 = (cx + r * 0.6).toFixed(1), y2 = (cy - r * 0.6).toFixed(1);
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+      <defs><marker id="arr${id}" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L0,4 L4,2 z" fill="#1A2340"/></marker></defs>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${concrete}" stroke="#1A2340" stroke-width="2"/>
+      <circle cx="${cx}" cy="${cy}" r="${rb}" fill="none" stroke="#1A2340" stroke-width="0.8" stroke-dasharray="2,2"/>
+      ${bcirc}
+      <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1A2340" stroke-width="0.8" marker-end="url(#arr${id})"/>
+      <line x1="${(cx - r).toFixed(1)}" y1="${(cy + r + 5).toFixed(1)}" x2="${(cx + r).toFixed(1)}" y2="${(cy + r + 5).toFixed(1)}" stroke="#1A2340" stroke-width="0.8" marker-start="url(#arr${id})" marker-end="url(#arr${id})"/>
+      <text x="${cx}" y="${(cy + r + 14).toFixed(1)}" text-anchor="middle" font-size="7" fill="#1A2340" font-family="sans-serif">D</text>
+    </svg>`;
+  }
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"/>`;
 }
 
 function SvgSecao({ X, Y, C1, C2, faces, barras }: { X: number; Y: number; C1: number; C2: number; faces: string[]; barras: Record<string, number> }) {
@@ -345,10 +452,10 @@ function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: ModalAmos
   function handleSalvar() {
     const allFacesData: Record<string, FaceData> = {};
     faces.forEach(f => { allFacesData[f] = getFaceData(f); });
-    const { cobMedio, cobMinimo } = calcularCobrimentos(allFacesData);
+    const { cobMedio, cobMinimo, cobMaximo, cobDesvio, cobCV, cobModa } = calcularCobrimentos(allFacesData);
     const id = amostraInicial?.id ?? newId();
     const item = amostraInicial?.item ?? itemNum;
-    onSalvar({ id, item, elemento, tipo, opcao: opcao!, X, Y, C1, C2, D, barras, facesData: allFacesData, cobMedio, cobMinimo });
+    onSalvar({ id, item, elemento, tipo, opcao: opcao!, X, Y, C1, C2, D, barras, facesData: allFacesData, cobMedio, cobMinimo, cobMaximo, cobDesvio, cobCV, cobModa });
   }
 
   const podeAvancar1 = !!opcao && elemento.trim().length > 0;
@@ -390,9 +497,9 @@ function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: ModalAmos
               <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Acessibilidade do pilar em campo</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 20 }}>
                 {(Object.keys(OPCOES_CONFIG) as OpcaoAcessibilidade[]).map(id => (
-                  <button key={id} onClick={() => setOpcao(id)} style={{ border: `1.5px solid ${opcao === id ? PRIMARY : BORDER}`, borderRadius: 10, padding: '10px 6px', cursor: 'pointer', background: opcao === id ? '#EEF2FF' : '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <div dangerouslySetInnerHTML={{ __html: svgOpcao(id) }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>{OPCOES_CONFIG[id].label}</span>
+                  <button key={id} onClick={() => setOpcao(id)} style={{ border: `1.5px solid ${opcao === id ? PRIMARY : BORDER}`, borderRadius: 10, padding: '10px 6px 8px', cursor: 'pointer', background: opcao === id ? '#EEF2FF' : '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <div dangerouslySetInnerHTML={{ __html: svgOpcao(id) }} style={{ lineHeight: 0 }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>{id} — {OPCOES_CONFIG[id].label}</span>
                   </button>
                 ))}
               </div>
@@ -918,7 +1025,7 @@ export default function PacometriaPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: EXCEL_BLUE }}>
-                        {['Item', 'Elemento', 'Tipo / Opção', 'Cob. Médio', 'Cob. Mínimo', 'Foto', 'Ações'].map(h => (
+                        {['Item', 'Elemento', 'Tipo / Opção', 'Médio', 'Mínimo', 'Máximo', 'Desv. Padrão', 'CV (%)', 'Moda', 'Foto', 'Ações'].map(h => (
                           <th key={h} style={{ padding: '11px 14px', fontSize: 11, fontWeight: 700, color: '#fff', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -941,6 +1048,18 @@ export default function PacometriaPage() {
                                 {a.cobMinimo.toFixed(0)} mm
                               </span>
                             ) : <span style={{ color: SUBTEXT }}>—</span>}
+                          </td>
+                          <td style={{ padding: '10px 14px', fontSize: 13, color: a.cobMaximo !== null ? TEXT : SUBTEXT }}>
+                            {a.cobMaximo !== null ? `${a.cobMaximo.toFixed(0)} mm` : '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px', fontSize: 13, color: a.cobDesvio !== null ? TEXT : SUBTEXT }}>
+                            {a.cobDesvio !== null ? `${a.cobDesvio.toFixed(1)} mm` : '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px', fontSize: 13, color: a.cobCV !== null ? (a.cobCV > 20 ? DANGER : a.cobCV > 10 ? '#B45309' : SUCCESS) : SUBTEXT }}>
+                            {a.cobCV !== null ? `${a.cobCV.toFixed(1)}%` : '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px', fontSize: 13, color: a.cobModa !== null ? TEXT : SUBTEXT }}>
+                            {a.cobModa !== null ? `${a.cobModa} mm` : '—'}
                           </td>
                           {/* Célula foto */}
                           <td style={{ padding: '10px 14px' }}>
@@ -1001,9 +1120,11 @@ export default function PacometriaPage() {
                         </button>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 14, fontSize: 12, color: SUBTEXT }}>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 12, color: SUBTEXT, flexWrap: 'wrap' }}>
                       <span>Médio: <strong style={{ color: TEXT }}>{a.cobMedio !== null ? `${a.cobMedio.toFixed(1)} mm` : '—'}</strong></span>
-                      <span>Mínimo: <strong style={{ color: a.cobMinimo !== null && a.cobMinimo < 20 ? DANGER : TEXT }}>{a.cobMinimo !== null ? `${a.cobMinimo.toFixed(0)} mm` : '—'}</strong></span>
+                      <span>Mín: <strong style={{ color: a.cobMinimo !== null && a.cobMinimo < 20 ? DANGER : TEXT }}>{a.cobMinimo !== null ? `${a.cobMinimo.toFixed(0)} mm` : '—'}</strong></span>
+                      <span>Máx: <strong style={{ color: TEXT }}>{a.cobMaximo !== null ? `${a.cobMaximo.toFixed(0)} mm` : '—'}</strong></span>
+                      <span>CV: <strong style={{ color: a.cobCV !== null && a.cobCV > 20 ? DANGER : TEXT }}>{a.cobCV !== null ? `${a.cobCV.toFixed(1)}%` : '—'}</strong></span>
                     </div>
                     {/* Foto mobile */}
                     <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
