@@ -118,14 +118,14 @@ function lerImagemComDimensoes(file: File | null | undefined): Promise<{ base64:
   });
 }
 
-// Comprime imagem antes do envio (max 1200px, JPEG 0.82)
+// Comprime imagem antes do envio (max 900px, JPEG 0.72)
 function comprimirImagem(file: File): Promise<{ base64: string; width: number; height: number; contentType: string }> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 1200;
+        const MAX = 900;
         let { width, height } = img;
         if (width > MAX || height > MAX) {
           if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
@@ -134,7 +134,7 @@ function comprimirImagem(file: File): Promise<{ base64: string; width: number; h
         const canvas = document.createElement('canvas');
         canvas.width = width; canvas.height = height;
         canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-        const base64 = canvas.toDataURL('image/jpeg', 0.82).split(',')[1] ?? '';
+        const base64 = canvas.toDataURL('image/jpeg', 0.72).split(',')[1] ?? '';
         resolve({ base64, width, height, contentType: 'image/jpeg' });
       };
       img.src = reader.result as string;
