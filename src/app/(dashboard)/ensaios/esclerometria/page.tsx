@@ -345,7 +345,7 @@ export default function EsclerometriaPage() {
   // Lê arquivo de imagem como base64 + dimensões (com compressão para reduzir payload)
   const lerImagemComDimensoes = (file: File | null | undefined): Promise<{ base64: string; width: number; height: number; contentType: string }> =>
     new Promise((resolve) => {
-      if (!file) { resolve({ base64: '', width: 800, height: 600, contentType: 'image/jpeg' }); return; }
+      if (!file || !(file instanceof Blob)) { resolve({ base64: '', width: 0, height: 0, contentType: 'image/jpeg' }); return; }
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
