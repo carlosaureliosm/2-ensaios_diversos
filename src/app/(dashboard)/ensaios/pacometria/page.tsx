@@ -197,6 +197,7 @@ function svgOpcao(id: OpcaoAcessibilidade): string {
   const arrows = `<defs><marker id="arr${id}" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L0,4 L4,2 z" fill="#1A2340"/></marker></defs>`;
 
   if (id === 'A') {
+    // 0 faces obstruídas — pilar isolado
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
       <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
       ${barras3x3()}
@@ -205,9 +206,12 @@ function svgOpcao(id: OpcaoAcessibilidade): string {
   }
 
   if (id === 'B') {
-    // Obstrução: topo, esquerda, direita
+    // 3 faces obstruídas: topo, esquerda, direita — apenas base (1X) livre
+    const hTop    = `<rect x="${ex}" y="0" width="${ew}" height="${ey}" fill="${hFill}"/>`;
+    const hLeft   = `<rect x="0" y="${ey}" width="${ex}" height="${eh}" fill="${hFill}"/>`;
+    const hRight  = `<rect x="${ex + ew}" y="${ey}" width="${W - ex - ew}" height="${eh}" fill="${hFill}"/>`;
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
-      <rect x="0" y="0" width="${W}" height="${H}" fill="${hFill}"/>
+      ${hTop}${hLeft}${hRight}
       <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
       ${barras3x3()}
       ${cotaX}
@@ -215,9 +219,11 @@ function svgOpcao(id: OpcaoAcessibilidade): string {
   }
 
   if (id === 'C') {
-    // Obstrução: topo e direita
+    // 2 faces obstruídas: topo e direita — base (1X) e esquerda (1Y) livres
+    const hTop   = `<rect x="${ex}" y="0" width="${ew}" height="${ey}" fill="${hFill}"/>`;
+    const hRight = `<rect x="${ex + ew}" y="${ey}" width="${W - ex - ew}" height="${eh}" fill="${hFill}"/>`;
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
-      <rect x="0" y="0" width="${W}" height="${H}" fill="${hFill}"/>
+      ${hTop}${hRight}
       <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
       ${barras3x3()}
       ${cotaX}${cotaY}
@@ -225,9 +231,10 @@ function svgOpcao(id: OpcaoAcessibilidade): string {
   }
 
   if (id === 'D') {
-    // Obstrução: apenas topo
+    // 1 face obstruída: apenas topo — base, esquerda e direita livres
+    const hTop = `<rect x="${ex}" y="0" width="${ew}" height="${ey}" fill="${hFill}"/>`;
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
-      <rect x="0" y="0" width="${W}" height="${ey + 2}" fill="${hFill}"/>
+      ${hTop}
       <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
       ${barras3x3()}
       ${cotaX}${cotaY}
