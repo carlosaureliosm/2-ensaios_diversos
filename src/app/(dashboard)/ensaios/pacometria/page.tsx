@@ -274,6 +274,7 @@ function SvgSecao({ X, Y, C1, C2, faces, barras }: { X: number; Y: number; C1: n
   const ox = (W - cw) / 2, oy = (H - ch) / 2;
   const c1 = C1 * sc, c2 = C2 * sc;
   const BAR = Math.max(3, Math.min(6, sc * 0.7));
+  const cv = Math.min(cw, ch) * 0.12;
 
   function barsInFace(face: string) {
     const n = barras[face] || 2;
@@ -293,7 +294,7 @@ function SvgSecao({ X, Y, C1, C2, faces, barras }: { X: number; Y: number; C1: n
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace' }}>
       <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-      <rect x={ox + c1 - BAR} y={oy + c2 - BAR} width={cw - 2 * c1 + 2 * BAR} height={ch - 2 * c2 + 2 * BAR} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
+      <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
       {(['1X', '2X', '1Y', '2Y'] as string[]).map(f =>
         faces.includes(f) ? barsInFace(f).map((p, i) => (
           <g key={`${f}-${i}`}>
@@ -521,15 +522,12 @@ function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: ModalAmos
                 {isCirc ? (
                   <>
                     <Campo label="Diâmetro D (cm)" htmlFor="geom-d"><input id="geom-d" type="number" style={inputStyle} value={D} min={5} onChange={e => setD(Number(e.target.value))} /></Campo>
-                    <Campo label="Cobrimento C1 (cm)" htmlFor="geom-c1circ"><input id="geom-c1circ" type="number" style={inputStyle} value={C1} min={1} onChange={e => setC1(Number(e.target.value))} /></Campo>
                     <Campo label="Nº barras (total)" htmlFor="geom-bcirc"><input id="geom-bcirc" type="number" style={inputStyle} value={barras['circ'] ?? 6} min={1} onChange={e => setBarras(p => ({ ...p, circ: Number(e.target.value) }))} /></Campo>
                   </>
                 ) : (
                   <>
                     <Campo label="Dimensão X (cm)" htmlFor="geom-x"><input id="geom-x" type="number" style={inputStyle} value={X} min={5} onChange={e => setX(Number(e.target.value))} /></Campo>
                     <Campo label="Dimensão Y (cm)" htmlFor="geom-y"><input id="geom-y" type="number" style={inputStyle} value={Y} min={5} onChange={e => setY(Number(e.target.value))} /></Campo>
-                    <Campo label="Cobrimento C1 lateral (cm)" htmlFor="geom-c1"><input id="geom-c1" type="number" style={inputStyle} value={C1} min={1} onChange={e => setC1(Number(e.target.value))} /></Campo>
-                    <Campo label="Cobrimento C2 topo/base (cm)" htmlFor="geom-c2"><input id="geom-c2" type="number" style={inputStyle} value={C2} min={1} onChange={e => setC2(Number(e.target.value))} /></Campo>
                     {/* Barras por face habilitada */}
                     {(['1X', '2X', '1Y', '2Y'] as string[]).map(f => {
                       const enabled = faces.includes(f);
