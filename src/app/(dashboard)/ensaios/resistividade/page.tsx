@@ -101,31 +101,14 @@ function corClassificacao(c: string): string {
   return SUBTEXT;
 }
 
-function lerImagemComDimensoes(file: File | null | undefined): Promise<{ base64: string; width: number; height: number; contentType: string }> {
-  return new Promise((resolve) => {
-    if (!file) { resolve({ base64: '', width: 800, height: 600, contentType: 'image/jpeg' }); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1] ?? '';
-      const img = new Image();
-      img.onload = () => resolve({ base64, width: img.width, height: img.height, contentType: file.type });
-      img.onerror = () => resolve({ base64, width: 800, height: 600, contentType: file.type });
-      img.src = result;
-    };
-    reader.onerror = () => resolve({ base64: '', width: 800, height: 600, contentType: 'image/jpeg' });
-    reader.readAsDataURL(file);
-  });
-}
-
-// Comprime imagem antes do envio (max 900px, JPEG 0.72)
+// Comprime imagem antes do envio (max 800px, JPEG 0.65)
 function comprimirImagem(file: File): Promise<{ base64: string; width: number; height: number; contentType: string }> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 900;
+        const MAX = 800;
         let { width, height } = img;
         if (width > MAX || height > MAX) {
           if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
@@ -134,7 +117,7 @@ function comprimirImagem(file: File): Promise<{ base64: string; width: number; h
         const canvas = document.createElement('canvas');
         canvas.width = width; canvas.height = height;
         canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-        const base64 = canvas.toDataURL('image/jpeg', 0.72).split(',')[1] ?? '';
+        const base64 = canvas.toDataURL('image/jpeg', 0.65).split(',')[1] ?? '';
         resolve({ base64, width, height, contentType: 'image/jpeg' });
       };
       img.src = reader.result as string;
@@ -446,7 +429,7 @@ export default function ResistividadePage() {
       let respAssinaturaBase64 = '';
       let respAssinaturaContentType = 'image/png';
       if (outroResp && outroRespFile) {
-        const { base64, contentType } = await lerImagemComDimensoes(outroRespFile);
+        const { base64, contentType } = await comprimirImagem(outroRespFile);
         respAssinaturaBase64 = base64; respAssinaturaContentType = contentType;
       }
       const respAssinaturaUrl = (!outroResp && userAssinatura) ? userAssinatura : '';
@@ -489,11 +472,11 @@ export default function ResistividadePage() {
       let croquiWidth: number | null = null;
       let croquiHeight: number | null = null;
       if (usaCroqui && croquiFile) {
-        const { base64, contentType, width, height } = await lerImagemComDimensoes(croquiFile);
-        croquiBase64 = base64;
-        croquiContentType = contentType;
-        croquiWidth = width;
-        croquiHeight = height;
+        const comp = await comprimirImagem(croquiFile);
+        croquiBase64 = comp.base64;
+        croquiContentType = comp.contentType;
+        croquiWidth = comp.width;
+        croquiHeight = comp.height;
       }
 
       const payload = {
