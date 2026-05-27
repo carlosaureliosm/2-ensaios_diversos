@@ -4,7 +4,8 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "PowerShell(Get-ChildItem \"g:\\\\Meu Drive\\\\Programação\\\\TECOMAT\\\\2-ensaios_diversos\\\\node_modules\" -Directory | Where-Object { $_.Name -match \"vitest|vite\" } | Select-Object Name)"
+      "PowerShell(Get-ChildItem \"g:\\\\Meu Drive\\\\Programação\\\\TECOMAT\\\\2-ensaios_diversos\\\\node_modules\" -Directory | Where-Object { $_.Name -match \"vitest|vite\" } | Select-Object Name)",
+      "Bash(python -X utf8 patch_docx.py)"
     ]
   }
 }
