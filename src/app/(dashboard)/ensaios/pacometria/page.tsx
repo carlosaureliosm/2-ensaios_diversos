@@ -544,10 +544,10 @@ function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: ModalAmos
               <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0', background: BG, borderRadius: 10, border: `1px solid ${BORDER}` }}>
                 {isCirc ? (
                   <svg width={180} height={160} viewBox="0 0 180 160">
-                    {(() => { const r = Math.min(60, D * 1.1), cx = 90, cy = 75; const nb = barras['circ'] || 6; const c1s = C1 * r / D * 2; return (<g>
+                    {(() => { const r = Math.min(60, D * 1.1), cx = 90, cy = 75; const nb = barras['circ'] || 6; return (<g>
                       <circle cx={cx} cy={cy} r={r} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-                      <circle cx={cx} cy={cy} r={r - c1s} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
-                      {Array.from({ length: nb }, (_, i) => { const ang = (2 * Math.PI / nb) * i - Math.PI / 2; const bx = cx + (r - c1s) * Math.cos(ang), by = cy + (r - c1s) * Math.sin(ang); return (<g key={i}><circle cx={bx} cy={by} r={5} fill="white" stroke="#2563EB" strokeWidth={1.5} /><circle cx={bx} cy={by} r={2.5} fill="#2563EB" /></g>); })}
+                      <circle cx={cx} cy={cy} r={r * 0.75} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
+                      {Array.from({ length: nb }, (_, i) => { const ang = (2 * Math.PI / nb) * i - Math.PI / 2; const bx = cx + (r * 0.75) * Math.cos(ang), by = cy + (r * 0.75) * Math.sin(ang); return (<g key={i}><circle cx={bx} cy={by} r={5} fill="white" stroke="#2563EB" strokeWidth={1.5} /><circle cx={bx} cy={by} r={2.5} fill="#2563EB" /></g>); })}
                       <text x={cx} y={cy + r + 16} textAnchor="middle" fontSize={9} fill={GOLD}>⌀ {D} cm</text>
                     </g>); })()}
                   </svg>
