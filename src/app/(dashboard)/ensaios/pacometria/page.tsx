@@ -586,49 +586,39 @@ function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: ModalAmos
                           </Campo>
                         </div>
                         <div style={{ height: 1, background: BORDER, marginBottom: 12 }} />
-                        {/* Cobrimentos */}
-                        <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cobrimento por estribo (mm)</p>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px 10px', marginBottom: 12 }}>
-                          {fd.cob.map((v, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={{ fontSize: 11, color: col, fontWeight: 700, minWidth: 24 }}>C{i + 1}</span>
-                              <input type="number" inputMode="decimal" value={v} min={0} placeholder="mm" style={{ ...inputStyle, flex: 1, padding: '6px 8px', fontSize: 12 }} onChange={e => updateFaceData(face, f => { const c = [...f.cob]; c[i] = e.target.value; return { ...f, cob: c }; })} />
-                              <span style={{ fontSize: 10, color: SUBTEXT }}>mm</span>
-                            </div>
-                          ))}
+                        {/* Tabela compacta por estribo */}
+                        <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: PRIMARY }}>
+                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center', width: 56 }}>Estribo</th>
+                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Cobrimento (mm)</th>
+                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. Estribos (cm)</th>
+                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. Long. (cm)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {Array.from({ length: fd.nEstribos }, (_, i) => (
+                                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#F8F9FA', borderBottom: `1px solid ${BORDER}` }}>
+                                  <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 700, color: col, textAlign: 'center' }}>C{i + 1}</td>
+                                  <td style={{ padding: '4px 6px' }}>
+                                    <input type="text" inputMode="decimal" value={fd.cob[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const c = [...f.cob]; c[i] = e.target.value; return { ...f, cob: c }; })} />
+                                  </td>
+                                  <td style={{ padding: '4px 6px' }}>
+                                    {i < fd.nEstribos - 1
+                                      ? <input type="text" inputMode="decimal" value={fd.espV[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const ev = [...f.espV]; ev[i] = e.target.value; return { ...f, espV: ev }; })} />
+                                      : <span style={{ display: 'block', textAlign: 'center', color: SUBTEXT, fontSize: 12 }}>—</span>}
+                                  </td>
+                                  <td style={{ padding: '4px 6px' }}>
+                                    {i < fd.espH.length
+                                      ? <input type="text" inputMode="decimal" value={fd.espH[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const eh = [...f.espH]; eh[i] = e.target.value; return { ...f, espH: eh }; })} />
+                                      : <span style={{ display: 'block', textAlign: 'center', color: SUBTEXT, fontSize: 12 }}>—</span>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
-                        {/* Espaçamentos estribos */}
-                        {fd.espV.length > 0 && (
-                          <>
-                            <div style={{ height: 1, background: BORDER, marginBottom: 12 }} />
-                            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Espaçamento entre estribos (cm)</p>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px 10px', marginBottom: 12 }}>
-                              {fd.espV.map((v, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                  <span style={{ fontSize: 11, color: GOLD, fontWeight: 700, minWidth: 24 }}>E{i + 1}</span>
-                                  <input type="number" inputMode="decimal" value={v} min={0} placeholder="cm" style={{ ...inputStyle, flex: 1, padding: '6px 8px', fontSize: 12 }} onChange={e => { updateFaceData(face, f => { const ev = [...f.espV]; ev[i] = e.target.value; return { ...f, espV: ev }; }); }} />
-                                  <span style={{ fontSize: 10, color: SUBTEXT }}>cm</span>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                        {/* Espaçamentos barras */}
-                        {fd.espH.length > 0 && (
-                          <>
-                            <div style={{ height: 1, background: BORDER, marginBottom: 12 }} />
-                            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Espaçamento entre barras longitudinais (cm)</p>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px 10px' }}>
-                              {fd.espH.map((v, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                  <span style={{ fontSize: 11, color: GOLD, fontWeight: 700, minWidth: 24 }}>E{i + 1}</span>
-                                  <input type="number" inputMode="decimal" value={v} min={0} placeholder="cm" style={{ ...inputStyle, flex: 1, padding: '6px 8px', fontSize: 12 }} onChange={e => updateFaceData(face, f => { const eh = [...f.espH]; eh[i] = e.target.value; return { ...f, espH: eh }; })} />
-                                  <span style={{ fontSize: 10, color: SUBTEXT }}>cm</span>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
                       </div>
                     </div>
                     {fi < faces.length - 1 && <div style={{ height: 1, background: BORDER, marginTop: 20 }} />}
