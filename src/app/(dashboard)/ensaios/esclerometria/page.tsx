@@ -30,6 +30,7 @@ type Cabecalho = {
 
 type ObraPonto = { id: string; amostra: string; posicao: Posicao; impactosRaw: string[]; };
 type ObraGrupo = { id: string; nome: string; pontos: ObraPonto[]; savedAt: string; };
+type CroquiImagem = { id: string; file: File; preview: string; legenda: string };
 
 const POSICOES: Posicao[] = ['0°', '+90°', '-90°'];
 const LS_KEY      = 'tecomat_esclerometria_v1';
@@ -193,10 +194,9 @@ export default function EsclerometriaPage() {
   const [fotoGeralFile,    setFotoGeralFile]    = useState<File | null>(null);
   const [fotoGeralPreview, setFotoGeralPreview] = useState<string | null>(null);
   const fotoGeralRef = useRef<HTMLInputElement>(null);
-  // Croqui
+  // Croqui (N imagens, cada uma com legenda própria)
   const [usarCroqui,    setUsarCroqui]    = useState(false);
-  const [croquiFile,    setCroquiFile]    = useState<File | null>(null);
-  const [croquiPreview, setCroquiPreview] = useState<string | null>(null);
+  const [croquiImagens, setCroquiImagens] = useState<CroquiImagem[]>([]);
   const croquiRef = useRef<HTMLInputElement>(null);
 
   const [amostras,    setAmostras]    = useState<AmostraRow[]>([]);
@@ -318,7 +318,7 @@ export default function EsclerometriaPage() {
     setCoordenadas('');
     setUsarMotivacao(false); setMotivacao('');
     setUsarFotoGeral(false); setFotoGeralFile(null); setFotoGeralPreview(null);
-    setUsarCroqui(false); setCroquiFile(null); setCroquiPreview(null);
+    setUsarCroqui(false); setCroquiImagens([]);
     localStorage.removeItem(LS_KEY);
   };
 
@@ -412,11 +412,13 @@ export default function EsclerometriaPage() {
           const r = await lerImagemComDimensoes(fotoGeralFile);
           return { fotoGeralBase64: r.base64, fotoGeralContentType: r.contentType, fotoGeralWidth: r.width, fotoGeralHeight: r.height };
         })() : {}),
-        // Croqui
-        ...(usarCroqui && croquiFile ? await (async () => {
-          const r = await lerImagemComDimensoes(croquiFile);
-          return { croquiBase64: r.base64, croquiContentType: r.contentType, croquiWidth: r.width, croquiHeight: r.height };
-        })() : {}),
+        // Croqui (N imagens)
+        ...(usarCroqui && croquiImagens.length > 0 ? {
+          croquiImagens: await Promise.all(croquiImagens.map(async (img) => {
+            const r = await lerImagemComDimensoes(img.file);
+            return { base64: r.base64, contentType: r.contentType, width: r.width, height: r.height, legenda: img.legenda };
+          })),
+        } : {}),
         // Amostras (apenas válidas) + fotos do memorial
         amostras: await Promise.all(
           amostras
@@ -939,22 +941,49 @@ export default function EsclerometriaPage() {
               {/* Croqui */}
               <div style={{ paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarCroqui ? 12 : 0 }}>
-                  <input type="checkbox" checked={usarCroqui} onChange={e => { setUsarCroqui(e.target.checked); if (!e.target.checked) { setCroquiFile(null); setCroquiPreview(null); if (croquiRef.current) croquiRef.current.value = ''; } }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
+                  <input type="checkbox" checked={usarCroqui} onChange={e => { setUsarCroqui(e.target.checked); if (!e.target.checked) { setCroquiImagens([]); if (croquiRef.current) croquiRef.current.value = ''; } }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: usarCroqui ? PRIMARY : SUBTEXT }}>Incluir croqui com indicação dos elementos (Figura 3)</span>
                 </label>
                 {usarCroqui && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', animation: 'fadeIn 0.15s ease' }}>
-                    <input ref={croquiRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; setCroquiFile(f); setCroquiPreview(URL.createObjectURL(f)); }} />
-                    <button onClick={() => croquiRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
-                      {croquiPreview ? '↻ Trocar arquivo' : 'Escolher arquivo'}
-                    </button>
-                    {croquiPreview && (
-                      <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, animation: 'fadeIn 0.15s ease' }}>
+                    <input
+                      ref={croquiRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={e => {
+                        const files = Array.from(e.target.files ?? []);
+                        if (files.length === 0) return;
+                        setCroquiImagens(prev => [
+                          ...prev,
+                          ...files.map(f => ({ id: newId(), file: f, preview: URL.createObjectURL(f), legenda: 'Indicação dos elementos ensaiados' })),
+                        ]);
+                        e.target.value = '';
+                      }}
+                    />
+                    <div>
+                      <button onClick={() => croquiRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
+                        + Adicionar imagem{croquiImagens.length > 0 ? 's' : ''}
+                      </button>
+                    </div>
+                    {croquiImagens.map((img, i) => (
+                      <div key={img.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: 10, background: '#FAFBFD', border: `1px solid ${BORDER}`, borderRadius: 8 }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={croquiPreview} alt="Prévia croqui" style={{ maxHeight: 60, maxWidth: 200, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 4, background: '#fff' }} />
-                        <button onClick={() => { setCroquiFile(null); setCroquiPreview(null); if (croquiRef.current) croquiRef.current.value = ''; }} style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>Remover</button>
-                      </>
-                    )}
+                        <img src={img.preview} alt={`Prévia croqui ${i + 1}`} style={{ maxHeight: 60, maxWidth: 120, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 4, background: '#fff' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 200 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT }}>Figura {i + 1} — legenda</span>
+                          <input
+                            type="text"
+                            value={img.legenda}
+                            onChange={e => { const v = e.target.value; setCroquiImagens(prev => prev.map(it => it.id === img.id ? { ...it, legenda: v } : it)); }}
+                            placeholder="Legenda da imagem…"
+                            style={{ ...inputStyle, padding: '6px 10px', fontSize: 12 }}
+                          />
+                        </div>
+                        <button onClick={() => setCroquiImagens(prev => prev.filter(it => it.id !== img.id))} style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>Remover</button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

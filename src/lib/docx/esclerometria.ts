@@ -184,6 +184,74 @@ export function injetarCroqui(zip: PizZip, imgBuffer: Buffer, contentType: strin
   }
 }
 
+/** Escapa caracteres especiais de XML em texto livre. */
+export function escapeXml(texto: string): string {
+  return texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * Injeta N imagens de croqui dos elementos inspecionados (15 cm de largura, altura
+ * proporcional) no lugar do placeholder `CROQUI_PLACEHOLDER`, cada uma seguida da
+ * sua própria legenda "Foto / Legenda", empilhadas uma abaixo da outra. A numeração
+ * de cada legenda usa um campo `SEQ Figura` (auto-atualizado pelo Word), de forma
+ * que o número acompanha automaticamente a quantidade de imagens inseridas.
+ * @param zip - Arquivo DOCX aberto como PizZip.
+ * @param imagens - Lista de imagens com buffer, contentType, largura, altura e legenda.
+ */
+export function injetarCroquiMultiplo(
+  zip: PizZip,
+  imagens: Array<{ buffer: Buffer; contentType: string; width: number; height: number; legenda: string }>,
+): void {
+  if (imagens.length === 0) return;
+
+  imagens.forEach((img, i) => {
+    registrarImagem(zip, img.buffer, img.contentType, `croqui_elementos_${i + 1}`, `rId${904 + i}`);
+  });
+
+  const cx = cmParaEmu(15);
+
+  let blocos = '';
+  imagens.forEach((img, i) => {
+    const rId = `rId${904 + i}`;
+    const docPrId = 904 + i;
+    const cy = Math.round(cx * img.height / img.width);
+    const drawing = buildDrawingXml(rId, docPrId, `CroquiElementos${i + 1}`, cx, cy);
+
+    const paraImagem =
+      `<w:p><w:pPr><w:keepNext/><w:jc w:val="center"/></w:pPr>` +
+      `<w:r><w:rPr><w:noProof/></w:rPr>${drawing}</w:r></w:p>`;
+
+    const paraLegenda =
+      `<w:p><w:pPr><w:pStyle w:val="Legenda"/><w:jc w:val="center"/></w:pPr>` +
+      `<w:r><w:t xml:space="preserve">Figura </w:t></w:r>` +
+      `<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>` +
+      `<w:r><w:instrText xml:space="preserve"> SEQ Figura \\* ARABIC </w:instrText></w:r>` +
+      `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
+      `<w:r><w:rPr><w:noProof/></w:rPr><w:t>${i + 1}</w:t></w:r>` +
+      `<w:r><w:fldChar w:fldCharType="end"/></w:r>` +
+      `<w:r><w:t xml:space="preserve"> – ${escapeXml(img.legenda)}</w:t></w:r>` +
+      `</w:p>`;
+
+    blocos += paraImagem + paraLegenda;
+  });
+
+  const docFile = zip.file('word/document.xml');
+  if (!docFile) return;
+  let docXml = docFile.asText();
+
+  // Substitui o parágrafo com o placeholder de imagem + o parágrafo de legenda
+  // estático original pelos N blocos (imagem + legenda) gerados acima.
+  const blocoOriginalRegex = /<w:p\b(?:(?!<\/w:p>)[\s\S])*?CROQUI_PLACEHOLDER(?:(?!<\/w:p>)[\s\S])*?<\/w:p><w:p\b(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/;
+  docXml = docXml.replace(blocoOriginalRegex, blocos);
+
+  zip.file('word/document.xml', docXml);
+}
+
 /**
  * Injeta memorial fotográfico em grade 2×N substituindo a tabela que contém `MEMORIAL_PLACEHOLDER`.
  * Cada foto é renderizada com 4,5 cm de altura e largura proporcional.

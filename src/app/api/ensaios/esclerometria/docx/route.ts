@@ -20,7 +20,7 @@ import {
   injetarAssinatura,
   injetarMapa,
   injetarFotoGeral,
-  injetarCroqui,
+  injetarCroquiMultiplo,
   injetarMemorial,
   atualizarSumario,
 } from '@/lib/docx/esclerometria';
@@ -59,11 +59,14 @@ type RequestBody = {
   fotoGeralContentType?: string;
   fotoGeralWidth?: number;
   fotoGeralHeight?: number;
-  // Croqui (opcional, checkbox no site)
-  croquiBase64?: string;
-  croquiContentType?: string;
-  croquiWidth?: number;
-  croquiHeight?: number;
+  // Croqui (opcional, checkbox no site) — N imagens, cada uma com legenda própria
+  croquiImagens?: Array<{
+    base64: string;
+    contentType: string;
+    width: number;
+    height: number;
+    legenda: string;
+  }>;
 };
 
 // ── Handler ────────────────────────────────────────────────────
@@ -97,10 +100,16 @@ export async function POST(req: NextRequest) {
       ? Buffer.from(body.fotoGeralBase64, 'base64')
       : null;
 
-    // ── Croqui ──────────────────────────────────────────────────
-    const croquiBuffer = body.croquiBase64
-      ? Buffer.from(body.croquiBase64, 'base64')
-      : null;
+    // ── Croqui (N imagens) ──────────────────────────────────────
+    const croquiImagens = (body.croquiImagens ?? [])
+      .filter(img => img.base64 && img.width && img.height)
+      .map(img => ({
+        buffer: Buffer.from(img.base64, 'base64'),
+        contentType: img.contentType || 'image/jpeg',
+        width: img.width,
+        height: img.height,
+        legenda: img.legenda || '',
+      }));
 
     // ── Fotos do memorial ───────────────────────────────────────
     const fotosMemorial = (body.amostras ?? [])
@@ -161,8 +170,8 @@ export async function POST(req: NextRequest) {
       motivacao:        body.motivacao || '',
       foto_geral:       fotoGeralBuffer ? true : false,
       foto_geral_imagem: fotoGeralBuffer ? 'FOTO_GERAL_PLACEHOLDER' : '',
-      croqui:           croquiBuffer ? true : false,
-      croqui_imagem:    croquiBuffer ? 'CROQUI_PLACEHOLDER' : '',
+      croqui:           croquiImagens.length > 0,
+      croqui_imagem:    croquiImagens.length > 0 ? 'CROQUI_PLACEHOLDER' : '',
       fotos_memorial:   fotosMemorial.length > 0 ? true : false,
     };
 
@@ -191,14 +200,8 @@ export async function POST(req: NextRequest) {
         body.fotoGeralHeight,
       );
     }
-    if (croquiBuffer && body.croquiWidth && body.croquiHeight) {
-      injetarCroqui(
-        renderedZip,
-        croquiBuffer,
-        body.croquiContentType || 'image/jpeg',
-        body.croquiWidth,
-        body.croquiHeight,
-      );
+    if (croquiImagens.length > 0) {
+      injetarCroquiMultiplo(renderedZip, croquiImagens);
     }
     if (fotosMemorial.length > 0) {
       injetarMemorial(renderedZip, fotosMemorial);
