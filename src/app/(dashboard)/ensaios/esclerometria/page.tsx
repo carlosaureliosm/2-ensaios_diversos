@@ -38,7 +38,13 @@ const LS_OBRA_KEY = 'tecomat_esclerometria_obra_v2';
 
 function fmt(v: number | null, dec = 2): string { return v === null ? '—' : v.toFixed(dec); }
 
-function salvarLocal(cab: Cabecalho, amostras: AmostraRow[]) { try { localStorage.setItem(LS_KEY, JSON.stringify({ cab, amostras })); } catch {} }
+function salvarLocal(cab: Cabecalho, amostras: AmostraRow[]) {
+  try {
+    // Arquivos de foto (File/blob URL) não sobrevivem à serialização — não persistir.
+    const amostrasSemFoto = amostras.map(({ fotoFile, fotoPreview, fotoWidth, fotoHeight, ...resto }) => resto);
+    localStorage.setItem(LS_KEY, JSON.stringify({ cab, amostras: amostrasSemFoto }));
+  } catch {}
+}
 function carregarLocal(): { cab: Cabecalho; amostras: AmostraRow[] } | null {
   try {
     const r = localStorage.getItem(LS_KEY);
@@ -48,6 +54,12 @@ function carregarLocal(): { cab: Cabecalho; amostras: AmostraRow[] } | null {
     if (parsed.cab) {
       delete parsed.cab.respNome;
       delete parsed.cab.respCrea;
+    }
+    // Nenhuma foto sobrevive ao reload — garante que o ícone não indique foto anexada indevidamente.
+    if (Array.isArray(parsed.amostras)) {
+      parsed.amostras = parsed.amostras.map((a: AmostraRow) => ({
+        ...a, fotoFile: null, fotoPreview: null, fotoWidth: undefined, fotoHeight: undefined,
+      }));
     }
     return parsed;
   } catch { return null; }
