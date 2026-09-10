@@ -260,7 +260,7 @@ export default function EsclerometriaPage() {
   const processarAmostra = () => {
     if (!nomeAmostra.trim() || !impactos.some(v => v.trim())) return;
     if (editandoId) {
-      setAmostras(prev => prev.map(a => a.id !== editandoId ? a : { ...calcularAmostra(nomeAmostra, posicao, impactos, coefBigorna, a.item), id: a.id, item: a.item }));
+      setAmostras(prev => prev.map(a => a.id !== editandoId ? a : { ...calcularAmostra(nomeAmostra, posicao, impactos, coefBigorna, a.item), id: a.id, item: a.item, fotoFile: a.fotoFile, fotoPreview: a.fotoPreview, fotoWidth: a.fotoWidth, fotoHeight: a.fotoHeight }));
       setEditandoId(null);
     } else {
       const item = amostras.length > 0 ? amostras[amostras.length - 1].item + 1 : 1;
@@ -1028,8 +1028,12 @@ export default function EsclerometriaPage() {
                   {impactos.map((v, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
-                      <input ref={el => { impactoRefs.current[i] = el; }} type="text" inputMode="decimal" value={v}
-                        onChange={e => { const n = [...impactos]; n[i] = onlyDecimal(e.target.value); setImpactos(n); }}
+                      <input ref={el => { impactoRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={2} value={v}
+                        onChange={e => {
+                          const val = onlyNumbers(e.target.value).slice(0, 2);
+                          const n = [...impactos]; n[i] = val; setImpactos(n);
+                          if (val.length === 2) { const nx = impactoRefs.current[i + 1]; if (nx) nx.focus(); }
+                        }}
                         onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const nx = impactoRefs.current[i + 1]; if (nx) nx.focus(); else processarAmostra(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = impactoRefs.current[i - 1]; if (pv) pv.focus(); } else if (e.key === 'Enter') { e.preventDefault(); const nx = impactoRefs.current[i + 1]; if (nx) nx.focus(); else processarAmostra(); } }}
                         style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? '#F0F4FC' : '#fff', outline: 'none', transition: 'all 0.1s' }}
                         onFocus={e => { e.target.style.borderColor = PRIMARY; e.target.style.background = '#E8EFFE'; }}
@@ -1184,8 +1188,12 @@ export default function EsclerometriaPage() {
                           {pontImpactos.map((v, i) => (
                             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                               <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
-                              <input ref={el => { pontImpactoRefs.current[i] = el; }} type="text" inputMode="decimal" value={v}
-                                onChange={e => { const n = [...pontImpactos]; n[i] = onlyDecimal(e.target.value); setPontImpactos(n); }}
+                              <input ref={el => { pontImpactoRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={2} value={v}
+                                onChange={e => {
+                                  const val = onlyNumbers(e.target.value).slice(0, 2);
+                                  const n = [...pontImpactos]; n[i] = val; setPontImpactos(n);
+                                  if (val.length === 2) { const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); }
+                                }}
                                 onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = pontImpactoRefs.current[i - 1]; if (pv) pv.focus(); } else if (e.key === 'Enter') { e.preventDefault(); const nx = pontImpactoRefs.current[i + 1]; if (nx) nx.focus(); else salvarPonto(); } }}
                                 style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? GREEN + '66' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? GREEN_LIGHT : '#fff', outline: 'none', transition: 'all 0.1s' }}
                                 onFocus={e => { e.target.style.borderColor = GREEN; e.target.style.background = '#E8F5EE'; }}
