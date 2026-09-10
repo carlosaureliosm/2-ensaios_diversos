@@ -226,15 +226,16 @@ export function injetarCroquiMultiplo(
       `<w:p><w:pPr><w:keepNext/><w:jc w:val="center"/></w:pPr>` +
       `<w:r><w:rPr><w:noProof/></w:rPr>${drawing}</w:r></w:p>`;
 
+    const rPrLegendaCroqui = `<w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/></w:rPr>`;
     const paraLegenda =
-      `<w:p><w:pPr><w:pStyle w:val="Legenda"/><w:jc w:val="center"/></w:pPr>` +
-      `<w:r><w:t xml:space="preserve">Figura </w:t></w:r>` +
-      `<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>` +
-      `<w:r><w:instrText xml:space="preserve"> SEQ Figura \\* ARABIC </w:instrText></w:r>` +
-      `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
-      `<w:r><w:rPr><w:noProof/></w:rPr><w:t>${i + 1}</w:t></w:r>` +
-      `<w:r><w:fldChar w:fldCharType="end"/></w:r>` +
-      `<w:r><w:t xml:space="preserve"> – ${escapeXml(img.legenda)}</w:t></w:r>` +
+      `<w:p><w:pPr><w:pStyle w:val="Legenda"/><w:jc w:val="center"/><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/></w:rPr></w:pPr>` +
+      `<w:r>${rPrLegendaCroqui}<w:t xml:space="preserve">Figura </w:t></w:r>` +
+      `<w:r>${rPrLegendaCroqui}<w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>` +
+      `<w:r>${rPrLegendaCroqui}<w:instrText xml:space="preserve"> SEQ Figura \\* ARABIC </w:instrText></w:r>` +
+      `<w:r>${rPrLegendaCroqui}<w:fldChar w:fldCharType="separate"/></w:r>` +
+      `<w:r><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:noProof/></w:rPr><w:t>${i + 1}</w:t></w:r>` +
+      `<w:r>${rPrLegendaCroqui}<w:fldChar w:fldCharType="end"/></w:r>` +
+      `<w:r>${rPrLegendaCroqui}<w:t xml:space="preserve"> – ${escapeXml(img.legenda)}</w:t></w:r>` +
       `</w:p>`;
 
     blocos += paraImagem + paraLegenda;
@@ -254,7 +255,7 @@ export function injetarCroquiMultiplo(
 
 /**
  * Injeta memorial fotográfico em grade 2×N substituindo a tabela que contém `MEMORIAL_PLACEHOLDER`.
- * Cada foto é renderizada com 4,5 cm de altura e largura proporcional.
+ * Cada foto é renderizada com tamanho fixo de 8 cm de largura por 6 cm de altura.
  * @param zip - Arquivo DOCX aberto como PizZip.
  * @param fotos - Lista de fotos com buffer, contentType, largura, altura e legenda.
  */
@@ -268,7 +269,8 @@ export function injetarMemorial(
     registrarImagem(zip, foto.buffer, foto.contentType, `memorial_foto_${i + 1}`, `rId${910 + i}`);
   });
 
-  const cyFixo = cmParaEmu(4.5);
+  const cxFixo = cmParaEmu(8);
+  const cyFixo = cmParaEmu(6);
   const cxCelula = cmParaEmu(8);
 
   const rPrLegenda = `<w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>`;
@@ -290,8 +292,7 @@ export function injetarMemorial(
     const esq = fotos[i];
     const dir = fotos[i + 1] ?? null;
 
-    const cxEsq = Math.round(cyFixo * esq.largura / esq.altura);
-    const drawEsq = buildDrawingXml(`rId${910 + i}`, 910 + i, `MemorialFoto${i + 1}`, cxEsq, cyFixo);
+    const drawEsq = buildDrawingXml(`rId${910 + i}`, 910 + i, `MemorialFoto${i + 1}`, cxFixo, cyFixo);
     const celulaEsq =
       `<w:tc>${tcPr(5027)}` +
       `<w:p>${pPrCentro}<w:r>${rPrLegenda}${drawEsq}</w:r></w:p>` +
@@ -300,8 +301,7 @@ export function injetarMemorial(
 
     let celulaDir = '';
     if (dir) {
-      const cxDir = Math.round(cyFixo * dir.largura / dir.altura);
-      const drawDir = buildDrawingXml(`rId${910 + i + 1}`, 910 + i + 1, `MemorialFoto${i + 2}`, cxDir, cyFixo);
+      const drawDir = buildDrawingXml(`rId${910 + i + 1}`, 910 + i + 1, `MemorialFoto${i + 2}`, cxFixo, cyFixo);
       celulaDir =
         `<w:tc>${tcPr(5027)}` +
         `<w:p>${pPrCentro}<w:r>${rPrLegenda}${drawDir}</w:r></w:p>` +
