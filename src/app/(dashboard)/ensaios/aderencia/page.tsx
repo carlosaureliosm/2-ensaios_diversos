@@ -25,11 +25,49 @@ const BG = '#F8F9FA';
 const BORDER = '#E8EAF0';
 const TEXT = '#1A2340';
 const SUBTEXT = '#6B7490';
+const SUCCESS = '#1A7A44';
 const DANGER = '#C0392B';
 
 const MIN_SITUACOES = 1;
 const MAX_SITUACOES = 10;
 const NUM_CPS_PADRAO = 6;
+const LS_KEY = 'tecomat_aderencia_v1';
+
+// ── Autosave (localStorage) ──────────────────────────────────────
+// Fotos não são persistidas (mesma decisão do módulo esclerometria): só existem em
+// memória do navegador durante a sessão atual, para não gravar payload grande/serializado
+// no localStorage nem sugerir visualmente que uma foto sobreviveu quando na verdade foi perdida.
+type EstadoPersistido = {
+  etapa: 'config' | 'situacoes';
+  numSituacoes: number;
+  modeloPorSituacao: string[];
+  situacoes: SituacaoAderencia[];
+  situacaoAtual: number;
+};
+
+function removerFotos(situacoes: SituacaoAderencia[]): SituacaoAderencia[] {
+  return situacoes.map(s => ({
+    ...s,
+    corposDeProva: s.corposDeProva.map(cp => ({ ...cp, fotos: [null, null] as [FotoAnexo | null, FotoAnexo | null] })),
+  }));
+}
+
+function salvarLocal(estado: EstadoPersistido) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...estado, situacoes: removerFotos(estado.situacoes) }));
+  } catch {}
+}
+
+function carregarLocal(): EstadoPersistido | null {
+  try {
+    const r = localStorage.getItem(LS_KEY);
+    if (!r) return null;
+    const parsed = JSON.parse(r) as EstadoPersistido;
+    if (!Array.isArray(parsed.situacoes) || !Array.isArray(parsed.modeloPorSituacao)) return null;
+    parsed.situacoes = removerFotos(parsed.situacoes);
+    return parsed;
+  } catch { return null; }
+}
 
 function Campo({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
@@ -342,6 +380,7 @@ export default function AderenciaPage() {
   const [modeloPorSituacao, setModeloPorSituacao] = useState<string[]>([MODELOS_SISTEMA_CAMADAS[0].id]);
   const [situacoes, setSituacoes] = useState<SituacaoAderencia[]>([]);
   const [situacaoAtual, setSituacaoAtual] = useState(0);
+  const [salvoMsg, setSalvoMsg] = useState('');
 
   useEffect(() => {
     const sb = createClient();
@@ -349,6 +388,28 @@ export default function AderenciaPage() {
       if (!user) router.push('/login');
     });
   }, [router]);
+
+  // Carrega o autosave uma única vez, ao montar.
+  useEffect(() => {
+    const s = carregarLocal();
+    if (!s) return;
+    setEtapa(s.etapa);
+    setNumSituacoes(s.numSituacoes);
+    setModeloPorSituacao(s.modeloPorSituacao);
+    setSituacoes(s.situacoes);
+    setSituacaoAtual(s.situacaoAtual);
+  }, []);
+
+  // Autosave com debounce a cada mudança relevante (fotos são removidas antes de gravar).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      salvarLocal({ etapa, numSituacoes, modeloPorSituacao, situacoes, situacaoAtual });
+      setSalvoMsg('Salvo');
+      const t2 = setTimeout(() => setSalvoMsg(''), 1800);
+      return () => clearTimeout(t2);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [etapa, numSituacoes, modeloPorSituacao, situacoes, situacaoAtual]);
 
   function alterarNumSituacoes(n: number) {
     const clamped = Math.max(MIN_SITUACOES, Math.min(MAX_SITUACOES, n));
@@ -386,11 +447,19 @@ export default function AderenciaPage() {
       <Header paginaAtiva="ensaios" />
 
       <main style={{ maxWidth: 1180, margin: '0 auto', padding: '24px 20px 60px' }}>
-        <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, marginBottom: 20 }}>
-          <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Resistência de Aderência à Tração</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: SUBTEXT }}>
-            {etapa === 'config' ? 'Configuração inicial do relatório' : `Situação ${numeroRomano(situacaoAtual + 1)} de ${numeroRomano(situacoes.length)}`}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, marginBottom: 20 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Resistência de Aderência à Tração</h1>
+            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: SUBTEXT }}>
+              {etapa === 'config' ? 'Configuração inicial do relatório' : `Situação ${numeroRomano(situacaoAtual + 1)} de ${numeroRomano(situacoes.length)}`}
+            </p>
+          </div>
+          {salvoMsg && (
+            <span style={{ fontSize: 12, color: SUCCESS, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, paddingTop: 3 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+              {salvoMsg}
+            </span>
+          )}
         </div>
 
         {etapa === 'config' && (
