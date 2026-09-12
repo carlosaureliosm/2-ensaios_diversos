@@ -103,7 +103,8 @@ function tc(pctWidth, content, { header, align = 'center', shade } = {}) {
 
 function trow(cells, { header } = {}) {
   const trPr = header ? '<w:trPr><w:tblHeader/><w:jc w:val="center"/></w:trPr>' : '<w:trPr><w:jc w:val="center"/></w:trPr>';
-  return `<w:tr>${trPr}${cells}</w:tr>`;
+  const cellsXml = Array.isArray(cells) ? cells.join('') : cells;
+  return `<w:tr>${trPr}${cellsXml}</w:tr>`;
 }
 
 // ── Conteúdo estático ──────────────────────────────────────────
@@ -222,19 +223,24 @@ const formaRupturaCellParas = [
   para(run('[[/colunas]]', { size: 16 }), { jc: 'left' }),
 ];
 
+// A tag de loop [[#corposDeProva]]/[[/corposDeProva]] tem que ficar DENTRO do texto da
+// primeira/última célula da linha (nunca como <w:r> solto direto sob <w:tr>, que viola o
+// schema do OOXML e o Word recusa abrir) — mesmo padrão comprovado do [[#amostras]] do
+// esclerometria, onde a tag de abertura é o início do <w:t> da 1ª célula e a de fechamento
+// é o fim do <w:t> da última célula.
 const resDataCells =
-  tc(rcols.num, '[[numero]]') +
+  tc(rcols.num, [run('[[#corposDeProva]]'), run('[[numero]]')]) +
   tc(rcols.bloco, '[[bloco]]') +
   tc(rcols.junta, '[[junta]]') +
   tc(rcols.ra, '[[tensaoRa]]') +
   tc(rcols.prof, '[[profRuptura]]') +
   tc(rcols.forma, formaRupturaCellParas, { align: 'left' }) +
-  tc(rcols.loc, '[[localizacao]]', { align: 'left' });
+  tc(rcols.loc, [run('[[localizacao]]'), run('[[/corposDeProva]]')], { align: 'left' });
 
 const resWidths = [rcols.num, rcols.bloco, rcols.junta, rcols.ra, rcols.prof, rcols.forma, rcols.loc];
 parts.push(tbl(resWidths, [
   trow([resHeaderCells], { header: true }),
-  trow([run('[[#corposDeProva]]') + resDataCells + run('[[/corposDeProva]]')]),
+  trow([resDataCells]),
   trow([
     tc(rcols.num, 'MÉDIA', { header: false }) + tc(rcols.bloco, '-') + tc(rcols.junta, '-') +
     tc(rcols.ra, '[[raMedia]]') + tc(rcols.prof, '[[profRupturaMedia]]') +
