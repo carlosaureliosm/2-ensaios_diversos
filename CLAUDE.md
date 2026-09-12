@@ -106,7 +106,7 @@ A aba **FLS.** citada originalmente não existe na planilha real fornecida pelo 
 1. ✅ `src/modules/aderencia/types.ts` — tipos (Situação, CP/corpo de prova, modelo de sistema de camadas, cabeçalho).
 2. ✅ `src/modules/aderencia/modelosCamadas.ts` — 6 modelos pré-configurados (3 `piso`: sobre contrapiso, com cerâmica sobre contrapiso, cerâmica direto sobre concreto; 3 `parede`: com reboco, com cerâmica, com gesso), cada um com suas colunas de forma de ruptura.
 3. ✅ `src/modules/aderencia/svgEsquema.ts` — geração do esquema SVG (`svgPiso`/`svgParede`), validado visualmente contra os ícones reais extraídos da planilha.
-4. ⬜ Implementar a tela inicial de configuração (nº de situações + modelo de camadas por situação).
+4. ✅ `src/app/(dashboard)/ensaios/aderencia/page.tsx` — tela inicial de configuração: stepper de nº de situações (1-10) + seleção de modelo de camadas por situação (cards com thumbnail SVG), com o resultado confirmado exibido num resumo. Segue os padrões visuais/estruturais do módulo esclerometria (`Header` compartilhado, guard de auth via `supabase.auth.getUser()`, constantes de cor, `Campo`). Ainda não navega para o formulário por Situação (etapa 5) — só valida a configuração e mostra um resumo.
 5. ⬜ Implementar o formulário por Situação: cabeçalho da situação + tabela de corpos de prova (entrada de dados + cálculo automático de médias, DP, CV) + upload de fotos por CP.
 6. ⬜ Implementar autosave em localStorage (padrão `salvarLocal`/`carregarLocal` do pacometria).
 7. ⬜ Criar `public/modelo_aderencia.docx` a partir do modelo atual em Excel (repaginado).
