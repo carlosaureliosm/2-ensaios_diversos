@@ -1,7 +1,7 @@
 // Teste ponta a ponta da geração do laudo de Aderência (rota real + template real).
 // Define ADERENCIA_SAIDA=<caminho.docx> para gravar o arquivo gerado e abri-lo no Word.
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import PizZip from 'pizzip'
 import fs from 'fs'
@@ -9,6 +9,22 @@ import { POST } from '@/app/api/ensaios/aderencia/docx/route'
 import { MODELOS_SISTEMA_CAMADAS } from '@/modules/aderencia/modelosCamadas'
 import { criarCorpoDeProva } from '@/modules/aderencia/calculos'
 import type { FotoAnexo, SituacaoAderencia } from '@/modules/aderencia/types'
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'user-1' } } }) } }),
+}))
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => ({
+    storage: {
+      from: () => ({
+        download: async (p: string) =>
+          p.startsWith('user-1/')
+            ? { data: new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')]), error: null }
+            : { data: null, error: { message: 'nf' } },
+      }),
+    },
+  }),
+}))
 
 // PNG 1x1 válido
 const PNG_1X1 =
@@ -107,4 +123,24 @@ describe('geração DOCX de aderência (ponta a ponta)', () => {
     expect(zip.file('word/_rels/document.xml.rels')!.asText()).toContain('media/aderencia_img_35.png')
     expect(zip.file('[Content_Types].xml')!.asText()).toContain('Extension="png"')
   })
-})
+
+  it('baixa fotos enviadas só com path do Storage e rejeita pasta de outro usuário', async () => {
+    const mk = (path: string) => {
+      const s = situacao(1, 'piso-contrapiso', 2, false)
+      s.corposDeProva.forEach(cp => { cp.fotos = [{ base64: '', path, contentType: 'image/jpeg', width: 800, height: 600 }, null] })
+      return s
+    }
+    const corpo = (path: string) => ({
+      cabecalho: { rltNumero: '1', cliente: '', obra: '', construtora: '', endereco: '', dataEmissao: '', normas: { nbr13528_1: false, nbr13528_1_parte2: false, nbr13528_1_parte3: false, nbr13749: false, nbr13753: false, nbr13754: false, nbr13755: false } },
+      situacoes: [mk(path)],
+    })
+    const chamar = (b: unknown) => POST(new NextRequest('http://localhost/x', { method: 'POST', body: JSON.stringify(b) }))
+
+    const ok = await chamar(corpo('user-1/a.jpg'))
+    expect(ok.status).toBe(200)
+    const xml = new PizZip(Buffer.from(await ok.arrayBuffer())).file('word/document.xml')!.asText()
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(3) // esquema + 2 fotos
+
+    const negado = await chamar(corpo('outro-usuario/a.jpg'))
+    expect(negado.status).toBe(500)
+  })})

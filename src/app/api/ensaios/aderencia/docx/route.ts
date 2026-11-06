@@ -8,6 +8,10 @@ import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import path from 'path';
 import fs from 'fs';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
+import { BUCKET_FOTOS_ADERENCIA } from '@/lib/aderenciaStorage';
+import type { FotoAnexo } from '@/modules/aderencia/types';
 import { injetarAssinatura, atualizarSumario } from '@/lib/docx/esclerometria';
 import {
   montarDadosAderencia,
@@ -22,6 +26,32 @@ type RequestBody = AderenciaDocxPayload & {
   respAssinaturaContentType?: string;
 };
 
+/**
+ * Fotos de CP enviadas só com `path` (já no Supabase Storage) são baixadas aqui e preenchidas em
+ * `base64`, para que o restante da geração siga igual. Só aceita caminhos da pasta do próprio usuário.
+ */
+async function resolverFotosDoStorage(situacoes: AderenciaDocxPayload['situacoes']): Promise<void> {
+  const pendentes = situacoes.flatMap(s =>
+    s.corposDeProva.flatMap(cp => (cp.fotos ?? []).filter((f): f is FotoAnexo => !!f && !f.base64 && !!f.path)),
+  );
+  if (pendentes.length === 0) return;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Não autenticado.');
+
+  const admin = createAdminClient();
+  await Promise.all(
+    pendentes.map(async foto => {
+      const path = foto.path!;
+      if (!path.startsWith(`${user.id}/`) || path.includes('..')) throw new Error('Foto fora da pasta do usuário.');
+      const { data, error } = await admin.storage.from(BUCKET_FOTOS_ADERENCIA).download(path);
+      if (error || !data) throw new Error(`Foto não encontrada no Storage (${path}). Reenvie a foto.`);
+      foto.base64 = Buffer.from(await data.arrayBuffer()).toString('base64');
+    }),
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: RequestBody = await req.json();
@@ -29,6 +59,8 @@ export async function POST(req: NextRequest) {
     if (!body.cabecalho || !Array.isArray(body.situacoes) || body.situacoes.length === 0) {
       return NextResponse.json({ error: 'Payload inválido: cabecalho e situacoes são obrigatórios.' }, { status: 400 });
     }
+
+    await resolverFotosDoStorage(body.situacoes);
 
     // ── Assinatura (opcional) ───────────────────────────────────
     let assinaturaBuffer: Buffer | null = null;

@@ -165,6 +165,25 @@ function comprimirImagem(file: File): Promise<FotoAnexo> {
   });
 }
 
+// Envia a foto (JPEG já comprimido) para /api/ensaios/aderencia/foto. Retorna o `path` no Storage ou null se falhar.
+async function enviarFotoStorage(foto: FotoAnexo): Promise<string | null> {
+  try {
+    const blob = await (await fetch(`data:${foto.contentType};base64,${foto.base64}`)).blob();
+    const form = new FormData();
+    form.append('foto', blob, 'foto.jpg');
+    const res = await fetch('/api/ensaios/aderencia/foto', { method: 'POST', body: form });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return typeof json.path === 'string' ? json.path : null;
+  } catch {
+    return null;
+  }
+}
+
+function removerFotoStorage(path: string) {
+  fetch(`/api/ensaios/aderencia/foto?path=${encodeURIComponent(path)}`, { method: 'DELETE' }).catch(() => {});
+}
+
 function FotoSlot({ foto, onEscolher, onRemover, label }: { foto: FotoAnexo | null; onEscolher: (file: File) => void; onRemover: () => void; label: string }) {
   const id = `foto-${label}-${Math.random().toString(36).slice(2)}`;
   return (
@@ -216,7 +235,11 @@ function SituacaoForm({
   }
 
   async function escolherFoto(indice: number, slot: 0 | 1, file: File) {
-    const foto = await comprimirImagem(file);
+    let foto = await comprimirImagem(file);
+    // Envia a foto comprimida ao Supabase Storage; na geração do laudo só o `path` viaja no POST
+    // (evita estourar o limite de ~4,5 MB da Vercel). Se o envio falhar, mantém o base64 como fallback.
+    const path = await enviarFotoStorage(foto);
+    if (path) foto = { ...foto, path };
     const cp = situacao.corposDeProva[indice];
     const fotos: [FotoAnexo | null, FotoAnexo | null] = [...cp.fotos];
     fotos[slot] = foto;
@@ -225,6 +248,8 @@ function SituacaoForm({
 
   function removerFoto(indice: number, slot: 0 | 1) {
     const cp = situacao.corposDeProva[indice];
+    const antiga = cp.fotos[slot];
+    if (antiga?.path) removerFotoStorage(antiga.path);
     const fotos: [FotoAnexo | null, FotoAnexo | null] = [...cp.fotos];
     fotos[slot] = null;
     atualizarCP(indice, { ...cp, fotos });
@@ -490,12 +515,21 @@ export default function AderenciaPage() {
         })
       );
 
+      // Fotos já no Storage viajam só com `path` (sem base64) — o servidor baixa na geração.
+      const situacoesLeves = situacoesPayload.map(s => ({
+        ...s,
+        corposDeProva: s.corposDeProva.map(cp => ({
+          ...cp,
+          fotos: cp.fotos.map(f => (f?.path ? { ...f, base64: '' } : f)),
+        })),
+      }));
+
       const res = await fetch('/api/ensaios/aderencia/docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cabecalho,
-          situacoes: situacoesPayload,
+          situacoes: situacoesLeves,
           respNome: userName,
           respCrea: userCrea,
           respAssinaturaUrl: userAssinatura || '',

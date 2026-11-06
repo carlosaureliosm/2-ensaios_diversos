@@ -21,7 +21,10 @@ export interface AderenciaCabecalho {
 }
 
 export interface FotoAnexo {
+  /** Pré-visualização/payload. Pode ser '' quando a foto já está no Storage (usar `path`). */
   base64: string
+  /** Caminho no bucket Supabase `aderencia-fotos` (`<userId>/<uuid>.jpg`), quando já enviada. */
+  path?: string
   contentType: string
   width: number
   height: number
