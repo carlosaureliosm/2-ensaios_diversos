@@ -1,0 +1,110 @@
+// Teste ponta a ponta da geração do laudo de Aderência (rota real + template real).
+// Define ADERENCIA_SAIDA=<caminho.docx> para gravar o arquivo gerado e abri-lo no Word.
+
+import { describe, it, expect } from 'vitest'
+import { NextRequest } from 'next/server'
+import PizZip from 'pizzip'
+import fs from 'fs'
+import { POST } from '@/app/api/ensaios/aderencia/docx/route'
+import { MODELOS_SISTEMA_CAMADAS } from '@/modules/aderencia/modelosCamadas'
+import { criarCorpoDeProva } from '@/modules/aderencia/calculos'
+import type { FotoAnexo, SituacaoAderencia } from '@/modules/aderencia/types'
+
+// PNG 1x1 válido
+const PNG_1X1 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+const foto = (w: number, h: number): FotoAnexo => ({ base64: PNG_1X1, contentType: 'image/png', width: w, height: h })
+
+function situacao(numero: number, modeloId: string, nCPs: number, comFotos: boolean): SituacaoAderencia & { esquema: FotoAnexo } {
+  const modelo = MODELOS_SISTEMA_CAMADAS.find(m => m.id === modeloId)!
+  const cps = Array.from({ length: nCPs }, (_, i) => {
+    const cp = criarCorpoDeProva(i + 1, modelo.colunasFormaRuptura)
+    cp.bloco = `B${i + 1}`
+    cp.junta = i % 2 ? 'Sim' : 'Não'
+    cp.tensaoRa = 0.25 + i * 0.07
+    cp.profRuptura = 2 + i * 0.5
+    cp.localizacao = `Pano ${i + 1} & "teste" <ok>`
+    modelo.colunasFormaRuptura.forEach((c, k) => { cp.formaRuptura[c] = k === 0 ? 100 : 0 })
+    if (comFotos) cp.fotos = [foto(800, 600), foto(600, 800)]
+    return cp
+  })
+  return {
+    numero, tipoRevestimento: 'Cerâmica', dataEnsaio: '2026-10-05', numCPs: nCPs, dataAplicacao: '2026-08-01',
+    substrato: 'Alvenaria', idadeRupturaDias: '28', chapisco: 'Sim', chapiscoTraco: '1:3', emboco: 'Sim',
+    embocoTraco: '1:2:8', argamassaColante: 'AC-III', revestimento: 'Porcelanato', dimensoesCm: '60x60',
+    modeloCamadasId: modeloId, observacoesEsquema: 'Obs <1> & "2"', corposDeProva: cps,
+    umidadeMedia: 3.2, espessuraMediaRevestimento: 25, esquema: foto(220, 160),
+  }
+}
+
+describe('geração DOCX de aderência (ponta a ponta)', () => {
+  it('gera um laudo válido com 3 situações de modelos/colunas diferentes', async () => {
+    const [m0, m1, m2] = [
+      MODELOS_SISTEMA_CAMADAS.find(m => m.id === 'piso-contrapiso')!,
+      MODELOS_SISTEMA_CAMADAS.find(m => m.disposicao === 'parede' && m.colunasFormaRuptura.length >= 7)!,
+      MODELOS_SISTEMA_CAMADAS[1],
+    ]
+    const body = {
+      cabecalho: {
+        rltNumero: '45', cliente: 'Cliente & Cia', obra: 'Obra <X>', construtora: 'Construtora',
+        endereco: 'Rua A, 1', dataEmissao: '2026-11-06',
+        normas: { nbr13528_1: true, nbr13528_1_parte2: true, nbr13528_1_parte3: false, nbr13749: true, nbr13753: false, nbr13754: false, nbr13755: true },
+      },
+      situacoes: [situacao(1, m0.id, 4, true), situacao(2, m1.id, 12, true), situacao(3, m2.id, 6, false)],
+      respNome: 'Eng. Fulano', respCrea: '12345',
+    }
+
+    const req = new NextRequest('http://localhost/api/ensaios/aderencia/docx', { method: 'POST', body: JSON.stringify(body) })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const buf = Buffer.from(await res.arrayBuffer())
+
+    if (process.env.ADERENCIA_SAIDA) fs.writeFileSync(process.env.ADERENCIA_SAIDA, buf)
+
+    const zip = new PizZip(buf)
+    const xml = zip.file('word/document.xml')!.asText()
+
+    // sem tags/marcadores sobrando
+    expect(xml).not.toMatch(/\[\[|\]\]/)
+    expect(xml).not.toMatch(/_PH_|PLACEHOLDER/)
+    expect(xml).not.toContain('undefined')
+
+    // XML bem-formado
+    const pilha: string[] = []
+    for (const m of xml.matchAll(/<(\/?)([\w:.-]+)(?:\s[^>]*?)?(\/?)>/g)) {
+      if (m[3] === '/') continue
+      if (m[1] === '/') expect(pilha.pop()).toBe(m[2])
+      else pilha.push(m[2])
+    }
+    expect(pilha).toEqual([])
+
+    // 3 situações → 3 headings "Situação I/II/III"
+    expect(xml).toContain('Situação I')
+    expect(xml).toContain('Situação II')
+    expect(xml).toContain('Situação III')
+
+    // imagens: 3 esquemas + (4+12)*2 fotos = 35 drawings
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(35)
+    const media = Object.keys(zip.files).filter(f => f.startsWith('word/media/aderencia_img_'))
+    expect(media.length).toBe(35)
+
+    // escape de XML preservado
+    expect(xml).toContain('Cliente &amp; Cia')
+    expect(xml).toContain('Obra &lt;X&gt;')
+
+    // nenhuma <w:r> solta direto em <w:tr> / <w:tbl> (violaria o schema OOXML)
+    expect(xml).not.toMatch(/<w:tr(?:\s[^>]*)?>(?:<w:trPr>.*?<\/w:trPr>)?<w:r[ >]/)
+    expect(xml).not.toMatch(/<\/w:tc><w:r[ >]/)
+
+    // colunas de forma de ruptura de cada modelo aparecem
+    for (const m of [m0, m1, m2]) m.colunasFormaRuptura.forEach(c => expect(xml).toContain(c.replace(/&/g, '&amp;')))
+
+    // checkboxes: parte2 marcada, parte3 desmarcada
+    expect(xml).toContain('☒')
+    expect(xml).toContain('☐')
+
+    // rels e content types registrados
+    expect(zip.file('word/_rels/document.xml.rels')!.asText()).toContain('media/aderencia_img_35.png')
+    expect(zip.file('[Content_Types].xml')!.asText()).toContain('Extension="png"')
+  })
+})

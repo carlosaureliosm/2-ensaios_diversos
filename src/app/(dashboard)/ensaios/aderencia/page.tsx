@@ -17,7 +17,11 @@ import {
   type SituacaoAderencia,
   type CorpoDeProva,
   type FotoAnexo,
+  type AderenciaCabecalho,
+  type AderenciaNormas,
 } from '@/modules/aderencia';
+import { svgParaPng } from '@/modules/aderencia/svgParaPng';
+import { useUserStore } from '@/store/userStore';
 
 const PRIMARY = '#1E3264';
 const GOLD = '#C8A020';
@@ -43,7 +47,26 @@ type EstadoPersistido = {
   modeloPorSituacao: string[];
   situacoes: SituacaoAderencia[];
   situacaoAtual: number;
+  cabecalho?: AderenciaCabecalho;
 };
+
+const CABECALHO_VAZIO: AderenciaCabecalho = {
+  rltNumero: '', cliente: '', obra: '', construtora: '', endereco: '', dataEmissao: '',
+  normas: {
+    nbr13528_1: false, nbr13528_1_parte2: false, nbr13528_1_parte3: false,
+    nbr13749: false, nbr13753: false, nbr13754: false, nbr13755: false,
+  },
+};
+
+const NORMAS_OPCOES: { campo: keyof AderenciaNormas; label: string; sub?: boolean }[] = [
+  { campo: 'nbr13528_1', label: 'NBR 13528-1:2019 (requisitos gerais)' },
+  { campo: 'nbr13528_1_parte2', label: 'Parte 2 – Aderência ao substrato', sub: true },
+  { campo: 'nbr13528_1_parte3', label: 'Parte 3 – Aderência superficial', sub: true },
+  { campo: 'nbr13749', label: 'NBR 13749:2013' },
+  { campo: 'nbr13753', label: 'NBR 13753:1996' },
+  { campo: 'nbr13754', label: 'NBR 13754:1996' },
+  { campo: 'nbr13755', label: 'NBR 13755:2017' },
+];
 
 function removerFotos(situacoes: SituacaoAderencia[]): SituacaoAderencia[] {
   return situacoes.map(s => ({
@@ -381,6 +404,13 @@ export default function AderenciaPage() {
   const [situacoes, setSituacoes] = useState<SituacaoAderencia[]>([]);
   const [situacaoAtual, setSituacaoAtual] = useState(0);
   const [salvoMsg, setSalvoMsg] = useState('');
+  const [cabecalho, setCabecalho] = useState<AderenciaCabecalho>(CABECALHO_VAZIO);
+  const [gerandoDocx, setGerandoDocx] = useState(false);
+  const { userCrea, userAssinatura, userName, loaded, fetchUser } = useUserStore();
+
+  useEffect(() => {
+    if (!loaded) fetchUser();
+  }, [loaded, fetchUser]);
 
   useEffect(() => {
     const sb = createClient();
@@ -398,18 +428,19 @@ export default function AderenciaPage() {
     setModeloPorSituacao(s.modeloPorSituacao);
     setSituacoes(s.situacoes);
     setSituacaoAtual(s.situacaoAtual);
+    if (s.cabecalho) setCabecalho({ ...CABECALHO_VAZIO, ...s.cabecalho, normas: { ...CABECALHO_VAZIO.normas, ...s.cabecalho.normas } });
   }, []);
 
   // Autosave com debounce a cada mudança relevante (fotos são removidas antes de gravar).
   useEffect(() => {
     const t = setTimeout(() => {
-      salvarLocal({ etapa, numSituacoes, modeloPorSituacao, situacoes, situacaoAtual });
+      salvarLocal({ etapa, numSituacoes, modeloPorSituacao, situacoes, situacaoAtual, cabecalho });
       setSalvoMsg('Salvo');
       const t2 = setTimeout(() => setSalvoMsg(''), 1800);
       return () => clearTimeout(t2);
     }, 500);
     return () => clearTimeout(t);
-  }, [etapa, numSituacoes, modeloPorSituacao, situacoes, situacaoAtual]);
+  }, [etapa, numSituacoes, modeloPorSituacao, situacoes, situacaoAtual, cabecalho]);
 
   function alterarNumSituacoes(n: number) {
     const clamped = Math.max(MIN_SITUACOES, Math.min(MAX_SITUACOES, n));
@@ -442,6 +473,54 @@ export default function AderenciaPage() {
     setSituacoes(prev => prev.map((s, i) => (i === indice ? next : s)));
   }
 
+  function atualizarCabecalho<K extends keyof AderenciaCabecalho>(campo: K, valor: AderenciaCabecalho[K]) {
+    setCabecalho(prev => ({ ...prev, [campo]: valor }));
+  }
+
+  async function gerarRelatorio() {
+    if (!cabecalho.rltNumero.trim()) { alert('Informe o Nº do relatório (RLT) antes de gerar.'); setEtapa('config'); return; }
+    setGerandoDocx(true);
+    try {
+      // O esquema (SVG) é rasterizado em PNG aqui no navegador, pois o DOCX não embute SVG de forma confiável.
+      const situacoesPayload = await Promise.all(
+        situacoes.map(async s => {
+          const modelo = obterModeloCamadas(s.modeloCamadasId);
+          const esquema = modelo ? await svgParaPng(svgEsquemaCamadas(modelo.camadas, modelo.disposicao)) : null;
+          return { ...s, esquema };
+        })
+      );
+
+      const res = await fetch('/api/ensaios/aderencia/docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cabecalho,
+          situacoes: situacoesPayload,
+          respNome: userName,
+          respCrea: userCrea,
+          respAssinaturaUrl: userAssinatura || '',
+        }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `Erro ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${cabecalho.rltNumero.trim() || 'laudo-aderencia'}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : 'Erro ao gerar DOCX.');
+    } finally {
+      setGerandoDocx(false);
+    }
+  }
+
   return (
     <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <Header paginaAtiva="ensaios" />
@@ -464,6 +543,31 @@ export default function AderenciaPage() {
 
         {etapa === 'config' && (
           <>
+            <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
+              <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Cabeçalho do relatório</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px 16px' }}>
+                <Campo label="Nº RLT" htmlFor="ad-rlt"><input id="ad-rlt" style={inputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', e.target.value)} placeholder="Ex: 045" /></Campo>
+                <Campo label="Cliente" htmlFor="ad-cliente"><input id="ad-cliente" style={inputStyle} value={cabecalho.cliente} onChange={e => atualizarCabecalho('cliente', e.target.value)} /></Campo>
+                <Campo label="Obra" htmlFor="ad-obra"><input id="ad-obra" style={inputStyle} value={cabecalho.obra} onChange={e => atualizarCabecalho('obra', e.target.value)} /></Campo>
+                <Campo label="Construtora" htmlFor="ad-construtora"><input id="ad-construtora" style={inputStyle} value={cabecalho.construtora} onChange={e => atualizarCabecalho('construtora', e.target.value)} /></Campo>
+                <Campo label="Endereço" htmlFor="ad-endereco"><input id="ad-endereco" style={inputStyle} value={cabecalho.endereco} onChange={e => atualizarCabecalho('endereco', e.target.value)} /></Campo>
+                <Campo label="Data de emissão" htmlFor="ad-data"><input id="ad-data" type="date" style={inputStyle} value={cabecalho.dataEmissao} onChange={e => atualizarCabecalho('dataEmissao', e.target.value)} /></Campo>
+              </div>
+              <p style={{ margin: '18px 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Norma(s) de referência</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {NORMAS_OPCOES.map(n => (
+                  <label key={n.campo} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: TEXT, marginLeft: n.sub ? 24 : 0, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={cabecalho.normas[n.campo]}
+                      onChange={e => atualizarCabecalho('normas', { ...cabecalho.normas, [n.campo]: e.target.checked })}
+                    />
+                    {n.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
               <Campo label="Número de Situações">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -573,11 +677,11 @@ export default function AderenciaPage() {
               ) : (
                 <button
                   type="button"
-                  disabled
-                  title="Autosave e geração de relatório ainda serão implementados"
-                  style={{ padding: '11px 20px', borderRadius: 8, border: 'none', background: BORDER, color: SUBTEXT, fontSize: 13, fontWeight: 700, cursor: 'not-allowed', fontFamily: 'inherit' }}
+                  onClick={gerarRelatorio}
+                  disabled={gerandoDocx}
+                  style={{ padding: '11px 20px', borderRadius: 8, border: 'none', background: gerandoDocx ? BORDER : GOLD, color: gerandoDocx ? SUBTEXT : '#fff', fontSize: 13, fontWeight: 700, cursor: gerandoDocx ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
                 >
-                  Finalizar (em breve)
+                  {gerandoDocx ? 'Gerando…' : 'Gerar relatório (.docx)'}
                 </button>
               )}
             </div>
