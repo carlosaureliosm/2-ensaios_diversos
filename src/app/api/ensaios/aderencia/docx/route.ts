@@ -31,9 +31,14 @@ type RequestBody = AderenciaDocxPayload & {
  * `base64`, para que o restante da geração siga igual. Só aceita caminhos da pasta do próprio usuário.
  */
 async function resolverFotosDoStorage(situacoes: AderenciaDocxPayload['situacoes']): Promise<void> {
-  const pendentes = situacoes.flatMap(s =>
-    s.corposDeProva.flatMap(cp => (cp.fotos ?? []).filter((f): f is FotoAnexo => !!f && !f.base64 && !!f.path)),
-  );
+  const pendentes: FotoAnexo[] = [];
+  for (const s of situacoes) {
+    for (const cp of s.corposDeProva) {
+      for (const f of cp.fotos ?? []) {
+        if (f && !f.base64 && f.path) pendentes.push(f);
+      }
+    }
+  }
   if (pendentes.length === 0) return;
 
   const supabase = await createClient();
