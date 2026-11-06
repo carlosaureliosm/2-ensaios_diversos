@@ -127,12 +127,17 @@ function ModeloCard({ modelo, selecionado, onSelecionar }: { modelo: ModeloSiste
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        justifyContent: 'space-between',
         gap: 8,
         textAlign: 'center',
         fontFamily: 'inherit',
+        overflow: 'hidden',
       }}
     >
-      <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao) }} style={{ lineHeight: 0, maxWidth: '100%' }} />
+      <div
+        dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao) }}
+        style={{ lineHeight: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}
+      />
       <span style={{ fontSize: 11.5, fontWeight: 700, color: selecionado ? PRIMARY : TEXT, lineHeight: 1.35 }}>{modelo.nome}</span>
     </button>
   );
