@@ -136,9 +136,9 @@ function ModeloCard({ modelo, selecionado, onSelecionar }: { modelo: ModeloSiste
     >
       <div
         dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao) }}
-        style={{ lineHeight: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}
+        style={{ lineHeight: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, padding: '6px 0' }}
       />
-      <span style={{ fontSize: 11.5, fontWeight: 700, color: selecionado ? PRIMARY : TEXT, lineHeight: 1.35 }}>{modelo.nome}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: selecionado ? PRIMARY : TEXT, lineHeight: 1.35 }}>{modelo.nome}</span>
     </button>
   );
 }
@@ -564,7 +564,7 @@ export default function AderenciaPage() {
     <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <Header paginaAtiva="ensaios" />
 
-      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '24px 20px 60px' }}>
+      <main style={{ maxWidth: 1600, margin: '0 auto', padding: '24px 20px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, marginBottom: 20 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Resistência de Aderência à Tração</h1>
@@ -642,7 +642,7 @@ export default function AderenciaPage() {
             {modeloPorSituacao.map((modeloId, i) => (
               <div key={i} style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
                 <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Situação {numeroRomano(i + 1)} — Modelo de sistema de camadas</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
                   {MODELOS_SISTEMA_CAMADAS.map(modelo => (
                     <ModeloCard key={modelo.id} modelo={modelo} selecionado={modeloId === modelo.id} onSelecionar={() => selecionarModelo(i, modelo.id)} />
                   ))}

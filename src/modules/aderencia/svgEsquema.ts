@@ -83,7 +83,7 @@ function svgPiso(camadas: string[]): string {
     <line x1="${cx}" y1="${discoY - rodH + 6}" x2="${cx}" y2="${discoY}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${cx}" cy="${discoY - rodH + 6}" r="3.2" fill="${METAL}"/>`
 
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
     ${vazios}
@@ -129,7 +129,7 @@ function svgParede(camadas: string[]): string {
     <line x1="${discoX + 6}" y1="${cy}" x2="${discoX + rodW}" y2="${cy}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${discoX + rodW}" cy="${cy}" r="3.2" fill="${METAL}"/>`
 
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width: 100%; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
     ${vazios}
