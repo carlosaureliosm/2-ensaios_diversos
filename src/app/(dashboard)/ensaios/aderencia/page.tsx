@@ -534,8 +534,8 @@ function EditorModeloPersonalizado({
             );
           })}
 
-          {/* Botão adicionar + atalhos de camadas comuns */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+          {/* Botão adicionar camada */}
+          <div style={{ marginTop: 4 }}>
             <button
               type="button"
               onClick={() => adicionarCamada('')}
@@ -551,28 +551,8 @@ function EditorModeloPersonalizado({
                 fontFamily: 'inherit',
               }}
             >
-              + Adicionar sólido / camada
+              + Adicionar camada
             </button>
-            {['Substrato', 'Concreto', 'Contrapiso', 'Chapisco', 'Emboço', 'Argamassa Colante', 'Cerâmica', 'Gesso'].map(sug => (
-              <button
-                key={sug}
-                type="button"
-                onClick={() => adicionarCamada(sug)}
-                style={{
-                  padding: '5px 9px',
-                  borderRadius: 6,
-                  border: `1px solid ${BORDER}`,
-                  background: '#fff',
-                  color: SUBTEXT,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                + {sug}
-              </button>
-            ))}
           </div>
         </div>
 
