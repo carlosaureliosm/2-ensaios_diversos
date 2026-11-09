@@ -1213,7 +1213,7 @@ export default function AderenciaPage() {
       `}</style>
       <Header paginaAtiva="ensaios" />
 
-      <main className="aderencia-main" style={{ maxWidth: 1600, margin: '0 auto', padding: '24px 20px 60px' }}>
+      <main className="aderencia-main" style={{ maxWidth: 860, margin: '0 auto', padding: '24px 20px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, marginBottom: 20 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Resistência de Aderência à Tração</h1>
