@@ -289,26 +289,39 @@ function EditorModeloPersonalizado({
   }
 
   return (
-    <div style={{ marginTop: 16, padding: '16px 18px', background: BG, border: `1.5px solid ${PRIMARY}`, borderRadius: 12 }}>
+    <div
+      className="aderencia-editor"
+      style={{
+        marginTop: 16,
+        padding: '14px 12px',
+        background: BG,
+        border: `1.5px solid ${PRIMARY}`,
+        borderRadius: 12,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+      }}
+    >
       <datalist id="sugestoes-camadas-aderencia">
         {SUGESTOES_CAMADAS.map(s => <option key={s} value={s} />)}
       </datalist>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
-        <div>
+        <div style={{ minWidth: 240, flex: '1 1 240px' }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: PRIMARY }}>Construtor de esquema personalizado</p>
-          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: SUBTEXT }}>
+          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: SUBTEXT, lineHeight: 1.35 }}>
             Escolha a orientação, adicione os sólidos retangulares com nome e cor, e ajuste as colunas de ruptura se necessário.
           </p>
         </div>
 
         {/* Seletor Horizontal (Piso) vs Vertical (Parede) */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, width: '100%', maxWidth: 340 }}>
           <button
             type="button"
             onClick={() => alterarDisposicao('piso')}
             style={{
-              padding: '7px 12px',
+              flex: 1,
+              padding: '8px 10px',
               borderRadius: 7,
               fontSize: 12,
               fontWeight: 700,
@@ -317,6 +330,7 @@ function EditorModeloPersonalizado({
               border: `1.5px solid ${modelo.disposicao === 'piso' ? PRIMARY : BORDER}`,
               background: modelo.disposicao === 'piso' ? PRIMARY : '#fff',
               color: modelo.disposicao === 'piso' ? '#fff' : TEXT,
+              textAlign: 'center',
             }}
           >
             Horizontal (Piso)
@@ -325,7 +339,8 @@ function EditorModeloPersonalizado({
             type="button"
             onClick={() => alterarDisposicao('parede')}
             style={{
-              padding: '7px 12px',
+              flex: 1,
+              padding: '8px 10px',
               borderRadius: 7,
               fontSize: 12,
               fontWeight: 700,
@@ -334,6 +349,7 @@ function EditorModeloPersonalizado({
               border: `1.5px solid ${modelo.disposicao === 'parede' ? PRIMARY : BORDER}`,
               background: modelo.disposicao === 'parede' ? PRIMARY : '#fff',
               color: modelo.disposicao === 'parede' ? '#fff' : TEXT,
+              textAlign: 'center',
             }}
           >
             Vertical (Parede)
@@ -341,9 +357,16 @@ function EditorModeloPersonalizado({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(240px, 320px)', gap: 18, alignItems: 'start' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+          gap: 16,
+          alignItems: 'start',
+        }}
+      >
         {/* Lista de camadas (sólidos retangulares) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, width: '100%' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             Camadas (da base/substrato até o acabamento)
           </span>
@@ -362,25 +385,102 @@ function EditorModeloPersonalizado({
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 6,
-                  padding: '9px 10px',
+                  gap: 8,
+                  padding: '10px 12px',
                   background: '#fff',
                   border: `1px solid ${BORDER}`,
                   borderRadius: 8,
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  minWidth: 0,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, minWidth: 78 }}>{posLabel}</span>
+                {/* Linha 1: Posição da camada e botões de ação */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: PRIMARY }}>{posLabel}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => moverCamada(idx, -1)}
+                      disabled={idx === 0}
+                      title="Mover camada para antes (base)"
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 6,
+                        border: `1px solid ${BORDER}`,
+                        background: '#fff',
+                        color: TEXT,
+                        cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                        opacity: idx === 0 ? 0.35 : 1,
+                        fontWeight: 700,
+                        fontSize: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moverCamada(idx, 1)}
+                      disabled={idx === modelo.camadas.length - 1}
+                      title="Mover camada para depois (acabamento)"
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 6,
+                        border: `1px solid ${BORDER}`,
+                        background: '#fff',
+                        color: TEXT,
+                        cursor: idx === modelo.camadas.length - 1 ? 'not-allowed' : 'pointer',
+                        opacity: idx === modelo.camadas.length - 1 ? 0.35 : 1,
+                        fontWeight: 700,
+                        fontSize: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removerCamada(idx)}
+                      disabled={modelo.camadas.length <= 1}
+                      title="Remover camada"
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 6,
+                        border: `1px solid ${BORDER}`,
+                        background: '#fff',
+                        color: DANGER,
+                        cursor: modelo.camadas.length <= 1 ? 'not-allowed' : 'pointer',
+                        opacity: modelo.camadas.length <= 1 ? 0.35 : 1,
+                        fontWeight: 800,
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
 
-                  {/* Seletor de cor livre + input do nome da camada */}
+                {/* Linha 2: Seletor de cor personalizada + Input do nome da camada */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minWidth: 0 }}>
                   <input
                     type="color"
                     value={corAtual}
                     onChange={e => alterarCorCamada(idx, e.target.value)}
                     title="Escolher cor personalizada do sólido"
                     style={{
-                      width: 32,
-                      height: 32,
+                      width: 36,
+                      height: 36,
                       padding: 2,
                       borderRadius: 6,
                       border: `1.5px solid ${BORDER}`,
@@ -389,79 +489,24 @@ function EditorModeloPersonalizado({
                       flexShrink: 0,
                     }}
                   />
-
                   <input
                     list="sugestoes-camadas-aderencia"
-                    style={{ ...inputStyle, padding: '7px 10px', fontSize: 13 }}
+                    style={{
+                      ...inputStyle,
+                      flex: 1,
+                      minWidth: 0,
+                      width: '100%',
+                      padding: '8px 10px',
+                      fontSize: 13,
+                    }}
                     value={nome}
                     onChange={e => alterarNomeCamada(idx, e.target.value)}
                     placeholder="Nome da camada (ex: Substrato, Chapisco...)"
                   />
-
-                  <button
-                    type="button"
-                    onClick={() => moverCamada(idx, -1)}
-                    disabled={idx === 0}
-                    title="Mover camada para antes (base)"
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 6,
-                      border: `1px solid ${BORDER}`,
-                      background: '#fff',
-                      color: TEXT,
-                      cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                      opacity: idx === 0 ? 0.35 : 1,
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moverCamada(idx, 1)}
-                    disabled={idx === modelo.camadas.length - 1}
-                    title="Mover camada para depois (acabamento)"
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 6,
-                      border: `1px solid ${BORDER}`,
-                      background: '#fff',
-                      color: TEXT,
-                      cursor: idx === modelo.camadas.length - 1 ? 'not-allowed' : 'pointer',
-                      opacity: idx === modelo.camadas.length - 1 ? 0.35 : 1,
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removerCamada(idx)}
-                    disabled={modelo.camadas.length <= 1}
-                    title="Remover camada"
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 6,
-                      border: `1px solid ${BORDER}`,
-                      background: '#fff',
-                      color: DANGER,
-                      cursor: modelo.camadas.length <= 1 ? 'not-allowed' : 'pointer',
-                      opacity: modelo.camadas.length <= 1 ? 0.35 : 1,
-                      fontWeight: 800,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ×
-                  </button>
                 </div>
 
-                {/* Paleta rápida de cores padrão do relatório */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', paddingLeft: 86 }}>
+                {/* Linha 3: Paleta rápida de cores padrão do relatório */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', paddingTop: 2 }}>
                   <span style={{ fontSize: 10, color: SUBTEXT, marginRight: 2 }}>Cores padrão:</span>
                   {PALETA_CORES_CAMADAS.map(p => {
                     const ativa = corAtual.toUpperCase() === p.cor.toUpperCase();
@@ -472,13 +517,14 @@ function EditorModeloPersonalizado({
                         title={p.nome}
                         onClick={() => alterarCorCamada(idx, p.cor)}
                         style={{
-                          width: 18,
-                          height: 18,
+                          width: 20,
+                          height: 20,
                           borderRadius: 4,
                           background: p.cor,
                           border: ativa ? `2px solid ${PRIMARY}` : '1px solid #9AA0AC',
                           cursor: 'pointer',
                           padding: 0,
+                          flexShrink: 0,
                         }}
                       />
                     );
@@ -489,12 +535,12 @@ function EditorModeloPersonalizado({
           })}
 
           {/* Botão adicionar + atalhos de camadas comuns */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
             <button
               type="button"
               onClick={() => adicionarCamada('')}
               style={{
-                padding: '7px 12px',
+                padding: '8px 14px',
                 borderRadius: 7,
                 border: `1.5px dashed ${PRIMARY}`,
                 background: '#EEF2FF',
@@ -541,14 +587,25 @@ function EditorModeloPersonalizado({
             flexDirection: 'column',
             alignItems: 'center',
             gap: 10,
+            minWidth: 0,
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
-          <span style={{ fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>
             Pré-visualização do esquema
           </span>
           <div
             dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, cores) }}
-            style={{ lineHeight: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '6px 0' }}
+            style={{
+              lineHeight: 0,
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '6px 0',
+              overflow: 'hidden',
+            }}
           />
           <span style={{ fontSize: 11, color: SUBTEXT, textAlign: 'center', lineHeight: 1.35 }}>
             O disco de tração (adesivo epóxi + placa metálica) é desenhado automaticamente sobre a última camada.
@@ -557,23 +614,23 @@ function EditorModeloPersonalizado({
       </div>
 
       {/* Colunas de Forma de Ruptura (%) geradas automaticamente com edição manual */}
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+      <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
           <div>
             <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               Colunas de &ldquo;Forma de Ruptura (%)&rdquo; ({modelo.colunasFormaRuptura.length}/{MAX_COLUNAS_FORMA_RUPTURA})
             </span>
-            <span style={{ fontSize: 11, color: SUBTEXT, marginLeft: 8 }}>
+            <span style={{ fontSize: 11, color: SUBTEXT, display: 'block', marginTop: 2 }}>
               {colunasManuais ? '(editadas manualmente)' : '(geradas automaticamente pelas camadas)'}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {colunasManuais && (
               <button
                 type="button"
                 onClick={restaurarColunasAutomaticas}
                 style={{
-                  padding: '5px 10px',
+                  padding: '6px 10px',
                   borderRadius: 6,
                   border: `1px solid ${PRIMARY}`,
                   background: '#fff',
@@ -584,7 +641,7 @@ function EditorModeloPersonalizado({
                   fontFamily: 'inherit',
                 }}
               >
-                ↻ Regerar automaticamente pelas camadas
+                ↻ Regerar pelas camadas
               </button>
             )}
             <button
@@ -592,7 +649,7 @@ function EditorModeloPersonalizado({
               onClick={adicionarColunaRuptura}
               disabled={modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA}
               style={{
-                padding: '5px 10px',
+                padding: '6px 12px',
                 borderRadius: 6,
                 border: `1px solid ${BORDER}`,
                 background: '#fff',
@@ -609,7 +666,7 @@ function EditorModeloPersonalizado({
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%' }}>
           {modelo.colunasFormaRuptura.map((col, idx) => (
             <div
               key={idx}
@@ -620,7 +677,9 @@ function EditorModeloPersonalizado({
                 background: '#fff',
                 border: `1px solid ${BORDER}`,
                 borderRadius: 7,
-                padding: '4px 6px',
+                padding: '5px 8px',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
               }}
             >
               <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{idx + 1}.</span>
@@ -631,7 +690,7 @@ function EditorModeloPersonalizado({
                   fontSize: 12,
                   fontWeight: 700,
                   color: TEXT,
-                  width: Math.max(64, (col.length + 1) * 7.5),
+                  width: Math.min(180, Math.max(54, (col.length + 1) * 7.5)),
                   fontFamily: 'inherit',
                   background: 'transparent',
                 }}
@@ -1157,9 +1216,24 @@ export default function AderenciaPage() {
 
   return (
     <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .aderencia-main {
+            padding: 16px 10px 50px !important;
+          }
+          .aderencia-card {
+            padding: 16px 12px !important;
+            border-radius: 10px !important;
+            margin-bottom: 14px !important;
+          }
+          .aderencia-editor {
+            padding: 12px 10px !important;
+          }
+        }
+      `}</style>
       <Header paginaAtiva="ensaios" />
 
-      <main style={{ maxWidth: 1600, margin: '0 auto', padding: '24px 20px 60px' }}>
+      <main className="aderencia-main" style={{ maxWidth: 1600, margin: '0 auto', padding: '24px 20px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, marginBottom: 20 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Resistência de Aderência à Tração</h1>
@@ -1177,7 +1251,7 @@ export default function AderenciaPage() {
 
         {etapa === 'config' && (
           <>
-            <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
+            <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
               <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Cabeçalho do relatório</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px 16px' }}>
                 <Campo label="Nº RLT" htmlFor="ad-rlt"><input id="ad-rlt" style={inputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', e.target.value)} placeholder="Ex: 045" /></Campo>
@@ -1202,7 +1276,7 @@ export default function AderenciaPage() {
               </div>
             </div>
 
-            <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
+            <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
               <Campo label="Número de Situações">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <button
@@ -1238,9 +1312,9 @@ export default function AderenciaPage() {
               const modeloCustom = obterPersonalizadoOuPadrao(i);
               const isCustom = modeloId === ID_MODELO_PERSONALIZADO;
               return (
-                <div key={i} style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
+                <div key={i} className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
                   <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Situação {numeroRomano(i + 1)} — Modelo de sistema de camadas</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 14 }}>
                     {MODELOS_SISTEMA_CAMADAS.map(modelo => (
                       <ModeloCard key={modelo.id} modelo={modelo} selecionado={modeloId === modelo.id} onSelecionar={() => selecionarModelo(i, modelo.id)} />
                     ))}
@@ -1300,7 +1374,7 @@ export default function AderenciaPage() {
               </div>
             </div>
 
-            <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
+            <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
               <SituacaoForm
                 situacao={situacoes[situacaoAtual]}
                 modelo={
