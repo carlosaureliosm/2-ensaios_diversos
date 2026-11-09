@@ -824,38 +824,46 @@ function SituacaoForm({
 
   return (
     <div>
-      {/* Cabeçalho da situação */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px 16px', marginBottom: 18 }}>
+      {/* 1. Cabeçalho da situação — em pares de 2 colunas fiel à planilha de referência */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px 16px', marginBottom: 14 }}>
         <Campo label="Tipo de revestimento">
           <input style={{ ...inputStyle, textTransform: 'uppercase' }} value={situacao.tipoRevestimento} onChange={e => atualizar('tipoRevestimento', e.target.value.toUpperCase())} placeholder="EX: VERTICAL INTERNO" />
         </Campo>
         <Campo label="Data do ensaio">
           <input style={inputStyle} value={situacao.dataEnsaio} onChange={e => atualizar('dataEnsaio', e.target.value)} placeholder="DD/MM/AAAA" />
         </Campo>
+
         <Campo label="Nº de corpos de prova">
           <input type="number" style={inputStyle} min={1} value={situacao.numCPs} onChange={e => alterarNumCPs(Number(e.target.value))} />
         </Campo>
         <Campo label="Data de aplicação">
           <input style={inputStyle} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', e.target.value)} placeholder="DD/MM/AAAA ou NÃO INFORMADA" />
         </Campo>
+
         <Campo label="Substrato">
           <input style={inputStyle} value={situacao.substrato} onChange={e => atualizar('substrato', e.target.value)} />
         </Campo>
         <Campo label="Idade de ruptura (dias)">
           <input style={inputStyle} value={situacao.idadeRupturaDias} onChange={e => atualizar('idadeRupturaDias', e.target.value)} placeholder="EX: >28" />
         </Campo>
+
         <Campo label="Chapisco">
           <input style={inputStyle} value={situacao.chapisco} onChange={e => atualizar('chapisco', e.target.value)} />
         </Campo>
         <Campo label="Traço (chapisco)">
           <input style={inputStyle} value={situacao.chapiscoTraco} onChange={e => atualizar('chapiscoTraco', e.target.value)} />
         </Campo>
+
         <Campo label="Emboço">
           <input style={inputStyle} value={situacao.emboco} onChange={e => atualizar('emboco', e.target.value)} />
         </Campo>
         <Campo label="Traço (emboço)">
           <input style={inputStyle} value={situacao.embocoTraco} onChange={e => atualizar('embocoTraco', e.target.value)} />
         </Campo>
+      </div>
+
+      {/* 2. Faixa tripla: Argamassa colante | Revestimento | Dimensões (cm) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px 16px', marginBottom: 20 }}>
         <Campo label="Argamassa colante">
           <input style={inputStyle} value={situacao.argamassaColante} onChange={e => atualizar('argamassaColante', e.target.value)} />
         </Campo>
@@ -864,12 +872,6 @@ function SituacaoForm({
         </Campo>
         <Campo label="Dimensões (cm)">
           <input style={inputStyle} value={situacao.dimensoesCm} onChange={e => atualizar('dimensoesCm', e.target.value)} placeholder="EX: 10X10" />
-        </Campo>
-        <Campo label="Umidade média (%)">
-          <input type="number" style={inputStyle} value={situacao.umidadeMedia ?? ''} onChange={e => atualizar('umidadeMedia', e.target.value === '' ? null : Number(e.target.value))} />
-        </Campo>
-        <Campo label="Espessura média do revestimento (mm)">
-          <input type="number" style={inputStyle} value={situacao.espessuraMediaRevestimento ?? ''} onChange={e => atualizar('espessuraMediaRevestimento', e.target.value === '' ? null : Number(e.target.value))} />
         </Campo>
       </div>
 
@@ -935,12 +937,39 @@ function SituacaoForm({
         </table>
       </div>
 
-      {/* Médias / DP / CV calculados automaticamente */}
-      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 14, padding: '12px 16px', background: '#EEF2FF', border: `1px solid ${PRIMARY}`, borderRadius: 10 }}>
-        <Estatistica label="Ra médio" valor={stats.raMedia} unidade="MPa" />
-        <Estatistica label="Prof. ruptura média" valor={stats.profRupturaMedia} unidade="mm" />
-        <Estatistica label="DP" valor={stats.dp} unidade="MPa" />
-        <Estatistica label="CV" valor={stats.cv} unidade="%" />
+      {/* Rodapé da tabela: Estatísticas automáticas + Umidade média e Espessura média */}
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '14px 16px', background: '#EEF2FF', border: `1px solid ${PRIMARY}`, borderRadius: 10 }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <Estatistica label="Ra médio" valor={stats.raMedia} unidade="MPa" />
+          <Estatistica label="Prof. ruptura média" valor={stats.profRupturaMedia} unidade="mm" />
+          <Estatistica label="DP" valor={stats.dp} unidade="MPa" />
+          <Estatistica label="CV" valor={stats.cv} unidade="%" />
+        </div>
+
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ width: 140 }}>
+            <Campo label="Umidade média (%)">
+              <input
+                type="number"
+                style={{ ...cellInputStyle, padding: '7px 8px', textAlign: 'left' }}
+                value={situacao.umidadeMedia ?? ''}
+                onChange={e => atualizar('umidadeMedia', e.target.value === '' ? null : Number(e.target.value))}
+                placeholder="Ex: 3.2"
+              />
+            </Campo>
+          </div>
+          <div style={{ width: 160 }}>
+            <Campo label="Espessura média (mm)">
+              <input
+                type="number"
+                style={{ ...cellInputStyle, padding: '7px 8px', textAlign: 'left' }}
+                value={situacao.espessuraMediaRevestimento ?? ''}
+                onChange={e => atualizar('espessuraMediaRevestimento', e.target.value === '' ? null : Number(e.target.value))}
+                placeholder="Ex: 25"
+              />
+            </Campo>
+          </div>
+        </div>
       </div>
     </div>
   );
