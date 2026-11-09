@@ -94,10 +94,10 @@ describe('geração DOCX de aderência (ponta a ponta)', () => {
     }
     expect(pilha).toEqual([])
 
-    // 3 situações → 3 headings "Situação I/II/III"
-    expect(xml).toContain('Situação I')
-    expect(xml).toContain('Situação II')
-    expect(xml).toContain('Situação III')
+    // 3 situações → 3 headings "SITUAÇÃO I/II/III"
+    expect(xml).toContain('SITUAÇÃO I')
+    expect(xml).toContain('SITUAÇÃO II')
+    expect(xml).toContain('SITUAÇÃO III')
 
     // imagens: 3 esquemas + (4+12)*2 fotos = 35 drawings
     expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(35)
