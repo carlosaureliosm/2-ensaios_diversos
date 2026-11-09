@@ -101,38 +101,25 @@ function carregarLocal(): EstadoPersistido | null {
   } catch { return null; }
 }
 
-function Campo({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
+function Campo({ label, htmlFor, children, compacto = true }: { label: string; htmlFor?: string; children: React.ReactNode; compacto?: boolean }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label htmlFor={htmlFor} style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: compacto ? 2 : 4 }}>
+      <label htmlFor={htmlFor} style={{ fontSize: compacto ? 10 : 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</label>
       {children}
     </div>
   );
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: '9px 12px', borderRadius: 7, border: `1.5px solid ${BORDER}`,
-  fontSize: 13.5, fontFamily: 'inherit', color: TEXT, background: '#fff',
-  outline: 'none', width: '100%', boxSizing: 'border-box',
+  padding: '5px 8px', borderRadius: 6, border: `1.5px solid ${BORDER}`,
+  fontSize: 12.5, fontFamily: 'inherit', color: TEXT, background: '#fff',
+  outline: 'none', width: '100%', boxSizing: 'border-box', height: 31,
 };
 
 const cellInputStyle: React.CSSProperties = {
-  padding: '6px 7px', borderRadius: 5, border: `1.5px solid ${BORDER}`,
-  fontSize: 12.5, fontFamily: 'inherit', color: TEXT, background: '#fff',
-  outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'center',
-};
-
-const fichaInputStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  padding: '6px 10px',
-  borderRadius: 5,
-  border: `1px solid ${BORDER}`,
-  fontSize: 13,
-  fontFamily: 'inherit',
-  color: TEXT,
-  background: '#fff',
-  outline: 'none',
+  padding: '3px 4px', borderRadius: 5, border: `1.5px solid ${BORDER}`,
+  fontSize: 12, fontFamily: 'inherit', color: TEXT, background: '#fff',
+  outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'center', height: 28,
 };
 
 const SUGESTOES_CAMADAS = [
@@ -837,194 +824,73 @@ function SituacaoForm({
 
   return (
     <div>
-      {/* Quadro Ficha Técnica da Situação — fiel à disposição e posições da planilha RAAC */}
-      <div style={{ border: `1.5px solid ${BORDER}`, borderRadius: 10, overflow: 'hidden', background: '#fff', marginBottom: 20 }}>
-        {/* Cabeçalho da Seção */}
-        <div style={{ background: '#F4F6F9', padding: '10px 14px', borderBottom: `1.5px solid ${BORDER}` }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            4. SISTEMA DE REVESTIMENTO
-          </span>
-          <h3 style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 800, color: PRIMARY }}>
-            4.{situacao.numero} SITUAÇÃO {numeroRomano(situacao.numero)}
-          </h3>
-        </div>
+      {/* 1. Cabeçalho da situação — em pares de 2 colunas fiel à planilha de referência */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '6px 12px', marginBottom: 8 }}>
+        <Campo label="Tipo de revestimento">
+          <input style={{ ...inputStyle, textTransform: 'uppercase' }} value={situacao.tipoRevestimento} onChange={e => atualizar('tipoRevestimento', e.target.value.toUpperCase())} placeholder="EX: VERTICAL INTERNO" />
+        </Campo>
+        <Campo label="Data do ensaio">
+          <input style={inputStyle} value={situacao.dataEnsaio} onChange={e => atualizar('dataEnsaio', e.target.value)} placeholder="DD/MM/AAAA" />
+        </Campo>
 
-        {/* 1. Linhas 1 a 5: 2 colunas com posições e labels da planilha */}
-        <div className="aderencia-ficha-grid">
-          {/* Linha 1: Tipo de Revestimento | Data do Ensaio */}
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">TIPO DE REVESTIMENTO:</label>
-            <input
-              style={{ ...fichaInputStyle, textTransform: 'uppercase' }}
-              value={situacao.tipoRevestimento}
-              onChange={e => atualizar('tipoRevestimento', e.target.value.toUpperCase())}
-              placeholder="Ex: HORIZONTAL INTERNO"
-            />
-          </div>
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">DATA DO ENSAIO:</label>
-            <input
-              style={fichaInputStyle}
-              value={situacao.dataEnsaio}
-              onChange={e => atualizar('dataEnsaio', e.target.value)}
-              placeholder="DD/MM/AAAA"
-            />
-          </div>
+        <Campo label="Nº de corpos de prova">
+          <input type="number" style={inputStyle} min={1} value={situacao.numCPs} onChange={e => alterarNumCPs(Number(e.target.value))} />
+        </Campo>
+        <Campo label="Data de aplicação">
+          <input style={inputStyle} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', e.target.value)} placeholder="DD/MM/AAAA ou NÃO INFORMADA" />
+        </Campo>
 
-          {/* Linha 2: Nº de Corpos de Prova | Data de Aplicação */}
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">Nº DE CORPOS DE PROVA:</label>
-            <input
-              type="number"
-              min={1}
-              style={{ ...fichaInputStyle, maxWidth: 90 }}
-              value={situacao.numCPs}
-              onChange={e => alterarNumCPs(Number(e.target.value))}
-            />
-          </div>
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">DATA DE APLICAÇÃO:</label>
-            <input
-              style={fichaInputStyle}
-              value={situacao.dataAplicacao}
-              onChange={e => atualizar('dataAplicacao', e.target.value)}
-              placeholder="DD/MM/AAAA ou NÃO INFORMADA"
-            />
-          </div>
+        <Campo label="Substrato">
+          <input style={inputStyle} value={situacao.substrato} onChange={e => atualizar('substrato', e.target.value)} />
+        </Campo>
+        <Campo label="Idade de ruptura (dias)">
+          <input style={inputStyle} value={situacao.idadeRupturaDias} onChange={e => atualizar('idadeRupturaDias', e.target.value)} placeholder="EX: >28" />
+        </Campo>
 
-          {/* Linha 3: Substrato | Idade de Ruptura (dias) */}
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">SUBSTRATO:</label>
-            <input
-              style={fichaInputStyle}
-              value={situacao.substrato}
-              onChange={e => atualizar('substrato', e.target.value)}
-              placeholder="Ex: CONCRETO"
-            />
-          </div>
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">IDADE DE RUPTURA (DIAS):</label>
-            <input
-              style={fichaInputStyle}
-              value={situacao.idadeRupturaDias}
-              onChange={e => atualizar('idadeRupturaDias', e.target.value)}
-              placeholder="Ex: >28"
-            />
-          </div>
+        <Campo label="Chapisco">
+          <input style={inputStyle} value={situacao.chapisco} onChange={e => atualizar('chapisco', e.target.value)} />
+        </Campo>
+        <Campo label="Traço (chapisco)">
+          <input style={inputStyle} value={situacao.chapiscoTraco} onChange={e => atualizar('chapiscoTraco', e.target.value)} />
+        </Campo>
 
-          {/* Linha 4: Chapisco | Traço */}
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">CHAPISCO:</label>
-            <input
-              style={fichaInputStyle}
-              value={situacao.chapisco}
-              onChange={e => atualizar('chapisco', e.target.value)}
-              placeholder="Ex: -"
-            />
-          </div>
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">TRAÇO:</label>
-            <input
-              style={fichaInputStyle}
-              value={situacao.chapiscoTraco}
-              onChange={e => atualizar('chapiscoTraco', e.target.value)}
-              placeholder="Ex: -"
-            />
-          </div>
-
-          {/* Linha 5: Emboço | Traço */}
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">EMBOÇO:</label>
-            <input
-              style={fichaInputStyle}
-              value={situacao.emboco}
-              onChange={e => atualizar('emboco', e.target.value)}
-              placeholder="Ex: -"
-            />
-          </div>
-          <div className="ficha-celula" style={{ borderBottom: `1px solid ${BORDER}` }}>
-            <label className="ficha-label">TRAÇO:</label>
-            <input
-              style={fichaInputStyle}
-              value={situacao.embocoTraco}
-              onChange={e => atualizar('embocoTraco', e.target.value)}
-              placeholder="Ex: -"
-            />
-          </div>
-        </div>
-
-        {/* 2. Faixa tripla: ARGAMASSA COLANTE | REVESTIMENTO | DIMENSÕES (cm) */}
-        <div className="aderencia-tripla-row" style={{ borderBottom: `1px solid ${BORDER}`, background: '#F8F9FA' }}>
-          <div style={{ padding: '7px 12px', borderRight: `1px solid ${BORDER}`, textAlign: 'center' }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.03em' }}>ARGAMASSA COLANTE</span>
-          </div>
-          <div style={{ padding: '7px 12px', borderRight: `1px solid ${BORDER}`, textAlign: 'center' }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.03em' }}>REVESTIMENTO</span>
-          </div>
-          <div style={{ padding: '7px 12px', textAlign: 'center' }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.03em' }}>DIMENSÕES (cm)</span>
-          </div>
-        </div>
-        <div className="aderencia-tripla-row" style={{ borderBottom: `1.5px solid ${BORDER}`, background: '#fff' }}>
-          <div style={{ padding: '6px 8px', borderRight: `1px solid ${BORDER}` }}>
-            <input style={{ ...fichaInputStyle, textAlign: 'center' }} value={situacao.argamassaColante} onChange={e => atualizar('argamassaColante', e.target.value)} placeholder="Ex: -" />
-          </div>
-          <div style={{ padding: '6px 8px', borderRight: `1px solid ${BORDER}` }}>
-            <input style={{ ...fichaInputStyle, textAlign: 'center' }} value={situacao.revestimento} onChange={e => atualizar('revestimento', e.target.value)} placeholder="Ex: -" />
-          </div>
-          <div style={{ padding: '6px 8px' }}>
-            <input style={{ ...fichaInputStyle, textAlign: 'center' }} value={situacao.dimensoesCm} onChange={e => atualizar('dimensoesCm', e.target.value)} placeholder="Ex: -" />
-          </div>
-        </div>
-
-        {/* 3. Bloco ESQUEMA | LEGENDA | OBSERVAÇÕES na mesma disposição da planilha */}
-        <div className="aderencia-esquema-row" style={{ background: '#fff', minHeight: 160 }}>
-          {/* Coluna Esquema com faixa lateral "ESQUEMA" */}
-          <div style={{ display: 'flex', borderRight: `1px solid ${BORDER}`, padding: '12px 14px', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 10, fontWeight: 800, color: SUBTEXT, letterSpacing: '0.12em', marginRight: 10, textTransform: 'uppercase' }}>
-              ESQUEMA
-            </div>
-            <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas) }} style={{ lineHeight: 0 }} />
-          </div>
-
-          {/* Coluna Legenda de Camadas coloridas */}
-          <div style={{ padding: '12px 14px', borderRight: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, minWidth: 160 }}>
-            {modelo.camadas.map((camada, idx) => {
-              const cor = modelo.coresCamadas?.[idx] || corCamada(camada);
-              return (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 14, height: 14, borderRadius: 2, background: cor, border: '1px solid #1E3264', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: TEXT, textTransform: 'uppercase' }}>{camada}</span>
-                </div>
-              );
-            })}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 14, height: 14, borderRadius: 2, background: '#D0D3D9', border: '1px solid #1E3264', flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT, textTransform: 'uppercase' }}>ADESIVO (BASE EPÓXI)</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 14, height: 14, borderRadius: 2, background: '#6B7280', border: '1px solid #1E3264', flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT, textTransform: 'uppercase' }}>PLACA METÁLICA</span>
-            </div>
-          </div>
-
-          {/* Coluna Observações */}
-          <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
-            <label style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-              OBSERVAÇÕES:
-            </label>
-            <textarea
-              style={{ ...inputStyle, flex: 1, minHeight: 90, resize: 'vertical', fontFamily: 'inherit', border: `1px solid ${BORDER}`, padding: '8px 10px' }}
-              value={situacao.observacoesEsquema}
-              onChange={e => atualizar('observacoesEsquema', e.target.value)}
-              placeholder="Observações sobre o sistema de revestimento ensaiado..."
-            />
-          </div>
-        </div>
+        <Campo label="Emboço">
+          <input style={inputStyle} value={situacao.emboco} onChange={e => atualizar('emboco', e.target.value)} />
+        </Campo>
+        <Campo label="Traço (emboço)">
+          <input style={inputStyle} value={situacao.embocoTraco} onChange={e => atualizar('embocoTraco', e.target.value)} />
+        </Campo>
       </div>
 
-      {/* 4. Tabela RESULTADO DO ENSAIO */}
-      <div style={{ border: `1.5px solid ${BORDER}`, borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+      {/* 2. Faixa tripla: Argamassa colante | Revestimento | Dimensões (cm) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '6px 12px', marginBottom: 10 }}>
+        <Campo label="Argamassa colante">
+          <input style={inputStyle} value={situacao.argamassaColante} onChange={e => atualizar('argamassaColante', e.target.value)} />
+        </Campo>
+        <Campo label="Revestimento">
+          <input style={inputStyle} value={situacao.revestimento} onChange={e => atualizar('revestimento', e.target.value)} />
+        </Campo>
+        <Campo label="Dimensões (cm)">
+          <input style={inputStyle} value={situacao.dimensoesCm} onChange={e => atualizar('dimensoesCm', e.target.value)} placeholder="EX: 10X10" />
+        </Campo>
+      </div>
+
+      {/* Esquema + observações */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12, alignItems: 'center', marginBottom: 12, padding: '8px 12px', background: BG, border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas) }} style={{ lineHeight: 0 }} />
+        <Campo label="Observações do esquema">
+          <textarea
+            style={{ ...inputStyle, height: 'auto', minHeight: 68, resize: 'vertical', fontFamily: 'inherit', padding: '6px 8px' }}
+            value={situacao.observacoesEsquema}
+            onChange={e => atualizar('observacoesEsquema', e.target.value)}
+            placeholder="Observações sobre o sistema de revestimento ensaiado..."
+          />
+        </Campo>
+      </div>
+
+      {/* 3. Tabela RESULTADO DO ENSAIO */}
+      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Resultado do ensaio</p>
+      <div style={{ border: `1px solid ${BORDER}`, borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
         <div style={{ background: '#F4F6F9', padding: '10px 14px', borderBottom: `1.5px solid ${BORDER}`, textAlign: 'center' }}>
           <span style={{ fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             RESULTADO DO ENSAIO
@@ -1081,18 +947,18 @@ function SituacaoForm({
         {/* 5. Rodapé bipartido da tabela: Médias calculadas à esquerda + Umidade/Espessura à direita */}
         <div style={{ borderTop: `1.5px solid ${BORDER}`, background: '#F8F9FA' }}>
           {/* Linha MÉDIA + UMIDADE MÉDIA */}
-          <div className="aderencia-rodape-row" style={{ borderBottom: `1px solid ${BORDER}`, padding: '8px 14px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="aderencia-rodape-row" style={{ borderBottom: `1px solid ${BORDER}`, padding: '6px 12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
               <Estatistica label="Ra médio" valor={stats.raMedia} unidade="MPa" />
               <Estatistica label="Prof. ruptura média" valor={stats.profRupturaMedia} unidade="mm" />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                 UMIDADE MÉDIA (%):
               </span>
               <input
                 type="number"
-                style={{ ...cellInputStyle, width: 85, padding: '5px 8px', fontWeight: 700, textAlign: 'center' }}
+                style={{ ...cellInputStyle, width: 80, padding: '3px 6px', fontWeight: 700, textAlign: 'center', height: 26 }}
                 value={situacao.umidadeMedia ?? ''}
                 onChange={e => atualizar('umidadeMedia', e.target.value === '' ? null : Number(e.target.value))}
                 placeholder="-"
@@ -1101,18 +967,18 @@ function SituacaoForm({
           </div>
 
           {/* Linha DP / CV + ESPESSURA MÉDIA */}
-          <div className="aderencia-rodape-row" style={{ padding: '8px 14px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="aderencia-rodape-row" style={{ padding: '6px 12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
               <Estatistica label="DP (MPa)" valor={stats.dp} unidade="" />
               <Estatistica label="CV (%)" valor={stats.cv} unidade="%" />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                 ESPESSURA MÉDIA (mm):
               </span>
               <input
                 type="number"
-                style={{ ...cellInputStyle, width: 85, padding: '5px 8px', fontWeight: 700, textAlign: 'center' }}
+                style={{ ...cellInputStyle, width: 80, padding: '3px 6px', fontWeight: 700, textAlign: 'center', height: 26 }}
                 value={situacao.espessuraMediaRevestimento ?? ''}
                 onChange={e => atualizar('espessuraMediaRevestimento', e.target.value === '' ? null : Number(e.target.value))}
                 placeholder="-"
@@ -1126,16 +992,16 @@ function SituacaoForm({
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th style={{ padding: '8px 6px', fontSize: 10, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', textAlign: 'center' }}>{children}</th>;
+  return <th style={{ padding: '6px 4px', fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', textAlign: 'center' }}>{children}</th>;
 }
 function Td({ children }: { children: React.ReactNode }) {
-  return <td style={{ padding: '5px 6px', minWidth: 64 }}>{children}</td>;
+  return <td style={{ padding: '3px 4px', minWidth: 56 }}>{children}</td>;
 }
 function Estatistica({ label, valor, unidade }: { label: string; valor: number | null; unidade: string }) {
   return (
     <div>
-      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
-      <p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 800, color: PRIMARY }}>{valor === null ? '—' : `${valor.toFixed(2)} ${unidade}`}</p>
+      <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
+      <p style={{ margin: '1px 0 0', fontSize: 13.5, fontWeight: 800, color: PRIMARY }}>{valor === null ? '—' : `${valor.toFixed(2)} ${unidade}`}</p>
     </div>
   );
 }
