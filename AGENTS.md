@@ -10,7 +10,7 @@ Este projeto é trabalhado em mais de uma ferramenta (Claude Code e Antigravity)
 
 - Next.js 15 + TypeScript
 - Supabase (Auth + Storage)
-- Vercel (deploy)
+- Vercel (deploy) — conta no plano **Hobby** (verificado em 2026-11-09 via plugin Vercel; projeto `2-ensaios-diversos`, equipe `carlosaureliosms-projects`, Node 24.x, 1 build simultâneo, deploy automático da `main`)
 - Zustand (estado global)
 - pizzip + docxtemplater (geração DOCX)
 
@@ -23,6 +23,12 @@ Este projeto é trabalhado em mais de uma ferramenta (Claude Code e Antigravity)
 - `src/lib/` — lógica de negócio e utilitários
 - `src/types/` — tipos TypeScript compartilhados
 - `public/` — assets e templates DOCX
+
+## Vercel — plano e limites
+
+- Plano **Hobby**. Limite de ~4,5 MB por corpo de requisição em funções (por isso as fotos do módulo Aderência vão pelo Supabase Storage, não em base64 no POST).
+- Cada falha de `npm run build` mantém no ar o deploy anterior e dispara e-mail de erro; em 2026-11-06 três commits seguidos (`b366216`, `654292e`, `2fd6d6a`) falharam por erro de tipo que só o `next build` detecta (corrigido em `3d089b8`). **Antes de todo push, rodar `npx next build`.**
+- A rota `api/ensaios/aderencia/docx` ainda não define `export const maxDuration` (a de resistividade define 60). Pendente avaliar, pois a geração baixa muitas fotos do Storage; o limite de duração do Hobby não foi confirmado.
 
 ## Variáveis de ambiente
 
