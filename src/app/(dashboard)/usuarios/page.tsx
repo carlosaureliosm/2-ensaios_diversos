@@ -534,7 +534,8 @@ export default function UsuariosPage() {
       email: user.email ?? '',
       full_name: user.user_metadata?.full_name ?? '',
       cargo: user.user_metadata?.cargo ?? '',
-      role: user.user_metadata?.role ?? 'user',
+      // Papel vem de app_metadata (só o servidor grava). Aqui é só para a UI; as rotas /api/users reverificam.
+      role: user.app_metadata?.role === 'admin' ? 'admin' : 'user',
       crea: user.user_metadata?.crea ?? '',
       assinatura_url: user.user_metadata?.assinatura_url ?? undefined,
     };

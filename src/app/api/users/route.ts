@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { isAdmin, roleDe, usuarioAtual } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import type { UserMetadata } from '@/types/user';
 
@@ -8,21 +8,16 @@ export const preferredRegion = 'gru1';
 
 // GET /api/users — lista todos os usuários (admin only)
 export async function GET() {
-  const supabase = await createClient();
-  const admin = createAdminClient();
-
-  const [{ data: { user } }, { data, error }] = await Promise.all([
-    supabase.auth.getUser(),
-    admin.auth.admin.listUsers(),
-  ]);
-
+  const user = await usuarioAtual();
   if (!user) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   }
-  if (user.user_metadata?.role !== 'admin') {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: 'Acesso restrito a administradores.' }, { status: 403 });
   }
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data, error } = await createAdminClient().auth.admin.listUsers({ perPage: 1000 });
+  if (error) return NextResponse.json({ error: 'Erro ao listar usuários.' }, { status: 500 });
 
   const users = data.users.map((u) => {
     const meta = (u.user_metadata ?? {}) as UserMetadata;
@@ -31,7 +26,7 @@ export async function GET() {
       email: u.email,
       full_name: meta.full_name ?? '',
       cargo: meta.cargo ?? '',
-      role: meta.role ?? 'user',
+      role: roleDe(u),
       banned: !!u.banned_until && new Date(u.banned_until) > new Date(),
       created_at: u.created_at,
       crea: meta.crea ?? '',
@@ -48,11 +43,9 @@ export async function GET() {
 
 // POST /api/users — cria novo usuário (admin only)
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+  const user = await usuarioAtual();
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-  if (user.user_metadata?.role !== 'admin') {
+  if (!isAdmin(user)) {
     return NextResponse.json({ error: 'Acesso restrito a administradores.' }, { status: 403 });
   }
 
@@ -68,9 +61,11 @@ export async function POST(req: NextRequest) {
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: full_name ?? '', cargo: cargo ?? '', crea: crea ?? '', role: role ?? 'user' },
+    user_metadata: { full_name: full_name ?? '', cargo: cargo ?? '', crea: crea ?? '' },
+    // Papel em app_metadata: só a service role grava (o usuário não consegue se promover).
+    app_metadata: { role: role === 'admin' ? 'admin' : 'user' },
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ user: data.user }, { status: 201 });
+  return NextResponse.json({ user: { id: data.user.id, email: data.user.email } }, { status: 201 });
 }

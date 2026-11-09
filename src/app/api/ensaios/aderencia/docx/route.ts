@@ -4,12 +4,12 @@
 // Gera o laudo DOCX de Resistência de Aderência à Tração a partir de public/modelo_aderencia.docx
 
 import { NextRequest, NextResponse } from 'next/server';
+import { baixarAssinaturaDoUsuario, usuarioAtual } from '@/lib/auth';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import path from 'path';
 import fs from 'fs';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
 import { BUCKET_FOTOS_ADERENCIA } from '@/lib/aderenciaStorage';
 import type { FotoAnexo } from '@/modules/aderencia/types';
 import { injetarAssinatura, atualizarSumario } from '@/lib/docx/esclerometria';
@@ -30,7 +30,7 @@ type RequestBody = AderenciaDocxPayload & {
  * Fotos de CP enviadas só com `path` (já no Supabase Storage) são baixadas aqui e preenchidas em
  * `base64`, para que o restante da geração siga igual. Só aceita caminhos da pasta do próprio usuário.
  */
-async function resolverFotosDoStorage(situacoes: AderenciaDocxPayload['situacoes']): Promise<void> {
+async function resolverFotosDoStorage(situacoes: AderenciaDocxPayload['situacoes'], userId: string): Promise<void> {
   const pendentes: FotoAnexo[] = [];
   for (const s of situacoes) {
     for (const cp of s.corposDeProva) {
@@ -41,15 +41,11 @@ async function resolverFotosDoStorage(situacoes: AderenciaDocxPayload['situacoes
   }
   if (pendentes.length === 0) return;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Não autenticado.');
-
   const admin = createAdminClient();
   await Promise.all(
     pendentes.map(async foto => {
       const path = foto.path!;
-      if (!path.startsWith(`${user.id}/`) || path.includes('..')) throw new Error('Foto fora da pasta do usuário.');
+      if (!path.startsWith(`${userId}/`) || path.includes('..')) throw new Error('Foto fora da pasta do usuário.');
       const { data, error } = await admin.storage.from(BUCKET_FOTOS_ADERENCIA).download(path);
       if (error || !data) throw new Error(`Foto não encontrada no Storage (${path}). Reenvie a foto.`);
       foto.base64 = Buffer.from(await data.arrayBuffer()).toString('base64');
@@ -58,6 +54,9 @@ async function resolverFotosDoStorage(situacoes: AderenciaDocxPayload['situacoes
 }
 
 export async function POST(req: NextRequest) {
+  const user = await usuarioAtual();
+  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+
   try {
     const body: RequestBody = await req.json();
 
@@ -65,7 +64,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Payload inválido: cabecalho e situacoes são obrigatórios.' }, { status: 400 });
     }
 
-    await resolverFotosDoStorage(body.situacoes);
+    await resolverFotosDoStorage(body.situacoes, user.id);
 
     // ── Assinatura (opcional) ───────────────────────────────────
     let assinaturaBuffer: Buffer | null = null;
@@ -73,14 +72,12 @@ export async function POST(req: NextRequest) {
     if (body.respAssinaturaBase64) {
       assinaturaBuffer = Buffer.from(body.respAssinaturaBase64, 'base64');
     } else if (body.respAssinaturaUrl) {
-      try {
-        const r = await fetch(body.respAssinaturaUrl);
-        if (r.ok) {
-          assinaturaContentType = r.headers.get('content-type') ?? 'image/png';
-          assinaturaBuffer = Buffer.from(await r.arrayBuffer());
-        }
-      } catch {
-        console.warn('[aderencia docx] Falha ao baixar assinatura — omitindo.');
+      // respAssinaturaUrl só indica "usar a assinatura do usuário logado": a URL enviada é ignorada
+      // (buscar URL vinda do cliente era SSRF). A imagem é baixada do Storage pelo assinatura_path do usuário.
+      const assinatura = await baixarAssinaturaDoUsuario(user);
+      if (assinatura) {
+        assinaturaBuffer = assinatura.buffer;
+        assinaturaContentType = assinatura.contentType;
       }
     }
 

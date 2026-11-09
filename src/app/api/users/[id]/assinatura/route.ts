@@ -10,7 +10,7 @@
 //     WITH CHECK (bucket_id = 'assinaturas' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { isAdmin as ehAdmin, usuarioAtual } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 const BUCKET        = 'assinaturas';
@@ -23,11 +23,10 @@ export async function POST(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await usuarioAtual();
   if (!currentUser) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
-  const isAdmin = currentUser.user_metadata?.role === 'admin';
+  const isAdmin = ehAdmin(currentUser);
   const isSelf  = currentUser.id === id;
   if (!isAdmin && !isSelf) return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
 
@@ -69,11 +68,10 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await usuarioAtual();
   if (!currentUser) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
-  const isAdmin = currentUser.user_metadata?.role === 'admin';
+  const isAdmin = ehAdmin(currentUser);
   const isSelf  = currentUser.id === id;
   if (!isAdmin && !isSelf) return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
 

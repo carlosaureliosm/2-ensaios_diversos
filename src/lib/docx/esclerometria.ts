@@ -400,7 +400,6 @@ export async function buscarImagemMapa(
 
   try {
     const urlStr = mapUrl.toString();
-    console.log('[buscarImagemMapa] URL:', urlStr);
     const res = await fetch(urlStr);
     console.log('[buscarImagemMapa] status:', res.status, res.statusText);
     console.log('[buscarImagemMapa] content-type:', res.headers.get('content-type'));
@@ -413,7 +412,7 @@ export async function buscarImagemMapa(
     console.log('[buscarImagemMapa] buffer size:', buffer.length);
     return { buffer, width, height };
   } catch (err) {
-    console.warn('[buscarImagemMapa] exceção:', err);
+    console.warn('[buscarImagemMapa] exceção:', err instanceof Error ? err.message : 'erro');
     return null;
   }
 }

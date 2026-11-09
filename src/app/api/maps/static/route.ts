@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { usuarioAtual } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+  // Consome cota paga da chave do Google Maps: só para usuários logados.
+  if (!(await usuarioAtual())) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+
   try {
     const body = await request.json();
     const { latitude, longitude } = body;

@@ -1,18 +1,18 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { isAdmin as ehAdmin, roleDe, usuarioAtual } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import type { UserMetadata } from '@/types/user';
+import type { User } from '@supabase/supabase-js';
 
-// Conta admins ativos (não banidos)
+// Conta admins ativos (não banidos). O papel vem de app_metadata (só a service role grava).
 async function getAdminCount(): Promise<number> {
   const admin = createAdminClient();
-  const { data } = await admin.auth.admin.listUsers();
-  if (!data) return 0;
-  const users = (data as { users: Record<string, unknown>[] }).users;
+  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  if (error || !data) return 0;
+  const users = (data as { users: User[] }).users;
   return users.filter((u) => {
-    const meta = u.user_metadata as Record<string, unknown> | undefined;
-    const banned = u.banned_until as string | null | undefined;
-    return meta?.role === 'admin' && (!banned || new Date(banned) <= new Date());
+    const banned = u.banned_until;
+    return roleDe(u) === 'admin' && (!banned || new Date(banned) <= new Date());
   }).length;
 }
 
@@ -23,11 +23,10 @@ export async function PATCH(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await usuarioAtual();
   if (!currentUser) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
-  const isAdmin = currentUser.user_metadata?.role === 'admin';
+  const isAdmin = ehAdmin(currentUser);
   const isSelf = currentUser.id === id;
 
   if (!isAdmin && !isSelf) {
@@ -46,7 +45,7 @@ export async function PATCH(
     if (action === 'ban') {
       const adminCount = await getAdminCount();
       const { data: targetData } = await admin.auth.admin.getUserById(id);
-      if (targetData?.user?.user_metadata?.role === 'admin' && adminCount <= 1) {
+      if (roleDe(targetData?.user) === 'admin' && adminCount <= 1) {
         return NextResponse.json({ error: 'Não é possível desativar o último administrador.' }, { status: 400 });
       }
       const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: '876000h' });
@@ -65,30 +64,37 @@ export async function PATCH(
   if (fetchError || !targetData?.user) {
     return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
   }
-  const existingMeta = (targetData.user.user_metadata ?? {}) as UserMetadata;
+  const existingMeta = (targetData.user.user_metadata ?? {}) as UserMetadata & Record<string, unknown>;
 
-  // Monta novos metadados fazendo merge com os existentes
+  // Monta novos metadados fazendo merge com os existentes.
+  // `role` nunca fica em user_metadata (o usuário conseguiria alterá-lo pelo navegador).
   const newMeta: Record<string, unknown> = { ...existingMeta };
+  delete newMeta.role;
   if (full_name !== undefined) newMeta.full_name = full_name;
   if (cargo !== undefined) newMeta.cargo = cargo;
   if (crea !== undefined) newMeta.crea = crea;
 
+  const updates: Record<string, unknown> = { user_metadata: newMeta };
+
   if (role !== undefined) {
     if (!isAdmin) return NextResponse.json({ error: 'Sem permissão para alterar nível.' }, { status: 403 });
-    if (role !== 'admin') {
+    const novoRole = role === 'admin' ? 'admin' : 'user';
+    if (novoRole !== 'admin') {
       const adminCount = await getAdminCount();
-      if (existingMeta.role === 'admin' && adminCount <= 1) {
+      if (roleDe(targetData.user) === 'admin' && adminCount <= 1) {
         return NextResponse.json({ error: 'Não é possível rebaixar o último administrador.' }, { status: 400 });
       }
     }
-    newMeta.role = role;
+    updates.app_metadata = { ...(targetData.user.app_metadata ?? {}), role: novoRole };
   }
 
-  // Monta payload para o Supabase
-  // CORREÇÃO: usar `user_metadata` em vez de `data` — o campo `data` não persiste
-  // corretamente em todas as versões do @supabase/supabase-js
-  const updates: Record<string, unknown> = { user_metadata: newMeta };
-  if (email !== undefined && email !== '') updates.email = email;
+  // A API admin troca o e-mail sem confirmação — por isso só administradores podem mudar e-mail.
+  if (email !== undefined && email !== '' && email !== targetData.user.email) {
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Para alterar o e-mail, peça a um administrador.' }, { status: 403 });
+    }
+    updates.email = email;
+  }
   if (password !== undefined && password !== '') updates.password = password;
 
   const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(id, updates);
@@ -102,7 +108,7 @@ export async function PATCH(
       email: updated.user.email,
       full_name: updatedMeta.full_name ?? '',
       cargo: updatedMeta.cargo ?? '',
-      role: updatedMeta.role ?? 'user',
+      role: roleDe(updated.user),
     },
   });
 }
@@ -114,17 +120,16 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const currentUser = await usuarioAtual();
   if (!currentUser) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-  if (currentUser.user_metadata?.role !== 'admin') {
+  if (!ehAdmin(currentUser)) {
     return NextResponse.json({ error: 'Acesso restrito a administradores.' }, { status: 403 });
   }
 
   const admin = createAdminClient();
   const adminCount = await getAdminCount();
   const { data: targetData } = await admin.auth.admin.getUserById(id);
-  if (targetData?.user?.user_metadata?.role === 'admin' && adminCount <= 1) {
+  if (roleDe(targetData?.user) === 'admin' && adminCount <= 1) {
     return NextResponse.json({ error: 'Não é possível excluir o último administrador.' }, { status: 400 });
   }
 

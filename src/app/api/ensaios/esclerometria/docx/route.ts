@@ -7,6 +7,7 @@
 // Variáveis de ambiente: GOOGLE_MAPS_API_KEY
 
 import { NextRequest, NextResponse } from 'next/server';
+import { baixarAssinaturaDoUsuario, usuarioAtual } from '@/lib/auth';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import path from 'path';
@@ -71,6 +72,9 @@ type RequestBody = {
 
 // ── Handler ────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const user = await usuarioAtual();
+  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+
   try {
     const body: RequestBody = await req.json();
 
@@ -81,14 +85,12 @@ export async function POST(req: NextRequest) {
     if (body.respAssinaturaBase64) {
       assinaturaBuffer = Buffer.from(body.respAssinaturaBase64, 'base64');
     } else if (body.respAssinaturaUrl) {
-      try {
-        const r = await fetch(body.respAssinaturaUrl);
-        if (r.ok) {
-          assinaturaContentType = r.headers.get('content-type') ?? 'image/png';
-          assinaturaBuffer = Buffer.from(await r.arrayBuffer());
-        }
-      } catch {
-        console.warn('[docx route] Falha ao baixar assinatura — omitindo.');
+      // respAssinaturaUrl só indica "usar a assinatura do usuário logado": a URL enviada é ignorada
+      // (buscar URL vinda do cliente era SSRF). A imagem é baixada do Storage pelo assinatura_path do usuário.
+      const assinatura = await baixarAssinaturaDoUsuario(user);
+      if (assinatura) {
+        assinaturaBuffer = assinatura.buffer;
+        assinaturaContentType = assinatura.contentType;
       }
     }
 

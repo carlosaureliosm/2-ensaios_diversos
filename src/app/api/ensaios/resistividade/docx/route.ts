@@ -7,6 +7,7 @@
 // Template: public/modelo_resistividade.docx
 
 import { NextRequest, NextResponse } from 'next/server';
+import { baixarAssinaturaDoUsuario, usuarioAtual } from '@/lib/auth';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import path from 'path';
@@ -67,6 +68,9 @@ type RequestBody = {
 
 // ── Handler ────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const user = await usuarioAtual();
+  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+
   try {
     const body: RequestBody = await req.json();
 
@@ -77,14 +81,13 @@ export async function POST(req: NextRequest) {
     if (body.respAssinaturaBase64) {
       assinaturaBuffer = Buffer.from(body.respAssinaturaBase64, 'base64');
     } else if (body.respAssinaturaUrl) {
-      try {
-        const resp = await fetch(body.respAssinaturaUrl);
-        if (resp.ok) {
-          const ct = resp.headers.get('content-type') ?? 'image/png';
-          assinaturaContentType = ct;
-          assinaturaBuffer = Buffer.from(await resp.arrayBuffer());
-        }
-      } catch { /* assinatura opcional */ }
+      // respAssinaturaUrl só indica "usar a assinatura do usuário logado": a URL enviada é ignorada
+      // (buscar URL vinda do cliente era SSRF). A imagem é baixada do Storage pelo assinatura_path do usuário.
+      const assinatura = await baixarAssinaturaDoUsuario(user);
+      if (assinatura) {
+        assinaturaBuffer = assinatura.buffer;
+        assinaturaContentType = assinatura.contentType;
+      }
     }
 
     // ── Foto geral ──────────────────────────────────────────────

@@ -30,6 +30,20 @@ Este projeto é trabalhado em mais de uma ferramenta (Claude Code e Antigravity)
 - Cada falha de `npm run build` mantém no ar o deploy anterior e dispara e-mail de erro; em 2026-11-06 três commits seguidos (`b366216`, `654292e`, `2fd6d6a`) falharam por erro de tipo que só o `next build` detecta (corrigido em `3d089b8`). **Antes de todo push, rodar `npx next build`.**
 - A rota `api/ensaios/aderencia/docx` ainda não define `export const maxDuration` (a de resistividade define 60). Pendente avaliar, pois a geração baixa muitas fotos do Storage; o limite de duração do Hobby não foi confirmado.
 
+## Segurança (auditoria de 2026-11-09)
+
+Auditoria feita com a metodologia `cloudflare/security-audit-skill`. Relatório fora do repositório, em `~/security-audit-skill/ensaios/run-1/REPORT.md`. Correções aplicadas:
+
+- **Papel de admin fica em `app_metadata.role`, nunca em `user_metadata.role`.** O próprio usuário consegue editar `user_metadata` pelo navegador (`supabase.auth.updateUser({ data })` com a anon key pública), então qualquer técnico conseguia virar admin. Sempre usar os helpers `isAdmin`/`roleDe`/`usuarioAtual` de `src/lib/auth.ts`. A criação e a edição de usuários gravam o papel em `app_metadata`.
+  - **Migração obrigatória (uma vez):** rodar `node scripts/migrar-roles-app-metadata.js` para listar os usuários e depois `--aplicar --admins email1,email2` informando os admins à mão. A lista atual de "admins" no `user_metadata` não é confiável. Até a migração rodar, ninguém é admin no site.
+- **Toda rota em `src/app/api/` precisa checar a autenticação por conta própria** (`usuarioAtual()` → 401). O `middleware.ts` exclui `/api` do matcher. As rotas `docx` (aderência, esclerometria, resistividade) e `/api/maps/static` estavam abertas e agora exigem login.
+- **Nunca fazer `fetch` de uma URL vinda do cliente (SSRF).** O campo `respAssinaturaUrl` agora só significa "usar a assinatura do usuário logado": o servidor baixa a imagem do Storage pelo `user_metadata.assinatura_path` (`baixarAssinaturaDoUsuario`) e ignora a URL enviada.
+- Um usuário que não é admin não troca mais o próprio e-mail pelo `PATCH /api/users/[id]`, porque a API admin troca sem confirmação.
+- `middleware.ts` usa `getUser()` (valida o token) em vez de `getSession()`. O `src/proxy.ts`, que era duplicado e não usado no Next 15, foi removido.
+- Removido o `console.log` que imprimia a URL do Google Maps com a chave. **Pendente (manual):** rotacionar `GOOGLE_MAPS_API_KEY` e restringi-la no Google Cloud (só Static Maps, cota diária). **Pendente (manual):** confirmar que "Allow new users to sign up" está desligado no Supabase.
+- Dependências: Next 15.5.15 → 15.5.29 e vitest → 4.1.12 (`npm audit fix`). Resta o `postcss` embutido no Next 15, usado só no build com o CSS do próprio projeto. Corrigir exige migrar para o Next 16.
+- Testes de regressão em `src/lib/auth.test.ts`: o papel é lido só de `app_metadata`, e as rotas docx/maps respondem 401 sem login e não fazem `fetch`.
+
 ## Variáveis de ambiente
 
 ```env

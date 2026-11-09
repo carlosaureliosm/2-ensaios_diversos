@@ -21,8 +21,9 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
+  // getUser valida o token no servidor do Supabase (getSession só lê o cookie, sem verificar).
+  // Obs.: o matcher exclui /api — cada rota de API precisa checar a autenticação por conta própria.
+  const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
   const publicRoutes = ['/login'];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
