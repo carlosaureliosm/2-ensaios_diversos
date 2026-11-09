@@ -6,9 +6,13 @@ import { NextRequest } from 'next/server'
 import PizZip from 'pizzip'
 import fs from 'fs'
 import { POST } from '@/app/api/ensaios/aderencia/docx/route'
-import { MODELOS_SISTEMA_CAMADAS } from '@/modules/aderencia/modelosCamadas'
+import {
+  MODELOS_SISTEMA_CAMADAS,
+  ID_MODELO_PERSONALIZADO,
+  gerarColunasFormaRuptura,
+} from '@/modules/aderencia/modelosCamadas'
 import { criarCorpoDeProva } from '@/modules/aderencia/calculos'
-import type { FotoAnexo, SituacaoAderencia } from '@/modules/aderencia/types'
+import type { FotoAnexo, ModeloSistemaCamadas, SituacaoAderencia } from '@/modules/aderencia/types'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'user-1' } } }) } }),
@@ -143,4 +147,88 @@ describe('geração DOCX de aderência (ponta a ponta)', () => {
 
     const negado = await chamar(corpo('outro-usuario/a.jpg'))
     expect(negado.status).toBe(500)
-  })})
+  })
+
+  it('gera laudo com modelo personalizado (camadas, cores e colunas de ruptura customizadas)', async () => {
+    const camadas = ['Substrato Especial', 'Chapisco Rolado', 'Massa Única']
+    const colunasAuto = gerarColunasFormaRuptura(camadas)
+    expect(colunasAuto).toEqual([
+      'Sub Esp',
+      'Sub Esp/Cha Rol',
+      'Cha Rol',
+      'Cha Rol/Mas Úni',
+      'Massa Única',
+      'Vazios',
+    ])
+
+    const modeloPersonalizado: ModeloSistemaCamadas = {
+      id: ID_MODELO_PERSONALIZADO,
+      nome: 'Personalizado',
+      disposicao: 'parede',
+      camadas,
+      coresCamadas: ['#A1B2C3', '#FFAA00', '#DDEEFF'],
+      colunasFormaRuptura: [...colunasAuto.slice(0, -1), 'Sub/Massa', 'Vazios'],
+    }
+
+    const cp = criarCorpoDeProva(1, modeloPersonalizado.colunasFormaRuptura)
+    cp.tensaoRa = 0.42
+    cp.profRuptura = 3.5
+    cp.formaRuptura['Sub/Massa'] = 100
+
+    const sitCustom: SituacaoAderencia & { esquema: FotoAnexo } = {
+      numero: 1,
+      tipoRevestimento: 'PERSONALIZADO',
+      dataEnsaio: '2026-11-09',
+      numCPs: 1,
+      dataAplicacao: '2026-09-01',
+      substrato: 'Substrato Especial',
+      idadeRupturaDias: '28',
+      chapisco: 'Chapisco Rolado',
+      chapiscoTraco: '1:3',
+      emboco: 'Massa Única',
+      embocoTraco: '1:2:8',
+      argamassaColante: '-',
+      revestimento: '-',
+      dimensoesCm: '10x10',
+      modeloCamadasId: ID_MODELO_PERSONALIZADO,
+      modeloPersonalizado,
+      observacoesEsquema: 'Esquema personalizado',
+      corposDeProva: [cp],
+      umidadeMedia: 2.5,
+      espessuraMediaRevestimento: 20,
+      esquema: foto(220, 160),
+    }
+
+    const body = {
+      cabecalho: {
+        rltNumero: '99',
+        cliente: 'Cliente Custom',
+        obra: 'Obra Custom',
+        construtora: 'Construtora',
+        endereco: 'Rua B, 2',
+        dataEmissao: '2026-11-09',
+        normas: {
+          nbr13528_1: true,
+          nbr13528_1_parte2: false,
+          nbr13528_1_parte3: false,
+          nbr13749: false,
+          nbr13753: false,
+          nbr13754: false,
+          nbr13755: false,
+        },
+      },
+      situacoes: [sitCustom],
+    }
+
+    const res = await POST(new NextRequest('http://localhost/api/ensaios/aderencia/docx', { method: 'POST', body: JSON.stringify(body) }))
+    expect(res.status).toBe(200)
+    const xml = new PizZip(Buffer.from(await res.arrayBuffer())).file('word/document.xml')!.asText()
+
+    expect(xml).toContain('SUBSTRATO ESPECIAL')
+    expect(xml).toContain('CHAPISCO ROLADO')
+    expect(xml).toContain('MASSA ÚNICA')
+    expect(xml).toContain('Sub/Massa')
+    expect(xml).toContain('w:fill="FFAA00"')
+    expect(xml).not.toMatch(/QUAD_COR_/)
+  })
+})

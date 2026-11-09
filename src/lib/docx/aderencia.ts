@@ -11,7 +11,7 @@ import {
 } from '@/lib/docx/esclerometria';
 import { numeroRomano } from '@/modules/aderencia/utils';
 import { calcularEstatisticasCPs } from '@/modules/aderencia/calculos';
-import { obterModeloCamadas } from '@/modules/aderencia/modelosCamadas';
+import { resolverModeloSituacao } from '@/modules/aderencia/modelosCamadas';
 import type { AderenciaCabecalho, CorpoDeProva, FotoAnexo, SituacaoAderencia } from '@/modules/aderencia/types';
 
 export const LIMITE_RA_MPA = 0.3;
@@ -108,9 +108,10 @@ export function montarDadosAderencia(payload: AderenciaDocxPayload): {
   const imagens: ImagemInjetar[] = [];
 
   const situacoes = payload.situacoes.map((sit, sitIdx) => {
-    const modelo = obterModeloCamadas(sit.modeloCamadasId);
+    const modelo = resolverModeloSituacao(sit);
     const colunasNomes = modelo?.colunasFormaRuptura ?? [];
     const camadasNomes = modelo?.camadas ?? [];
+    const coresCamadas = modelo?.coresCamadas ?? [];
     const stats = calcularEstatisticasCPs(sit.corposDeProva);
 
     let esquemaMarcador = '';
@@ -129,10 +130,14 @@ export function montarDadosAderencia(payload: AderenciaDocxPayload): {
 
     // Legenda de camadas ao lado do esquema (camadas do modelo + adesivo epóxi + placa metálica)
     const legendaCamadas = [
-      ...camadasNomes.map(nome => ({
-        quadradoCor: marcadorCorCamada(corHexCamada(nome)),
-        nome: nome.toUpperCase(),
-      })),
+      ...camadasNomes.map((nome, idx) => {
+        const corCustom = coresCamadas[idx]?.replace(/^#/, '').toUpperCase();
+        const hex = corCustom && /^[0-9A-F]{6}$/.test(corCustom) ? corCustom : corHexCamada(nome);
+        return {
+          quadradoCor: marcadorCorCamada(hex),
+          nome: nome.toUpperCase(),
+        };
+      }),
       { quadradoCor: marcadorCorCamada('D0D3D9'), nome: 'ADESIVO (BASE EPÓXI)' },
       { quadradoCor: marcadorCorCamada('6B7280'), nome: 'PLACA METÁLICA' },
     ];

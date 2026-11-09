@@ -7,9 +7,16 @@ import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header';
 import {
   MODELOS_SISTEMA_CAMADAS,
+  ID_MODELO_PERSONALIZADO,
+  MAX_COLUNAS_FORMA_RUPTURA,
+  PALETA_CORES_CAMADAS,
+  corCamada,
   svgEsquemaCamadas,
   numeroRomano,
   obterModeloCamadas,
+  gerarColunasFormaRuptura,
+  criarModeloPersonalizadoPadrao,
+  resolverModeloSituacao,
   criarCorpoDeProva,
   redimensionarCorposDeProva,
   calcularEstatisticasCPs,
@@ -45,6 +52,8 @@ type EstadoPersistido = {
   etapa: 'config' | 'situacoes';
   numSituacoes: number;
   modeloPorSituacao: string[];
+  modelosPersonalizados?: (ModeloSistemaCamadas | null)[];
+  colunasManuaisPorSituacao?: boolean[];
   situacoes: SituacaoAderencia[];
   situacaoAtual: number;
   cabecalho?: AderenciaCabecalho;
@@ -113,17 +122,43 @@ const cellInputStyle: React.CSSProperties = {
   outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'center',
 };
 
-function ModeloCard({ modelo, selecionado, onSelecionar }: { modelo: ModeloSistemaCamadas; selecionado: boolean; onSelecionar: () => void }) {
+const SUGESTOES_CAMADAS = [
+  'Substrato',
+  'Concreto',
+  'Contrapiso',
+  'Alvenaria',
+  'Chapisco',
+  'Emboço',
+  'Reboco',
+  'Argamassa Colante',
+  'Cerâmica',
+  'Porcelanato',
+  'Gesso',
+  'Regularização',
+  'Pintura',
+];
+
+function ModeloCard({
+  modelo,
+  selecionado,
+  onSelecionar,
+  personalizado = false,
+}: {
+  modelo: ModeloSistemaCamadas;
+  selecionado: boolean;
+  onSelecionar: () => void;
+  personalizado?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onSelecionar}
       style={{
-        border: `1.5px solid ${selecionado ? PRIMARY : BORDER}`,
+        border: `1.5px solid ${selecionado ? PRIMARY : personalizado ? GOLD : BORDER}`,
         borderRadius: 10,
         padding: '12px 10px',
         cursor: 'pointer',
-        background: selecionado ? '#EEF2FF' : '#fff',
+        background: selecionado ? '#EEF2FF' : personalizado ? '#FFFDF7' : '#fff',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -132,14 +167,500 @@ function ModeloCard({ modelo, selecionado, onSelecionar }: { modelo: ModeloSiste
         textAlign: 'center',
         fontFamily: 'inherit',
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
+      {personalizado && (
+        <span
+          style={{
+            fontSize: 9.5,
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '2px 7px',
+            borderRadius: 99,
+            background: selecionado ? PRIMARY : GOLD,
+            color: '#fff',
+          }}
+        >
+          Criar personalizado
+        </span>
+      )}
       <div
-        dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao) }}
+        dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas) }}
         style={{ lineHeight: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, padding: '6px 0' }}
       />
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: selecionado ? PRIMARY : TEXT, lineHeight: 1.35 }}>{modelo.nome}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: selecionado ? PRIMARY : TEXT, lineHeight: 1.35 }}>
+        {personalizado ? 'Personalizado (montar camadas e cores)' : modelo.nome}
+      </span>
     </button>
+  );
+}
+
+function EditorModeloPersonalizado({
+  modelo,
+  colunasManuais,
+  onChange,
+}: {
+  modelo: ModeloSistemaCamadas;
+  colunasManuais: boolean;
+  onChange: (nextModelo: ModeloSistemaCamadas, nextColunasManuais: boolean) => void;
+}) {
+  const cores = modelo.camadas.map((c, idx) => modelo.coresCamadas?.[idx] || corCamada(c));
+
+  function aplicarCamadas(novasCamadas: string[], novasCores: string[], disp = modelo.disposicao) {
+    const novasColunas = colunasManuais ? modelo.colunasFormaRuptura : gerarColunasFormaRuptura(novasCamadas);
+    onChange(
+      {
+        ...modelo,
+        disposicao: disp,
+        camadas: novasCamadas,
+        coresCamadas: novasCores,
+        colunasFormaRuptura: novasColunas,
+      },
+      colunasManuais,
+    );
+  }
+
+  function alterarDisposicao(disp: 'piso' | 'parede') {
+    aplicarCamadas(modelo.camadas, cores, disp);
+  }
+
+  function alterarNomeCamada(idx: number, novoNome: string) {
+    const novasCamadas = modelo.camadas.map((c, i) => (i === idx ? novoNome : c));
+    aplicarCamadas(novasCamadas, cores);
+  }
+
+  function alterarCorCamada(idx: number, novaCor: string) {
+    const novasCores = cores.map((c, i) => (i === idx ? novaCor : c));
+    onChange({ ...modelo, coresCamadas: novasCores }, colunasManuais);
+  }
+
+  function adicionarCamada(nomeSugerido = '') {
+    const nome = nomeSugerido || `Camada ${modelo.camadas.length + 1}`;
+    const cor = nomeSugerido ? corCamada(nomeSugerido) : PALETA_CORES_CAMADAS[modelo.camadas.length % PALETA_CORES_CAMADAS.length].cor;
+    aplicarCamadas([...modelo.camadas, nome], [...cores, cor]);
+  }
+
+  function removerCamada(idx: number) {
+    if (modelo.camadas.length <= 1) return;
+    aplicarCamadas(
+      modelo.camadas.filter((_, i) => i !== idx),
+      cores.filter((_, i) => i !== idx),
+    );
+  }
+
+  function moverCamada(idx: number, direcao: -1 | 1) {
+    const destino = idx + direcao;
+    if (destino < 0 || destino >= modelo.camadas.length) return;
+    const novasCamadas = [...modelo.camadas];
+    const novasCores = [...cores];
+    [novasCamadas[idx], novasCamadas[destino]] = [novasCamadas[destino], novasCamadas[idx]];
+    [novasCores[idx], novasCores[destino]] = [novasCores[destino], novasCores[idx]];
+    aplicarCamadas(novasCamadas, novasCores);
+  }
+
+  function editarColunaRuptura(idx: number, valor: string) {
+    const novasCols = modelo.colunasFormaRuptura.map((c, i) => (i === idx ? valor : c));
+    onChange({ ...modelo, colunasFormaRuptura: novasCols }, true);
+  }
+
+  function adicionarColunaRuptura() {
+    if (modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA) return;
+    const cols = [...modelo.colunasFormaRuptura];
+    const idxVazios = cols.findIndex(c => c.trim().toLowerCase() === 'vazios');
+    const novaCol = `Col ${cols.length}`;
+    if (idxVazios >= 0) cols.splice(idxVazios, 0, novaCol);
+    else cols.push(novaCol);
+    onChange({ ...modelo, colunasFormaRuptura: cols }, true);
+  }
+
+  function removerColunaRuptura(idx: number) {
+    if (modelo.colunasFormaRuptura.length <= 1) return;
+    const novasCols = modelo.colunasFormaRuptura.filter((_, i) => i !== idx);
+    onChange({ ...modelo, colunasFormaRuptura: novasCols }, true);
+  }
+
+  function restaurarColunasAutomaticas() {
+    onChange(
+      { ...modelo, colunasFormaRuptura: gerarColunasFormaRuptura(modelo.camadas) },
+      false,
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 16, padding: '16px 18px', background: BG, border: `1.5px solid ${PRIMARY}`, borderRadius: 12 }}>
+      <datalist id="sugestoes-camadas-aderencia">
+        {SUGESTOES_CAMADAS.map(s => <option key={s} value={s} />)}
+      </datalist>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: PRIMARY }}>Construtor de esquema personalizado</p>
+          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: SUBTEXT }}>
+            Escolha a orientação, adicione os sólidos retangulares com nome e cor, e ajuste as colunas de ruptura se necessário.
+          </p>
+        </div>
+
+        {/* Seletor Horizontal (Piso) vs Vertical (Parede) */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => alterarDisposicao('piso')}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 7,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              border: `1.5px solid ${modelo.disposicao === 'piso' ? PRIMARY : BORDER}`,
+              background: modelo.disposicao === 'piso' ? PRIMARY : '#fff',
+              color: modelo.disposicao === 'piso' ? '#fff' : TEXT,
+            }}
+          >
+            Horizontal (Piso)
+          </button>
+          <button
+            type="button"
+            onClick={() => alterarDisposicao('parede')}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 7,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              border: `1.5px solid ${modelo.disposicao === 'parede' ? PRIMARY : BORDER}`,
+              background: modelo.disposicao === 'parede' ? PRIMARY : '#fff',
+              color: modelo.disposicao === 'parede' ? '#fff' : TEXT,
+            }}
+          >
+            Vertical (Parede)
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(240px, 320px)', gap: 18, alignItems: 'start' }}>
+        {/* Lista de camadas (sólidos retangulares) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Camadas (da base/substrato até o acabamento)
+          </span>
+
+          {modelo.camadas.map((nome, idx) => {
+            const corAtual = cores[idx];
+            const posLabel = idx === 0
+              ? '1ª (Base)'
+              : idx === modelo.camadas.length - 1
+              ? `${idx + 1}ª (Topo/Face)`
+              : `${idx + 1}ª`;
+
+            return (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  padding: '9px 10px',
+                  background: '#fff',
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, minWidth: 78 }}>{posLabel}</span>
+
+                  {/* Seletor de cor livre + input do nome da camada */}
+                  <input
+                    type="color"
+                    value={corAtual}
+                    onChange={e => alterarCorCamada(idx, e.target.value)}
+                    title="Escolher cor personalizada do sólido"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      padding: 2,
+                      borderRadius: 6,
+                      border: `1.5px solid ${BORDER}`,
+                      background: '#fff',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  />
+
+                  <input
+                    list="sugestoes-camadas-aderencia"
+                    style={{ ...inputStyle, padding: '7px 10px', fontSize: 13 }}
+                    value={nome}
+                    onChange={e => alterarNomeCamada(idx, e.target.value)}
+                    placeholder="Nome da camada (ex: Substrato, Chapisco...)"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => moverCamada(idx, -1)}
+                    disabled={idx === 0}
+                    title="Mover camada para antes (base)"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: `1px solid ${BORDER}`,
+                      background: '#fff',
+                      color: TEXT,
+                      cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                      opacity: idx === 0 ? 0.35 : 1,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moverCamada(idx, 1)}
+                    disabled={idx === modelo.camadas.length - 1}
+                    title="Mover camada para depois (acabamento)"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: `1px solid ${BORDER}`,
+                      background: '#fff',
+                      color: TEXT,
+                      cursor: idx === modelo.camadas.length - 1 ? 'not-allowed' : 'pointer',
+                      opacity: idx === modelo.camadas.length - 1 ? 0.35 : 1,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removerCamada(idx)}
+                    disabled={modelo.camadas.length <= 1}
+                    title="Remover camada"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: `1px solid ${BORDER}`,
+                      background: '#fff',
+                      color: DANGER,
+                      cursor: modelo.camadas.length <= 1 ? 'not-allowed' : 'pointer',
+                      opacity: modelo.camadas.length <= 1 ? 0.35 : 1,
+                      fontWeight: 800,
+                      flexShrink: 0,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Paleta rápida de cores padrão do relatório */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', paddingLeft: 86 }}>
+                  <span style={{ fontSize: 10, color: SUBTEXT, marginRight: 2 }}>Cores padrão:</span>
+                  {PALETA_CORES_CAMADAS.map(p => {
+                    const ativa = corAtual.toUpperCase() === p.cor.toUpperCase();
+                    return (
+                      <button
+                        key={p.cor}
+                        type="button"
+                        title={p.nome}
+                        onClick={() => alterarCorCamada(idx, p.cor)}
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 4,
+                          background: p.cor,
+                          border: ativa ? `2px solid ${PRIMARY}` : '1px solid #9AA0AC',
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Botão adicionar + atalhos de camadas comuns */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+            <button
+              type="button"
+              onClick={() => adicionarCamada('')}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 7,
+                border: `1.5px dashed ${PRIMARY}`,
+                background: '#EEF2FF',
+                color: PRIMARY,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              + Adicionar sólido / camada
+            </button>
+            {['Substrato', 'Concreto', 'Contrapiso', 'Chapisco', 'Emboço', 'Argamassa Colante', 'Cerâmica', 'Gesso'].map(sug => (
+              <button
+                key={sug}
+                type="button"
+                onClick={() => adicionarCamada(sug)}
+                style={{
+                  padding: '5px 9px',
+                  borderRadius: 6,
+                  border: `1px solid ${BORDER}`,
+                  background: '#fff',
+                  color: SUBTEXT,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                + {sug}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Pré-visualização ao vivo do desenho */}
+        <div
+          style={{
+            background: '#fff',
+            border: `1px solid ${BORDER}`,
+            borderRadius: 10,
+            padding: '14px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Pré-visualização do esquema
+          </span>
+          <div
+            dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, cores) }}
+            style={{ lineHeight: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '6px 0' }}
+          />
+          <span style={{ fontSize: 11, color: SUBTEXT, textAlign: 'center', lineHeight: 1.35 }}>
+            O disco de tração (adesivo epóxi + placa metálica) é desenhado automaticamente sobre a última camada.
+          </span>
+        </div>
+      </div>
+
+      {/* Colunas de Forma de Ruptura (%) geradas automaticamente com edição manual */}
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Colunas de &ldquo;Forma de Ruptura (%)&rdquo; ({modelo.colunasFormaRuptura.length}/{MAX_COLUNAS_FORMA_RUPTURA})
+            </span>
+            <span style={{ fontSize: 11, color: SUBTEXT, marginLeft: 8 }}>
+              {colunasManuais ? '(editadas manualmente)' : '(geradas automaticamente pelas camadas)'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {colunasManuais && (
+              <button
+                type="button"
+                onClick={restaurarColunasAutomaticas}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: 6,
+                  border: `1px solid ${PRIMARY}`,
+                  background: '#fff',
+                  color: PRIMARY,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                ↻ Regerar automaticamente pelas camadas
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={adicionarColunaRuptura}
+              disabled={modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 6,
+                border: `1px solid ${BORDER}`,
+                background: '#fff',
+                color: PRIMARY,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA ? 'not-allowed' : 'pointer',
+                opacity: modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA ? 0.4 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              + Coluna
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {modelo.colunasFormaRuptura.map((col, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                background: '#fff',
+                border: `1px solid ${BORDER}`,
+                borderRadius: 7,
+                padding: '4px 6px',
+              }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{idx + 1}.</span>
+              <input
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: TEXT,
+                  width: Math.max(64, (col.length + 1) * 7.5),
+                  fontFamily: 'inherit',
+                  background: 'transparent',
+                }}
+                value={col}
+                onChange={e => editarColunaRuptura(idx, e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => removerColunaRuptura(idx)}
+                disabled={modelo.colunasFormaRuptura.length <= 1}
+                title="Remover coluna"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: DANGER,
+                  fontWeight: 800,
+                  fontSize: 13,
+                  cursor: modelo.colunasFormaRuptura.length <= 1 ? 'not-allowed' : 'pointer',
+                  opacity: modelo.colunasFormaRuptura.length <= 1 ? 0.3 : 1,
+                  padding: '0 2px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -315,7 +836,7 @@ function SituacaoForm({
 
       {/* Esquema + observações */}
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 16, alignItems: 'start', marginBottom: 20, padding: '14px 16px', background: BG, border: `1px solid ${BORDER}`, borderRadius: 10 }}>
-        <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao) }} style={{ lineHeight: 0 }} />
+        <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas) }} style={{ lineHeight: 0 }} />
         <Campo label="Observações do esquema">
           <textarea
             style={{ ...inputStyle, minHeight: 90, resize: 'vertical', fontFamily: 'inherit' }}
@@ -401,8 +922,8 @@ function Estatistica({ label, valor, unidade }: { label: string; valor: number |
   );
 }
 
-function criarSituacaoVazia(numero: number, modeloId: string): SituacaoAderencia {
-  const modelo = obterModeloCamadas(modeloId)!;
+function criarSituacaoVazia(numero: number, modeloId: string, modeloPersonalizado?: ModeloSistemaCamadas): SituacaoAderencia {
+  const modelo = (modeloId === ID_MODELO_PERSONALIZADO ? modeloPersonalizado : obterModeloCamadas(modeloId)) ?? criarModeloPersonalizadoPadrao();
   return {
     numero,
     tipoRevestimento: '',
@@ -419,6 +940,7 @@ function criarSituacaoVazia(numero: number, modeloId: string): SituacaoAderencia
     revestimento: '',
     dimensoesCm: '',
     modeloCamadasId: modeloId,
+    ...(modeloId === ID_MODELO_PERSONALIZADO ? { modeloPersonalizado: modelo } : {}),
     observacoesEsquema: '',
     corposDeProva: redimensionarCorposDeProva([], NUM_CPS_PADRAO, modelo.colunasFormaRuptura),
     umidadeMedia: null,
@@ -431,6 +953,8 @@ export default function AderenciaPage() {
   const [etapa, setEtapa] = useState<'config' | 'situacoes'>('config');
   const [numSituacoes, setNumSituacoes] = useState(1);
   const [modeloPorSituacao, setModeloPorSituacao] = useState<string[]>([MODELOS_SISTEMA_CAMADAS[0].id]);
+  const [modelosPersonalizados, setModelosPersonalizados] = useState<(ModeloSistemaCamadas | null)[]>([null]);
+  const [colunasManuaisPorSituacao, setColunasManuaisPorSituacao] = useState<boolean[]>([false]);
   const [situacoes, setSituacoes] = useState<SituacaoAderencia[]>([]);
   const [situacaoAtual, setSituacaoAtual] = useState(0);
   const [salvoMsg, setSalvoMsg] = useState('');
@@ -456,6 +980,16 @@ export default function AderenciaPage() {
     setEtapa(s.etapa);
     setNumSituacoes(s.numSituacoes);
     setModeloPorSituacao(s.modeloPorSituacao);
+    if (Array.isArray(s.modelosPersonalizados)) {
+      setModelosPersonalizados(s.modelosPersonalizados);
+    } else {
+      setModelosPersonalizados(s.modeloPorSituacao.map((_, idx) => s.situacoes[idx]?.modeloPersonalizado ?? null));
+    }
+    if (Array.isArray(s.colunasManuaisPorSituacao)) {
+      setColunasManuaisPorSituacao(s.colunasManuaisPorSituacao);
+    } else {
+      setColunasManuaisPorSituacao(s.modeloPorSituacao.map(() => false));
+    }
     setSituacoes(s.situacoes);
     setSituacaoAtual(s.situacaoAtual);
     if (s.cabecalho) setCabecalho({ ...CABECALHO_VAZIO, ...s.cabecalho, normas: { ...CABECALHO_VAZIO.normas, ...s.cabecalho.normas } });
@@ -464,13 +998,22 @@ export default function AderenciaPage() {
   // Autosave com debounce a cada mudança relevante (fotos são removidas antes de gravar).
   useEffect(() => {
     const t = setTimeout(() => {
-      salvarLocal({ etapa, numSituacoes, modeloPorSituacao, situacoes, situacaoAtual, cabecalho });
+      salvarLocal({
+        etapa,
+        numSituacoes,
+        modeloPorSituacao,
+        modelosPersonalizados,
+        colunasManuaisPorSituacao,
+        situacoes,
+        situacaoAtual,
+        cabecalho,
+      });
       setSalvoMsg('Salvo');
       const t2 = setTimeout(() => setSalvoMsg(''), 1800);
       return () => clearTimeout(t2);
     }, 500);
     return () => clearTimeout(t);
-  }, [etapa, numSituacoes, modeloPorSituacao, situacoes, situacaoAtual, cabecalho]);
+  }, [etapa, numSituacoes, modeloPorSituacao, modelosPersonalizados, colunasManuaisPorSituacao, situacoes, situacaoAtual, cabecalho]);
 
   function alterarNumSituacoes(n: number) {
     const clamped = Math.max(MIN_SITUACOES, Math.min(MAX_SITUACOES, n));
@@ -481,18 +1024,64 @@ export default function AderenciaPage() {
       next.length = clamped;
       return next;
     });
+    setModelosPersonalizados(prev => {
+      const next = [...prev];
+      while (next.length < clamped) next.push(null);
+      next.length = clamped;
+      return next;
+    });
+    setColunasManuaisPorSituacao(prev => {
+      const next = [...prev];
+      while (next.length < clamped) next.push(false);
+      next.length = clamped;
+      return next;
+    });
+  }
+
+  function obterPersonalizadoOuPadrao(indice: number): ModeloSistemaCamadas {
+    return modelosPersonalizados[indice] ?? criarModeloPersonalizadoPadrao('parede');
   }
 
   function selecionarModelo(indice: number, modeloId: string) {
     setModeloPorSituacao(prev => prev.map((id, i) => (i === indice ? modeloId : id)));
+    if (modeloId === ID_MODELO_PERSONALIZADO && !modelosPersonalizados[indice]) {
+      setModelosPersonalizados(prev => prev.map((m, i) => (i === indice ? criarModeloPersonalizadoPadrao('parede') : m)));
+    }
+  }
+
+  function atualizarModeloPersonalizado(indice: number, nextModelo: ModeloSistemaCamadas, nextColunasManuais: boolean) {
+    setModelosPersonalizados(prev => prev.map((m, i) => (i === indice ? nextModelo : m)));
+    setColunasManuaisPorSituacao(prev => prev.map((v, i) => (i === indice ? nextColunasManuais : v)));
   }
 
   function confirmarConfiguracao() {
     setSituacoes(prev =>
       modeloPorSituacao.map((modeloId, i) => {
+        const customModelo = modeloId === ID_MODELO_PERSONALIZADO ? obterPersonalizadoOuPadrao(i) : undefined;
         const existente = prev[i];
-        if (existente && existente.modeloCamadasId === modeloId) return existente;
-        return criarSituacaoVazia(i + 1, modeloId);
+        if (existente && existente.modeloCamadasId === modeloId) {
+          if (modeloId === ID_MODELO_PERSONALIZADO && customModelo) {
+            // Sincroniza colunas dos CPs preservando valores já digitados nas colunas que permaneceram
+            const cpsSincronizados = redimensionarCorposDeProva(
+              existente.corposDeProva,
+              existente.numCPs,
+              customModelo.colunasFormaRuptura,
+            ).map(cp => {
+              const formaRuptura: Record<string, number> = {};
+              customModelo.colunasFormaRuptura.forEach(c => {
+                formaRuptura[c] = cp.formaRuptura?.[c] ?? 0;
+              });
+              return { ...cp, formaRuptura };
+            });
+            return {
+              ...existente,
+              modeloPersonalizado: customModelo,
+              corposDeProva: cpsSincronizados,
+            };
+          }
+          return existente;
+        }
+        return criarSituacaoVazia(i + 1, modeloId, customModelo);
       })
     );
     setSituacaoAtual(0);
@@ -513,10 +1102,16 @@ export default function AderenciaPage() {
     try {
       // O esquema (SVG) é rasterizado em PNG aqui no navegador, pois o DOCX não embute SVG de forma confiável.
       const situacoesPayload = await Promise.all(
-        situacoes.map(async s => {
-          const modelo = obterModeloCamadas(s.modeloCamadasId);
-          const esquema = modelo ? await svgParaPng(svgEsquemaCamadas(modelo.camadas, modelo.disposicao)) : null;
-          return { ...s, esquema };
+        situacoes.map(async (s, idx) => {
+          const modelo = resolverModeloSituacao(s) ?? (s.modeloCamadasId === ID_MODELO_PERSONALIZADO ? obterPersonalizadoOuPadrao(idx) : undefined);
+          const esquema = modelo
+            ? await svgParaPng(svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas))
+            : null;
+          return {
+            ...s,
+            ...(s.modeloCamadasId === ID_MODELO_PERSONALIZADO && modelo ? { modeloPersonalizado: modelo } : {}),
+            esquema,
+          };
         })
       );
 
@@ -639,16 +1234,33 @@ export default function AderenciaPage() {
               </Campo>
             </div>
 
-            {modeloPorSituacao.map((modeloId, i) => (
-              <div key={i} style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
-                <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Situação {numeroRomano(i + 1)} — Modelo de sistema de camadas</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-                  {MODELOS_SISTEMA_CAMADAS.map(modelo => (
-                    <ModeloCard key={modelo.id} modelo={modelo} selecionado={modeloId === modelo.id} onSelecionar={() => selecionarModelo(i, modelo.id)} />
-                  ))}
+            {modeloPorSituacao.map((modeloId, i) => {
+              const modeloCustom = obterPersonalizadoOuPadrao(i);
+              const isCustom = modeloId === ID_MODELO_PERSONALIZADO;
+              return (
+                <div key={i} style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
+                  <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Situação {numeroRomano(i + 1)} — Modelo de sistema de camadas</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+                    {MODELOS_SISTEMA_CAMADAS.map(modelo => (
+                      <ModeloCard key={modelo.id} modelo={modelo} selecionado={modeloId === modelo.id} onSelecionar={() => selecionarModelo(i, modelo.id)} />
+                    ))}
+                    <ModeloCard
+                      modelo={modeloCustom}
+                      selecionado={isCustom}
+                      onSelecionar={() => selecionarModelo(i, ID_MODELO_PERSONALIZADO)}
+                      personalizado
+                    />
+                  </div>
+                  {isCustom && (
+                    <EditorModeloPersonalizado
+                      modelo={modeloCustom}
+                      colunasManuais={colunasManuaisPorSituacao[i] ?? false}
+                      onChange={(nextM, nextManuais) => atualizarModeloPersonalizado(i, nextM, nextManuais)}
+                    />
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
               <button
@@ -691,7 +1303,10 @@ export default function AderenciaPage() {
             <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
               <SituacaoForm
                 situacao={situacoes[situacaoAtual]}
-                modelo={obterModeloCamadas(situacoes[situacaoAtual].modeloCamadasId)!}
+                modelo={
+                  resolverModeloSituacao(situacoes[situacaoAtual]) ??
+                  obterPersonalizadoOuPadrao(situacaoAtual)
+                }
                 onChange={next => atualizarSituacao(situacaoAtual, next)}
               />
             </div>

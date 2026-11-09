@@ -60,6 +60,8 @@ export interface SituacaoAderencia {
   dimensoesCm: string
   /** referencia a ModeloSistemaCamadas.id — define esquema SVG e colunas de forma de ruptura */
   modeloCamadasId: string
+  /** quando modeloCamadasId === 'personalizado', armazena a definição completa criada pelo usuário */
+  modeloPersonalizado?: ModeloSistemaCamadas
   observacoesEsquema: string
   corposDeProva: CorpoDeProva[]
   umidadeMedia: number | null // %
@@ -76,9 +78,11 @@ export interface ModeloSistemaCamadas {
   disposicao: 'piso' | 'parede'
   /** camadas do substrato até o acabamento, na ordem em que aparecem no esquema (croqui) */
   camadas: string[]
+  /** cores hexadecimais (#RRGGBB) opcionais para cada camada (mesmo índice de `camadas`) */
+  coresCamadas?: string[]
   /**
    * Colunas da tabela "Forma de Ruptura (%)", na ordem em que devem aparecer no relatório.
-   * Lista explícita (não derivada automaticamente) porque inclui interfaces que pulam camadas
+   * Lista explícita (não derivada automaticamente nos pré-definidos) porque inclui interfaces que pulam camadas
    * (ex.: "Sub/Emb" quando a ruptura salta o chapisco). Sempre termina em "Vazios".
    */
   colunasFormaRuptura: string[]

@@ -15,7 +15,19 @@ const PRIMARY = '#1E3264'
 const TEXT = '#1A2340'
 const METAL = '#6B7280'
 
-function corCamada(nome: string): string {
+export const PALETA_CORES_CAMADAS: { nome: string; cor: string }[] = [
+  { nome: 'Verde (Substrato / Concreto)', cor: '#B7D8AE' },
+  { nome: 'Areia claro (Contrapiso)', cor: '#D9D2C5' },
+  { nome: 'Castanho médio (Chapisco)', cor: '#AB9F82' },
+  { nome: 'Bege (Emboço / Reboco)', cor: '#C9BFA6' },
+  { nome: 'Pardo (Argamassa Colante)', cor: '#A69A7E' },
+  { nome: 'Azul acinzentado (Cerâmica / Porcelanato)', cor: '#8393A7' },
+  { nome: 'Off-white (Gesso / Pintura)', cor: '#F2EFE9' },
+  { nome: 'Terracota (Alvenaria / Bloco)', cor: '#E8B98A' },
+  { nome: 'Cinza azulado (Genérico)', cor: '#DCE1EA' },
+]
+
+export function corCamada(nome: string): string {
   const n = nome.toLowerCase()
   if (n.includes('cerâmic') || n.includes('ceramic') || n.includes('porcelanato')) return '#8393A7'
   if (n.includes('colante')) return '#A69A7E'
@@ -26,6 +38,14 @@ function corCamada(nome: string): string {
   if (n.includes('alvenaria') || n.includes('bloco')) return '#E8B98A'
   if (n.includes('concreto') || n.includes('substrato')) return '#B7D8AE'
   return '#DCE1EA'
+}
+
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 const DEFS = `<defs>
@@ -39,14 +59,15 @@ const DEFS = `<defs>
 
 /**
  * Gera o SVG do esquema de camadas de uma Situação, a partir da lista de camadas do
- * modelo escolhido (substrato → acabamento) e da disposição do elemento ensaiado.
+ * modelo escolhido (substrato → acabamento), da disposição do elemento ensaiado e das cores opcionais.
  */
-export function svgEsquemaCamadas(camadas: string[], disposicao: 'piso' | 'parede'): string {
-  return disposicao === 'piso' ? svgPiso(camadas) : svgParede(camadas)
+export function svgEsquemaCamadas(camadas: string[], disposicao: 'piso' | 'parede', coresCamadas?: string[]): string {
+  const lista = camadas.length > 0 ? camadas : ['Camada']
+  return disposicao === 'piso' ? svgPiso(lista, coresCamadas) : svgParede(lista, coresCamadas)
 }
 
 // ── PISO: camadas empilhadas na vertical, disco puxado para cima ──────────────
-function svgPiso(camadas: string[]): string {
+function svgPiso(camadas: string[], coresCamadas?: string[]): string {
   const bandW = 170
   const bandH = 22
   const ox = 10
@@ -64,9 +85,10 @@ function svgPiso(camadas: string[]): string {
   camadas.forEach((nome, i) => {
     const idxFromTop = camadas.length - 1 - i
     const y = oy + idxFromTop * bandH
-    bands += `<rect x="${ox}" y="${y}" width="${bandW}" height="${bandH}" fill="${corCamada(nome)}" stroke="${PRIMARY}" stroke-width="1"/>`
+    const fill = coresCamadas?.[i] || corCamada(nome)
+    bands += `<rect x="${ox}" y="${y}" width="${bandW}" height="${bandH}" fill="${escapeXml(fill)}" stroke="${PRIMARY}" stroke-width="1"/>`
     const ly = y + bandH / 2 + 3
-    labels += `<text x="${ox + bandW / 2}" y="${ly}" text-anchor="middle" font-size="8" fill="${TEXT}" font-family="sans-serif">${nome.toUpperCase()}</text>`
+    labels += `<text x="${ox + bandW / 2}" y="${ly}" text-anchor="middle" font-size="8" fill="${TEXT}" font-family="sans-serif">${escapeXml(nome.toUpperCase())}</text>`
   })
 
   const topoY = oy
@@ -93,7 +115,7 @@ function svgPiso(camadas: string[]): string {
 }
 
 // ── PAREDE: camadas lado a lado na horizontal, disco puxado para o lado ───────
-function svgParede(camadas: string[]): string {
+function svgParede(camadas: string[], coresCamadas?: string[]): string {
   const bandW = 26
   const bandH = 150
   const oy = 20
@@ -110,9 +132,10 @@ function svgParede(camadas: string[]): string {
   // camadas[0] = base (ex.: substrato/alvenaria), desenhada à esquerda; a última = acabamento, à direita.
   camadas.forEach((nome, i) => {
     const x = ox + i * bandW
-    bands += `<rect x="${x}" y="${oy}" width="${bandW}" height="${bandH}" fill="${corCamada(nome)}" stroke="${PRIMARY}" stroke-width="1"/>`
+    const fill = coresCamadas?.[i] || corCamada(nome)
+    bands += `<rect x="${x}" y="${oy}" width="${bandW}" height="${bandH}" fill="${escapeXml(fill)}" stroke="${PRIMARY}" stroke-width="1"/>`
     const lx = x + bandW / 2 + 3
-    labels += `<text x="${lx}" y="${oy + bandH / 2}" text-anchor="middle" font-size="7.5" fill="${TEXT}" font-family="sans-serif" transform="rotate(-90,${lx},${oy + bandH / 2})">${nome.toUpperCase()}</text>`
+    labels += `<text x="${lx}" y="${oy + bandH / 2}" text-anchor="middle" font-size="7.5" fill="${TEXT}" font-family="sans-serif" transform="rotate(-90,${lx},${oy + bandH / 2})">${escapeXml(nome.toUpperCase())}</text>`
   })
 
   const faceX = ox + camadas.length * bandW
