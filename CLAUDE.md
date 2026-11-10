@@ -40,7 +40,22 @@ Auditoria feita com a metodologia `cloudflare/security-audit-skill`. Relatório 
 - **Nunca fazer `fetch` de uma URL vinda do cliente (SSRF).** O campo `respAssinaturaUrl` agora só significa "usar a assinatura do usuário logado": o servidor baixa a imagem do Storage pelo `user_metadata.assinatura_path` (`baixarAssinaturaDoUsuario`) e ignora a URL enviada.
 - Um usuário que não é admin não troca mais o próprio e-mail pelo `PATCH /api/users/[id]`, porque a API admin troca sem confirmação.
 - `middleware.ts` usa `getUser()` (valida o token) em vez de `getSession()`. O `src/proxy.ts`, que era duplicado e não usado no Next 15, foi removido.
-- Removido o `console.log` que imprimia a URL do Google Maps com a chave. **Pendente (manual):** rotacionar `GOOGLE_MAPS_API_KEY` e restringi-la no Google Cloud (só Static Maps, cota diária). **Pendente (manual):** confirmar que "Allow new users to sign up" está desligado no Supabase.
+- Removido o `console.log` que imprimia a URL do Google Maps com a chave.
+- Migração dos papéis executada em 2026-11-09: 5 admins (rodrigo@, alexandre@, albertramos@ e laudos@ no domínio tecomat.com.br, mais yanntecomat@gmail.com) e 2 usuários comuns. Commit `7c6cac0` na `main`.
+
+### Pendências de segurança (manuais, a concluir pelo usuário)
+
+1. **Trocar e restringir a `GOOGLE_MAPS_API_KEY`** (a chave antiga pode estar nos logs da Vercel). O site usa **só a Maps Static API**.
+   - Situação em 2026-11-09: começou a criar a chave nova, mas o projeto aberto no Google Cloud só tem a **Gemini API** ativada. A chave atual do site deve estar em **outro projeto**.
+   - Próximos passos:
+     - (a) Em *APIs e serviços → Credenciais*, achar o projeto que tem a chave atual, comparando os últimos 4 caracteres com o `.env.local`.
+     - (b) Nesse projeto, conferir em *Biblioteca* se a "Maps Static API" está ativada.
+     - (c) Criar a chave nova com restrição de API = só "Maps Static API" e restrição de aplicativo = Nenhum (a Vercel não tem IP fixo).
+     - (d) Trocar `GOOGLE_MAPS_API_KEY` na Vercel (*Settings → Environment Variables*), fazer o Redeploy e atualizar o `.env.local`.
+     - (e) Testar o mapa num laudo de esclerometria ou resistividade.
+     - (f) Excluir a chave antiga.
+     - (g) Definir uma cota diária e um alerta de faturamento.
+2. **Supabase:** confirmar que "Allow new users to sign up" está **desligado** (*Authentication → Sign In / Providers*). Ainda não confirmado.
 - Dependências: Next 15.5.15 → 15.5.29 e vitest → 4.1.12 (`npm audit fix`). Resta o `postcss` embutido no Next 15, usado só no build com o CSS do próprio projeto. Corrigir exige migrar para o Next 16.
 - Testes de regressão em `src/lib/auth.test.ts`: o papel é lido só de `app_metadata`, e as rotas docx/maps respondem 401 sem login e não fazem `fetch`.
 
