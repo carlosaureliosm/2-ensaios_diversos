@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isAdmin as ehAdmin, roleDe, usuarioAtual } from '@/lib/auth';
+import { isAdmin as ehAdmin, roleDe, senhaAtualValida, usuarioAtual } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import type { UserMetadata } from '@/types/user';
 import type { User } from '@supabase/supabase-js';
@@ -34,7 +34,7 @@ export async function PATCH(
   }
 
   const body = await req.json();
-  const { full_name, cargo, crea, role, email, password, action } = body;
+  const { full_name, cargo, crea, role, email, password, currentPassword, action } = body;
 
   const admin = createAdminClient();
 
@@ -95,7 +95,20 @@ export async function PATCH(
     }
     updates.email = email;
   }
-  if (password !== undefined && password !== '') updates.password = password;
+  // Trocar a própria senha exige confirmar a senha atual — sem isso, uma sessão sequestrada
+  // (ex. XSS) travaria o acesso da vítima trocando a senha sem saber a original. Um admin
+  // trocando a senha de outro usuário não precisa (ação administrativa legítima).
+  if (password !== undefined && password !== '') {
+    if (isSelf) {
+      if (!currentPassword) {
+        return NextResponse.json({ error: 'Informe a senha atual para trocar a senha.' }, { status: 400 });
+      }
+      if (!(await senhaAtualValida(currentUser.email!, currentPassword))) {
+        return NextResponse.json({ error: 'Senha atual incorreta.' }, { status: 403 });
+      }
+    }
+    updates.password = password;
+  }
 
   const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(id, updates);
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });

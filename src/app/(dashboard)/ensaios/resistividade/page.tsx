@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { buscarUrlAssinatura } from '@/lib/assinatura';
 
 // ── Constantes visuais ──────────────────────────────────────────
 const PRIMARY     = '#1E3264';
@@ -259,14 +260,14 @@ export default function ResistividadePage() {
   // Auth
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { router.push('/login'); return; }
       setUserEmail(user.email ?? '');
       const m = user.user_metadata ?? {};
       setUserName(m.full_name ?? m.name ?? user.email ?? '');
       setUserCargo(m.cargo ?? '');
       setUserCrea(m.crea ?? '');
-      setUserAssinatura(m.assinatura_url ?? '');
+      setUserAssinatura(await buscarUrlAssinatura(user.id, m.assinatura_path));
     });
   }, [router]);
 

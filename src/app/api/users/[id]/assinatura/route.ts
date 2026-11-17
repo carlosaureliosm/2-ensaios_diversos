@@ -16,6 +16,36 @@ import { NextRequest, NextResponse } from 'next/server';
 const BUCKET        = 'assinaturas';
 const MAX_SIZE      = 2 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+// URL assinada de curta duração — nunca persistida. Antes era gerada uma URL válida por 10 anos e
+// gravada em user_metadata.assinatura_url; como essa URL é devolvida pela listagem de usuários
+// (GET /api/users) e nunca expira na prática, qualquer vazamento dela expõe a assinatura para
+// sempre mesmo com o bucket privado. Agora só `assinatura_path` é persistido, e uma URL assinada
+// nova (1h) é gerada sob demanda (aqui e em GET) sempre que a tela precisa exibir a prévia.
+const URL_TTL_SEGUNDOS = 60 * 60;
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const currentUser = await usuarioAtual();
+  if (!currentUser) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+
+  const isAdmin = ehAdmin(currentUser);
+  const isSelf  = currentUser.id === id;
+  if (!isAdmin && !isSelf) return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
+
+  const admin = createAdminClient();
+  const { data: targetData } = await admin.auth.admin.getUserById(id);
+  const storagePath = targetData?.user?.user_metadata?.assinatura_path;
+  if (typeof storagePath !== 'string') return NextResponse.json({ assinatura_url: null });
+
+  const { data: signed, error } = await admin.storage.from(BUCKET).createSignedUrl(storagePath, URL_TTL_SEGUNDOS);
+  if (error || !signed) return NextResponse.json({ assinatura_url: null });
+
+  return NextResponse.json({ assinatura_url: signed.signedUrl });
+}
 
 export async function POST(
   req: NextRequest,
@@ -49,15 +79,17 @@ export async function POST(
   const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, buffer, { contentType: file.type, upsert: true });
   if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 });
 
-  const { data: signed, error: signedError } = await admin.storage.from(BUCKET).createSignedUrl(storagePath, 60 * 60 * 24 * 365 * 10);
-  if (signedError || !signed) return NextResponse.json({ error: 'Erro ao gerar URL.' }, { status: 500 });
-
   const { data: targetData } = await admin.auth.admin.getUserById(id);
-  const existingMeta = targetData?.user?.user_metadata ?? {};
+  const existingMeta = { ...(targetData?.user?.user_metadata ?? {}) };
+  delete existingMeta.assinatura_url; // nunca mais persistir URL permanente — só o path.
   const { error: metaError } = await admin.auth.admin.updateUserById(id, {
-    user_metadata: { ...existingMeta, assinatura_url: signed.signedUrl, assinatura_path: storagePath },
+    user_metadata: { ...existingMeta, assinatura_path: storagePath },
   });
   if (metaError) return NextResponse.json({ error: metaError.message }, { status: 500 });
+
+  // URL de curta duração só para a prévia imediata na tela — nunca persistida.
+  const { data: signed, error: signedError } = await admin.storage.from(BUCKET).createSignedUrl(storagePath, URL_TTL_SEGUNDOS);
+  if (signedError || !signed) return NextResponse.json({ error: 'Erro ao gerar URL.' }, { status: 500 });
 
   return NextResponse.json({ success: true, assinatura_url: signed.signedUrl });
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { buscarUrlAssinatura } from '@/lib/assinatura';
 import Header from '@/components/Header';
 
 type UserRow = {
@@ -14,7 +15,7 @@ type UserRow = {
   banned: boolean;
   created_at: string;
   crea?: string;
-  assinatura_url?: string;
+  has_assinatura?: boolean;
 };
 
 type CurrentUser = {
@@ -85,20 +86,29 @@ function Modal({ mode, target, currentUser, onClose, onSuccess }: {
   const [cargo,    setCargo]    = useState(target?.cargo ?? '');
   const [email,    setEmail]    = useState(target?.email ?? '');
   const [password, setPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [role,     setRole]     = useState<'admin' | 'user'>(target?.role ?? 'user');
   const [crea,     setCrea]     = useState(target?.crea ?? '');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
 
-  // Assinatura
-  const [assinaturaUrl,     setAssinaturaUrl]     = useState<string | null>(target?.assinatura_url ?? null);
+  // Assinatura — a URL é sempre de curta duração e buscada sob demanda (nunca persistida/listada).
+  const [assinaturaUrl,     setAssinaturaUrl]     = useState<string | null>(null);
   const [assinaturaFile,    setAssinaturaFile]    = useState<File | null>(null);
-  const [assinaturaPreview, setAssinaturaPreview] = useState<string | null>(target?.assinatura_url ?? null);
+  const [assinaturaPreview, setAssinaturaPreview] = useState<string | null>(null);
   const [assinaturaLoading, setAssinaturaLoading] = useState(false);
   const [assinaturaError,   setAssinaturaError]   = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const targetId = target?.id ?? '';
+
+  useEffect(() => {
+    if (isCreate || !targetId) return;
+    buscarUrlAssinatura(targetId, target?.has_assinatura).then((url) => {
+      if (url) { setAssinaturaUrl(url); setAssinaturaPreview(url); }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreate, targetId, target?.has_assinatura]);
 
   const handleAssinaturaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -172,8 +182,12 @@ function Modal({ mode, target, currentUser, onClose, onSuccess }: {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error);
       } else {
+        if (isSelfEdit && password && !currentPassword) {
+          throw new Error('Informe a senha atual para trocar a senha.');
+        }
         const body: Record<string, string> = { full_name: fullName, cargo, email, crea };
         if (password) body.password = password;
+        if (isSelfEdit && password) body.currentPassword = currentPassword;
         if (isAdmin && !isSelfEdit) body.role = role;
 
         const res = await fetch(`/api/users/${target!.id}`, {
@@ -257,6 +271,12 @@ function Modal({ mode, target, currentUser, onClose, onSuccess }: {
             <label style={labelStyle}>{isCreate ? 'Senha' : 'Nova Senha'}</label>
             <input className="tm-input" style={inputStyle} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={isCreate ? 'Senha inicial' : 'Deixe em branco para não alterar'} />
           </div>
+          {isSelfEdit && password && (
+            <div>
+              <label style={labelStyle}>Senha Atual</label>
+              <input className="tm-input" style={inputStyle} type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Confirme a senha atual para trocar" />
+            </div>
+          )}
           <div>
             <label style={labelStyle}>Cargo / Função</label>
             <input className="tm-input" style={inputStyle} value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ex: Engenheiro, Técnico…" />
@@ -537,7 +557,8 @@ export default function UsuariosPage() {
       // Papel vem de app_metadata (só o servidor grava). Aqui é só para a UI; as rotas /api/users reverificam.
       role: user.app_metadata?.role === 'admin' ? 'admin' : 'user',
       crea: user.user_metadata?.crea ?? '',
-      assinatura_url: user.user_metadata?.assinatura_url ?? undefined,
+      // Sem URL permanente: busca uma URL assinada de curta duração sob demanda.
+      assinatura_url: (await buscarUrlAssinatura(user.id, user.user_metadata?.assinatura_path)) || undefined,
     };
     setCurrentUser(cu);
     return cu;
@@ -592,7 +613,7 @@ export default function UsuariosPage() {
     id: currentUser!.id, email: currentUser!.email, full_name: currentUser!.full_name,
     cargo: currentUser!.cargo, role: currentUser!.role, banned: false, created_at: '',
     crea: currentUser!.crea ?? '',
-    assinatura_url: currentUser!.assinatura_url,
+    has_assinatura: !!currentUser!.assinatura_url,
   });
 
   // ── Non-admin view ──

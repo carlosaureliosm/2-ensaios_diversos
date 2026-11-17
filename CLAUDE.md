@@ -43,6 +43,14 @@ Auditoria feita com a metodologia `cloudflare/security-audit-skill`. Relatório 
 - Removido o `console.log` que imprimia a URL do Google Maps com a chave.
 - Migração dos papéis executada em 2026-11-09: 5 admins (rodrigo@, alexandre@, albertramos@ e laudos@ no domínio tecomat.com.br, mais yanntecomat@gmail.com) e 2 usuários comuns. Commit `7c6cac0` na `main`.
 
+### Revisão da auditoria (2026-11-17) — 2 melhorias aplicadas
+
+Revisão do código dos commits `7c6cac0`/`3816818` confirmou que as correções acima são efetivas. Dois pontos de reforço (defesa em profundidade, não vulnerabilidades críticas) foram aplicados:
+
+- **Troca da própria senha agora exige a senha atual.** Antes, `PATCH /api/users/[id]` deixava o próprio usuário (`isSelf`) trocar a senha sem confirmar a atual — uma sessão sequestrada (ex. XSS) travava o acesso da vítima. Novo helper `senhaAtualValida` em `src/lib/auth.ts` reautentica (via `signInWithPassword` com a anon key, sem afetar a sessão da requisição) antes de aceitar a troca quando `isSelf`. Campo novo `currentPassword` no body da rota e no formulário (`src/app/(dashboard)/usuarios/page.tsx`, campo "Senha Atual" exibido só quando o próprio usuário digita uma nova senha). Admin trocando a senha de **outro** usuário não precisa disso (ação administrativa).
+- **Fim da URL assinada de 10 anos para a assinatura.** `POST /api/users/[id]/assinatura` gerava e persistia em `user_metadata.assinatura_url` uma URL assinada do Supabase Storage válida por 10 anos, devolvida também por `GET /api/users` — qualquer vazamento dessa URL expunha a imagem "para sempre" mesmo com o bucket privado. Agora só `assinatura_path` é persistido; a URL é sempre gerada sob demanda, com 1h de validade, por um novo `GET /api/users/[id]/assinatura` (guardado por `isAdmin`/`isSelf`, igual ao POST/DELETE). `GET /api/users` devolve `has_assinatura: boolean` em vez da URL. Front-end busca a URL de curta duração quando precisa exibir a prévia, via helper `src/lib/assinatura.ts` (`buscarUrlAssinatura`), usado em `userStore.ts`, `pacometria/page.tsx`, `resistividade/page.tsx` e no modal de `usuarios/page.tsx`.
+- Build (`npx next build`) e suíte de testes (`npm run test`, 15 testes) validados após as duas mudanças.
+
 ### Pendências de segurança (manuais, a concluir pelo usuário)
 
 1. **Trocar e restringir a `GOOGLE_MAPS_API_KEY`** (a chave antiga pode estar nos logs da Vercel). O site usa **só a Maps Static API**.

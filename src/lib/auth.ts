@@ -7,6 +7,7 @@
 // pelo navegador com `supabase.auth.updateUser({ data })` usando a anon key pública.
 
 import type { User } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -26,6 +27,22 @@ export async function usuarioAtual(): Promise<User | null> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   return user ?? null;
+}
+
+/**
+ * Confirma a senha atual do próprio usuário (re-autentica contra o Supabase Auth com a anon key,
+ * sem afetar a sessão da requisição). Usado antes de deixar o usuário trocar a própria senha —
+ * sem isso, uma sessão sequestrada (ex. XSS) consegue travar o acesso da vítima trocando a senha
+ * sem precisar saber a senha original.
+ */
+export async function senhaAtualValida(email: string, senha: string): Promise<boolean> {
+  const client = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+  const { error } = await client.auth.signInWithPassword({ email, password: senha });
+  return !error;
 }
 
 const BUCKET_ASSINATURAS = 'assinaturas';

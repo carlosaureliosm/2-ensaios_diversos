@@ -30,7 +30,9 @@ export async function GET() {
       banned: !!u.banned_until && new Date(u.banned_until) > new Date(),
       created_at: u.created_at,
       crea: meta.crea ?? '',
-      assinatura_url: meta.assinatura_url ?? null,
+      // Nunca a URL permanente (removida — ver assinatura/route.ts). A tela busca uma URL assinada
+      // de curta duração sob demanda em GET /api/users/[id]/assinatura quando precisa exibir a prévia.
+      has_assinatura: !!meta.assinatura_path,
     };
   });
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
+import { buscarUrlAssinatura } from '@/lib/assinatura';
 import type { UserMetadata } from '@/types/user';
 
 type UserState = {
@@ -38,12 +39,13 @@ export const useUserStore = create<UserState>((set) => ({
     if (!user) return;
     const m = (user.user_metadata ?? {}) as UserMetadata;
     const name = m.full_name ?? user.email ?? '';
+    const userAssinatura = await buscarUrlAssinatura(user.id, m.assinatura_path);
     set({
       userName: name,
       userEmail: user.email ?? '',
       userCargo: m.cargo ?? '',
       userCrea: m.crea ?? '',
-      userAssinatura: m.assinatura_url ?? '',
+      userAssinatura,
       initials: getInitials(name),
       loaded: true,
     });
