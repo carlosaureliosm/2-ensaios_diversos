@@ -128,6 +128,12 @@ const gridInputStyle: React.CSSProperties = {
   outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'center', height: 34,
 };
 
+const fichaInputStyle: React.CSSProperties = {
+  padding: '2px 0', border: 'none', borderRadius: 0,
+  fontSize: 12.5, fontFamily: 'inherit', fontWeight: 500, color: TEXT, background: 'transparent',
+  outline: 'none', width: '100%', boxSizing: 'border-box', height: 24,
+};
+
 /**
  * Campo numérico decimal (texto, não `type="number"`): aceita só dígitos e uma vírgula como
  * separador decimal (padrão brasileiro), sem as setas nativas do navegador. Mantém um texto local
@@ -1109,68 +1115,82 @@ function SituacaoForm({
 
   return (
     <div style={{ minWidth: 0, maxWidth: '100%' }}>
-      {/* 1. Cabeçalho da situação — em pares de 2 colunas fiel à planilha de referência */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '6px 12px', marginBottom: 8 }}>
-        <Campo label="Tipo de revestimento">
-          <input style={{ ...inputStyle, textTransform: 'uppercase' }} value={situacao.tipoRevestimento} onChange={e => atualizar('tipoRevestimento', e.target.value.toUpperCase())} placeholder="EX: VERTICAL INTERNO" />
-        </Campo>
-        <Campo label="Data do ensaio">
-          <input style={inputStyle} inputMode="numeric" maxLength={10} value={situacao.dataEnsaio} onChange={e => atualizar('dataEnsaio', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
-        </Campo>
+      {/* 1. Ficha técnica da situação — mesmo padrão de grade contínua da tabela */}
+      <div style={{ border: '1px solid #94A3B8', borderRadius: 8, overflow: 'hidden', background: '#fff', marginBottom: 14 }}>
+        <div style={{ background: PRIMARY, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            DADOS DA SITUAÇÃO
+          </span>
+          <span style={{ fontSize: 10.5, fontWeight: 500, color: '#BFDBFE' }}>
+            {modelo.nome}
+          </span>
+        </div>
 
-        <Campo label="Nº de corpos de prova">
-          <input type="text" inputMode="numeric" style={inputStyle} value={situacao.numCPs} onChange={e => alterarNumCPs(Number(somenteDigitos(e.target.value)))} />
-        </Campo>
-        <Campo label="Data de aplicação">
-          <input style={inputStyle} inputMode="numeric" maxLength={10} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
-        </Campo>
+        {/* 5 pares de 2 colunas */}
+        <div className="aderencia-ficha-grid">
+          <CelulaFicha label="Tipo de revestimento" borderRight>
+            <input style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={situacao.tipoRevestimento} onChange={e => atualizar('tipoRevestimento', e.target.value.toUpperCase())} placeholder="EX: VERTICAL INTERNO" />
+          </CelulaFicha>
+          <CelulaFicha label="Data do ensaio">
+            <input style={fichaInputStyle} inputMode="numeric" maxLength={10} value={situacao.dataEnsaio} onChange={e => atualizar('dataEnsaio', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
+          </CelulaFicha>
 
-        <Campo label="Substrato">
-          <input style={inputStyle} value={situacao.substrato} onChange={e => atualizar('substrato', e.target.value)} />
-        </Campo>
-        <Campo label="Idade de ruptura (dias)">
-          <input style={inputStyle} inputMode="numeric" value={situacao.idadeRupturaDias} onChange={e => atualizar('idadeRupturaDias', somenteDigitos(e.target.value))} placeholder="EX: 28" />
-        </Campo>
+          <CelulaFicha label="Nº de corpos de prova" borderRight>
+            <input type="text" inputMode="numeric" style={fichaInputStyle} value={situacao.numCPs} onChange={e => alterarNumCPs(Number(somenteDigitos(e.target.value)))} />
+          </CelulaFicha>
+          <CelulaFicha label="Data de aplicação">
+            <input style={fichaInputStyle} inputMode="numeric" maxLength={10} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
+          </CelulaFicha>
 
-        <Campo label="Chapisco">
-          <input style={inputStyle} value={situacao.chapisco} onChange={e => atualizar('chapisco', e.target.value)} />
-        </Campo>
-        <Campo label="Traço (chapisco)">
-          <input style={inputStyle} value={situacao.chapiscoTraco} onChange={e => atualizar('chapiscoTraco', e.target.value)} />
-        </Campo>
+          <CelulaFicha label="Substrato" borderRight>
+            <input style={fichaInputStyle} value={situacao.substrato} onChange={e => atualizar('substrato', e.target.value)} />
+          </CelulaFicha>
+          <CelulaFicha label="Idade de ruptura (dias)">
+            <input style={fichaInputStyle} inputMode="numeric" value={situacao.idadeRupturaDias} onChange={e => atualizar('idadeRupturaDias', somenteDigitos(e.target.value))} placeholder="EX: 28" />
+          </CelulaFicha>
 
-        <Campo label="Emboço">
-          <input style={inputStyle} value={situacao.emboco} onChange={e => atualizar('emboco', e.target.value)} />
-        </Campo>
-        <Campo label="Traço (emboço)">
-          <input style={inputStyle} value={situacao.embocoTraco} onChange={e => atualizar('embocoTraco', e.target.value)} />
-        </Campo>
-      </div>
+          <CelulaFicha label="Chapisco" borderRight>
+            <input style={fichaInputStyle} value={situacao.chapisco} onChange={e => atualizar('chapisco', e.target.value)} />
+          </CelulaFicha>
+          <CelulaFicha label="Traço (chapisco)">
+            <input style={fichaInputStyle} value={situacao.chapiscoTraco} onChange={e => atualizar('chapiscoTraco', e.target.value)} />
+          </CelulaFicha>
 
-      {/* 2. Faixa tripla: Argamassa colante | Revestimento | Dimensões (cm) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '6px 12px', marginBottom: 10 }}>
-        <Campo label="Argamassa colante">
-          <input style={inputStyle} value={situacao.argamassaColante} onChange={e => atualizar('argamassaColante', e.target.value)} />
-        </Campo>
-        <Campo label="Revestimento">
-          <input style={inputStyle} value={situacao.revestimento} onChange={e => atualizar('revestimento', e.target.value)} />
-        </Campo>
-        <Campo label="Dimensões (cm)">
-          <input style={inputStyle} value={situacao.dimensoesCm} onChange={e => atualizar('dimensoesCm', e.target.value)} placeholder="EX: 10X10" />
-        </Campo>
-      </div>
+          <CelulaFicha label="Emboço" borderRight>
+            <input style={fichaInputStyle} value={situacao.emboco} onChange={e => atualizar('emboco', e.target.value)} />
+          </CelulaFicha>
+          <CelulaFicha label="Traço (emboço)">
+            <input style={fichaInputStyle} value={situacao.embocoTraco} onChange={e => atualizar('embocoTraco', e.target.value)} />
+          </CelulaFicha>
+        </div>
 
-      {/* Esquema + observações */}
-      <div className="aderencia-esquema-sit" style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: 12, alignItems: 'center', marginBottom: 12, padding: '8px 12px', background: BG, border: `1px solid ${BORDER}`, borderRadius: 8 }}>
-        <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas, modelo.profundidadeCorte) }} style={{ lineHeight: 0 }} />
-        <Campo label="Observações do esquema">
-          <textarea
-            style={{ ...inputStyle, height: 'auto', minHeight: 68, resize: 'vertical', fontFamily: 'inherit', padding: '6px 8px' }}
-            value={situacao.observacoesEsquema}
-            onChange={e => atualizar('observacoesEsquema', e.target.value)}
-            placeholder="Observações sobre o sistema de revestimento ensaiado..."
-          />
-        </Campo>
+        {/* Faixa tripla: Argamassa colante | Revestimento | Dimensões (cm) */}
+        <div className="aderencia-tripla-row">
+          <CelulaFicha label="Argamassa colante" borderRight>
+            <input style={fichaInputStyle} value={situacao.argamassaColante} onChange={e => atualizar('argamassaColante', e.target.value)} />
+          </CelulaFicha>
+          <CelulaFicha label="Revestimento" borderRight>
+            <input style={fichaInputStyle} value={situacao.revestimento} onChange={e => atualizar('revestimento', e.target.value)} />
+          </CelulaFicha>
+          <CelulaFicha label="Dimensões (cm)">
+            <input style={fichaInputStyle} value={situacao.dimensoesCm} onChange={e => atualizar('dimensoesCm', e.target.value)} placeholder="EX: 10X10" />
+          </CelulaFicha>
+        </div>
+
+        {/* Esquema + Observações */}
+        <div className="aderencia-esquema-sit">
+          <div className="ficha-celula" style={{ padding: '10px 14px', background: '#F8FAFC', borderRight: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas, modelo.profundidadeCorte) }} style={{ lineHeight: 0 }} />
+          </div>
+          <CelulaFicha label="Observações do esquema" borderBottom={false}>
+            <textarea
+              style={{ ...fichaInputStyle, height: 'auto', minHeight: 74, resize: 'vertical', padding: '4px 0', lineHeight: 1.4 }}
+              value={situacao.observacoesEsquema}
+              onChange={e => atualizar('observacoesEsquema', e.target.value)}
+              placeholder="Observações sobre o sistema de revestimento ensaiado..."
+            />
+          </CelulaFicha>
+        </div>
       </div>
 
       {/* 3. Tabela RESULTADO DO ENSAIO (Opção 2 — Planilha Técnica Compacta) */}
@@ -1399,6 +1419,26 @@ function Estatistica({ label, valor, unidade, borderLeft = false }: { label: str
     <div style={{ padding: '8px 10px', borderLeft: borderLeft ? '1px solid #CBD5E1' : undefined, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
       <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: PRIMARY }}>{valor === null ? '—' : `${valor.toFixed(2)} ${unidade}`}</p>
+    </div>
+  );
+}
+function CelulaFicha({ label, children, borderRight = false, borderBottom = true }: {
+  label: string; children: React.ReactNode; borderRight?: boolean; borderBottom?: boolean;
+}) {
+  return (
+    <div
+      className={`aderencia-grid-cell${borderRight ? ' ficha-celula' : ''}`}
+      style={{
+        padding: '6px 10px 4px',
+        borderRight: borderRight ? '1px solid #E2E8F0' : undefined,
+        borderBottom: borderBottom ? '1px solid #E2E8F0' : undefined,
+        transition: 'background 0.1s',
+      }}
+    >
+      <p style={{ margin: '0 0 2px', fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        {label}
+      </p>
+      {children}
     </div>
   );
 }
@@ -1667,6 +1707,14 @@ export default function AderenciaPage() {
           letter-spacing: 0.02em;
           flex-shrink: 0;
         }
+        .aderencia-ficha-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+        }
+        .aderencia-esquema-sit {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+        }
         .aderencia-tripla-row {
           display: grid;
           grid-template-columns: 1.35fr 1fr 0.9fr;
@@ -1700,7 +1748,7 @@ export default function AderenciaPage() {
           .aderencia-tripla-row {
             grid-template-columns: 1fr !important;
           }
-          .aderencia-esquema-row {
+          .aderencia-esquema-row, .aderencia-esquema-sit {
             grid-template-columns: 1fr !important;
           }
           .aderencia-rodape-row {
