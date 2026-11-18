@@ -97,16 +97,26 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
   const cx = ox + bandW / 2
   const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
 
+  // chanfro nas laterais da placa indicando o recorte aberto na camada (exceto sobre contrapiso)
+  const chanfro = 7
+  const xEsq = cx - discoW / 2
+  const xDir = cx + discoW / 2
+  const recorte = embutida
+    ? `<polygon points="${xEsq - chanfro},${topoY - 0.6} ${xDir + chanfro},${topoY - 0.6} ${xDir + chanfro},${topoY} ${xDir},${topoY + 6} ${xEsq},${topoY + 6} ${xEsq - chanfro},${topoY}" fill="#FFFFFF"/>
+    <polyline points="${xEsq - chanfro},${topoY} ${xEsq},${topoY + 6}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>
+    <polyline points="${xDir + chanfro},${topoY} ${xDir},${topoY + 6}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>`
+    : ''
+
   // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre contrapiso)
   const discoY = embutida ? topoY : topoY - 6
-  const disco = `${embutida ? `<rect x="${cx - discoW / 2}" y="${discoY}" width="${discoW}" height="6" fill="#FFFFFF"/>` : ''}
-    <rect x="${cx - discoW / 2}" y="${discoY}" width="${discoW}" height="6" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
+  const disco = `<rect x="${xEsq}" y="${discoY}" width="${discoW}" height="6" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
     <line x1="${cx}" y1="${discoY - rodH + 6}" x2="${cx}" y2="${discoY}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${cx}" cy="${discoY - rodH + 6}" r="3.2" fill="${METAL}"/>`
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
+    ${recorte}
     ${disco}
     ${labels}
   </svg>`
@@ -140,16 +150,26 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
   const cy = oy + bandH / 2
   const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
 
+  // chanfro nas laterais da placa indicando o recorte aberto na camada (exceto sobre emboço)
+  const chanfro = 7
+  const yCima = cy - discoH / 2
+  const yBaixo = cy + discoH / 2
+  const recorte = embutida
+    ? `<polygon points="${faceX + 0.6},${yCima - chanfro} ${faceX + 0.6},${yBaixo + chanfro} ${faceX},${yBaixo + chanfro} ${faceX - 6},${yBaixo} ${faceX - 6},${yCima} ${faceX},${yCima - chanfro}" fill="#FFFFFF"/>
+    <polyline points="${faceX},${yCima - chanfro} ${faceX - 6},${yCima}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>
+    <polyline points="${faceX},${yBaixo + chanfro} ${faceX - 6},${yBaixo}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>`
+    : ''
+
   // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre emboço)
   const discoX = embutida ? faceX - 6 : faceX
-  const disco = `${embutida ? `<rect x="${discoX}" y="${cy - discoH / 2}" width="6" height="${discoH}" fill="#FFFFFF"/>` : ''}
-    <rect x="${discoX}" y="${cy - discoH / 2}" width="6" height="${discoH}" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
+  const disco = `<rect x="${discoX}" y="${yCima}" width="6" height="${discoH}" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
     <line x1="${discoX + 6}" y1="${cy}" x2="${discoX + rodW}" y2="${cy}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${discoX + rodW}" cy="${cy}" r="3.2" fill="${METAL}"/>`
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
+    ${recorte}
     ${disco}
     ${labels}
   </svg>`
