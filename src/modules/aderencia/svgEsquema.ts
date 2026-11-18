@@ -48,6 +48,11 @@ function escapeXml(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
+function placaSobreSuperficieSemRecorte(camadaAcabamento: string): boolean {
+  const n = camadaAcabamento.trim().toLowerCase()
+  return n.includes('contrapiso') || n.includes('emboço') || n.includes('emboco')
+}
+
 const DEFS = `<defs>
   <pattern id="hxVoid" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <line x1="0" y1="0" x2="0" y2="6" stroke="#9AA0AC" stroke-width="1"/>
@@ -93,15 +98,20 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
 
   const topoY = oy
   const cx = ox + bandW / 2
+  const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
 
   // patches de vazio (núcleo cortado) flanqueando o disco, na superfície de acabamento
   const voidW = 26
-  const vazios = `<rect x="${cx - discoW / 2 - voidW - 2}" y="${topoY}" width="${voidW}" height="6" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>
-    <rect x="${cx + discoW / 2 + 2}" y="${topoY}" width="${voidW}" height="6" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>`
+  const xVazioEsq = cx - discoW / 2 - voidW - 2
+  const xVazioDir = cx + discoW / 2 + 2
+  const vazios = `${embutida ? `<rect x="${xVazioEsq}" y="${topoY}" width="${voidW}" height="6" fill="#FFFFFF"/><rect x="${xVazioDir}" y="${topoY}" width="${voidW}" height="6" fill="#FFFFFF"/>` : ''}
+    <rect x="${xVazioEsq}" y="${topoY}" width="${voidW}" height="6" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>
+    <rect x="${xVazioDir}" y="${topoY}" width="${voidW}" height="6" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>`
 
-  // disco metálico + haste de tração
-  const discoY = topoY - 6
-  const disco = `<rect x="${cx - discoW / 2}" y="${discoY}" width="${discoW}" height="6" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
+  // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre contrapiso)
+  const discoY = embutida ? topoY : topoY - 6
+  const disco = `${embutida ? `<rect x="${cx - discoW / 2}" y="${discoY}" width="${discoW}" height="6" fill="#FFFFFF"/>` : ''}
+    <rect x="${cx - discoW / 2}" y="${discoY}" width="${discoW}" height="6" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
     <line x1="${cx}" y1="${discoY - rodH + 6}" x2="${cx}" y2="${discoY}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${cx}" cy="${discoY - rodH + 6}" r="3.2" fill="${METAL}"/>`
 
@@ -140,15 +150,21 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
 
   const faceX = ox + camadas.length * bandW
   const cy = oy + bandH / 2
+  const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
+  const recorteX = embutida ? faceX - 6 : faceX
 
   // patches de vazio flanqueando o disco, na face de acabamento
   const voidH = 40
-  const vazios = `<rect x="${faceX}" y="${cy - discoH / 2 - voidH - 2}" width="6" height="${voidH}" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>
-    <rect x="${faceX}" y="${cy + discoH / 2 + 2}" width="6" height="${voidH}" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>`
+  const yVazioCima = cy - discoH / 2 - voidH - 2
+  const yVazioBaixo = cy + discoH / 2 + 2
+  const vazios = `${embutida ? `<rect x="${recorteX}" y="${yVazioCima}" width="6" height="${voidH}" fill="#FFFFFF"/><rect x="${recorteX}" y="${yVazioBaixo}" width="6" height="${voidH}" fill="#FFFFFF"/>` : ''}
+    <rect x="${recorteX}" y="${yVazioCima}" width="6" height="${voidH}" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>
+    <rect x="${recorteX}" y="${yVazioBaixo}" width="6" height="${voidH}" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>`
 
-  // disco metálico + haste de tração
-  const discoX = faceX
-  const disco = `<rect x="${discoX}" y="${cy - discoH / 2}" width="6" height="${discoH}" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
+  // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre emboço)
+  const discoX = recorteX
+  const disco = `${embutida ? `<rect x="${discoX}" y="${cy - discoH / 2}" width="6" height="${discoH}" fill="#FFFFFF"/>` : ''}
+    <rect x="${discoX}" y="${cy - discoH / 2}" width="6" height="${discoH}" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
     <line x1="${discoX + 6}" y1="${cy}" x2="${discoX + rodW}" y2="${cy}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${discoX + rodW}" cy="${cy}" r="3.2" fill="${METAL}"/>`
 
