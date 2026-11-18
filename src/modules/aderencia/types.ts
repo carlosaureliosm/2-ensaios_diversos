@@ -81,6 +81,11 @@ export interface ModeloSistemaCamadas {
   /** cores hexadecimais (#RRGGBB) opcionais para cada camada (mesmo índice de `camadas`) */
   coresCamadas?: string[]
   /**
+   * Quantidade de camadas atravessadas pelo corte ao redor da placa (0 = superficial sem corte,
+   * 1 = apenas acabamento, 2 = até o fundo da argamassa colante). Quando omitido, usa a regra automática.
+   */
+  profundidadeCorte?: number
+  /**
    * Colunas da tabela "Forma de Ruptura (%)", na ordem em que devem aparecer no relatório.
    * Lista explícita (não derivada automaticamente nos pré-definidos) porque inclui interfaces que pulam camadas
    * (ex.: "Sub/Emb" quando a ruptura salta o chapisco). Sempre termina em "Vazios".

@@ -13,9 +13,18 @@ export const MODELOS_SISTEMA_CAMADAS: ModeloSistemaCamadas[] = [
   // ── PISO (elemento horizontal, disco puxado para cima) ──────────────────────
   {
     id: 'piso-contrapiso',
-    nome: 'Piso sobre contrapiso (sem revestimento cerâmico)',
+    nome: 'Piso sobre contrapiso (superficial, sem corte)',
     disposicao: 'piso',
     camadas: ['Concreto', 'Contrapiso'],
+    profundidadeCorte: 0,
+    colunasFormaRuptura: ['Concreto', 'Conc/Cont', 'Contrapiso', 'Vazios'],
+  },
+  {
+    id: 'piso-contrapiso-corte',
+    nome: 'Piso sobre contrapiso (profundo, com corte)',
+    disposicao: 'piso',
+    camadas: ['Concreto', 'Contrapiso'],
+    profundidadeCorte: 1,
     colunasFormaRuptura: ['Concreto', 'Conc/Cont', 'Contrapiso', 'Vazios'],
   },
   {
@@ -44,9 +53,18 @@ export const MODELOS_SISTEMA_CAMADAS: ModeloSistemaCamadas[] = [
   // ── PAREDE (elemento vertical, disco puxado para o lado) ────────────────────
   {
     id: 'parede-reboco',
-    nome: 'Parede com chapisco e emboço (pintura ou base para reboco)',
+    nome: 'Parede com chapisco e emboço (superficial, sem corte)',
     disposicao: 'parede',
     camadas: ['Substrato', 'Chapisco', 'Emboço'],
+    profundidadeCorte: 0,
+    colunasFormaRuptura: ['Sub', 'Sub/Chap', 'Chap', 'Chap/Emb', 'Emb', 'Vazios'],
+  },
+  {
+    id: 'parede-reboco-corte',
+    nome: 'Parede com chapisco e emboço (profundo, com corte)',
+    disposicao: 'parede',
+    camadas: ['Substrato', 'Chapisco', 'Emboço'],
+    profundidadeCorte: 1,
     colunasFormaRuptura: ['Sub', 'Sub/Chap', 'Chap', 'Chap/Emb', 'Emb', 'Vazios'],
   },
   {

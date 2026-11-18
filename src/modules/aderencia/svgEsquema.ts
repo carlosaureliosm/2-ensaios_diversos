@@ -68,13 +68,27 @@ const DEFS = `<defs>
  * Gera o SVG do esquema de camadas de uma Situação, a partir da lista de camadas do
  * modelo escolhido (substrato → acabamento), da disposição do elemento ensaiado e das cores opcionais.
  */
-export function svgEsquemaCamadas(camadas: string[], disposicao: 'piso' | 'parede', coresCamadas?: string[]): string {
+export function svgEsquemaCamadas(
+  camadas: string[],
+  disposicao: 'piso' | 'parede',
+  coresCamadas?: string[],
+  profundidadeCorte?: number
+): string {
   const lista = camadas.length > 0 ? camadas : ['Camada']
-  return disposicao === 'piso' ? svgPiso(lista, coresCamadas) : svgParede(lista, coresCamadas)
+  return disposicao === 'piso'
+    ? svgPiso(lista, coresCamadas, profundidadeCorte)
+    : svgParede(lista, coresCamadas, profundidadeCorte)
+}
+
+function resolverNCortes(camadas: string[], profundidadeCorte?: number): number {
+  if (typeof profundidadeCorte === 'number') {
+    return Math.max(0, Math.min(camadas.length, profundidadeCorte))
+  }
+  return camadasDeCorte(camadas)
 }
 
 // ── PISO: camadas empilhadas na vertical, disco puxado para cima ──────────────
-function svgPiso(camadas: string[], coresCamadas?: string[]): string {
+function svgPiso(camadas: string[], coresCamadas?: string[], profundidadeCorte?: number): string {
   const bandW = 130
   const bandH = 22
   const ox = 10
@@ -103,7 +117,7 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
 
   const topoY = oy
   const cx = ox + bandW / 2
-  const nCortes = camadasDeCorte(camadas)
+  const nCortes = resolverNCortes(camadas, profundidadeCorte)
 
   // dois cortes paralelos finos ao lado da placa (até o fundo da argamassa colante ou só na camada de gesso)
   const corteW = 3
@@ -133,7 +147,7 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
 }
 
 // ── PAREDE: camadas lado a lado na horizontal, disco puxado para o lado ───────
-function svgParede(camadas: string[], coresCamadas?: string[]): string {
+function svgParede(camadas: string[], coresCamadas?: string[], profundidadeCorte?: number): string {
   const bandW = 24
   const bandH = 120
   const oy = 14
@@ -164,7 +178,7 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
   const W = maxXLabel
   const H = oy + bandH + 10 + Math.max(0, camadas.length - 1) * 13 + 10
   const cy = oy + bandH / 2
-  const nCortes = camadasDeCorte(camadas)
+  const nCortes = resolverNCortes(camadas, profundidadeCorte)
 
   // dois cortes paralelos finos ao lado da placa (até o fundo da argamassa colante ou só na camada de gesso)
   const corteH = 3

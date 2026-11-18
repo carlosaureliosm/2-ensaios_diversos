@@ -234,7 +234,7 @@ function ModeloCard({
         </span>
       )}
       <div
-        dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas) }}
+        dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas, modelo.profundidadeCorte) }}
         style={{ lineHeight: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, padding: '6px 0' }}
       />
       <span style={{ fontSize: 12.5, fontWeight: 700, color: selecionado ? PRIMARY : TEXT, lineHeight: 1.35 }}>
@@ -623,7 +623,7 @@ function EditorModeloPersonalizado({
             Pré-visualização do esquema
           </span>
           <div
-            dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, cores) }}
+            dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, cores, modelo.profundidadeCorte) }}
             style={{
               lineHeight: 0,
               width: '100%',
@@ -943,7 +943,7 @@ function SituacaoForm({
 
       {/* Esquema + observações */}
       <div className="aderencia-esquema-sit" style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: 12, alignItems: 'center', marginBottom: 12, padding: '8px 12px', background: BG, border: `1px solid ${BORDER}`, borderRadius: 8 }}>
-        <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas) }} style={{ lineHeight: 0 }} />
+        <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas, modelo.profundidadeCorte) }} style={{ lineHeight: 0 }} />
         <Campo label="Observações do esquema">
           <textarea
             style={{ ...inputStyle, height: 'auto', minHeight: 68, resize: 'vertical', fontFamily: 'inherit', padding: '6px 8px' }}
@@ -1315,7 +1315,7 @@ export default function AderenciaPage() {
         situacoes.map(async (s, idx) => {
           const modelo = resolverModeloSituacao(s) ?? (s.modeloCamadasId === ID_MODELO_PERSONALIZADO ? obterPersonalizadoOuPadrao(idx) : undefined);
           const esquema = modelo
-            ? await svgParaPng(svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas))
+            ? await svgParaPng(svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas, modelo.profundidadeCorte))
             : null;
           return {
             ...s,
