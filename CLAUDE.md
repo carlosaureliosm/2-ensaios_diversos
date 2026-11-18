@@ -183,3 +183,10 @@ A aba **FLS.** citada originalmente não existe na planilha real fornecida pelo 
 11. ✅ **Layout compacto da Situação fiel à planilha RAAC (`SituacaoForm` em `page.tsx`)**:
     - Disposição dos campos do cabeçalho da situação em 5 pares de 2 colunas fiel à ordem e posições da planilha (Tipo de revestimento/Data ensaio, Nº CPs/Data aplicação, Substrato/Idade ruptura, Chapisco/Traço, Emboço/Traço), seguidos da faixa tripla (Argamassa colante/Revestimento/Dimensões).
     - Design compacto aproximando os campos: `gap: '6px 12px'` nas linhas, rótulos compactos (`fontSize: 10px`, `gap: 2px` com o input), inputs de 31px de altura com `padding: '5px 8px'`, textarea de observações enxuto (68px), tabela e rodapé de médias e umidade/espessura compactados.
+
+12. ✅ **Ajustes de UX da tabela de resultados da Situação (2026-11-17/18, feitos no Claude Code; commits  c01437, 76705b9, merge do PR #1 2027949)** — só em src/app/(dashboard)/ensaios/aderencia/page.tsx:
+    - **Sem rolagem horizontal**: a tabela de CPs usa 	ableLayout: 'fixed' + <colgroup> (larguras: nº 30, Ra/Prof 44/44, 54/54, colunas de forma de ruptura 36 cada, localização minWidth: 90, fotos 80); o minWidth: 760 foi removido. As colunas de ruptura foram de 28 para 36 px para não cortar números de 3 dígitos (ex: 100).
+    - **Campos numéricos com vírgula decimal**: novo componente NumeroInput (texto com inputMode="decimal", só dígitos e uma vírgula, sem setas do 	ype="number", mantém texto local para não perder a vírgula digitada). Usado em Tensão Ra, Prof. ruptura, colunas de forma de ruptura e nos campos de umidade/espessura do rodapé. Valor continua 
+umber | null no estado.
+    - **FotoSlot menor** (36×36 px, antes 54×54) e botão de remover reduzido, para caber sem rolagem.
+13. ✅ **Limites nos campos numéricos (2026-11-18)**: NumeroInput ganhou as props maxDecimais (padrão 2 casas após a vírgula) e maxInteiros. Todos os campos numéricos decimais (Ra, prof. ruptura, umidade, espessura) aceitam no máximo 2 casas decimais. Os campos de % de forma de ruptura usam maxDecimais={0} + maxInteiros={3}: só inteiros de até 3 dígitos.

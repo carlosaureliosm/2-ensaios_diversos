@@ -128,8 +128,10 @@ const cellInputStyle: React.CSSProperties = {
  * para não "engolir" a vírgula digitada (ex: "0,") enquanto o valor externo ainda é um number — só
  * resincroniza do valor externo quando ele muda por outro motivo (reset de linha, autosave, etc.).
  */
-function NumeroInput({ value, onChange, style, placeholder }: {
+function NumeroInput({ value, onChange, style, placeholder, maxDecimais = 2, maxInteiros }: {
   value: number | null; onChange: (v: number | null) => void; style?: React.CSSProperties; placeholder?: string;
+  /** Casas após a vírgula (padrão 2; 0 = só inteiros). */ maxDecimais?: number;
+  /** Máximo de dígitos antes da vírgula (sem limite se omitido). */ maxInteiros?: number;
 }) {
   const paraTexto = (v: number | null) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
   const [texto, setTexto] = useState(paraTexto(value));
@@ -141,9 +143,12 @@ function NumeroInput({ value, onChange, style, placeholder }: {
   }, [value]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    let t = e.target.value.replace(/[^0-9,]/g, '');
+    let t = e.target.value.replace(maxDecimais > 0 ? /[^0-9,]/g : /[^0-9]/g, '');
     const partes = t.split(',');
-    if (partes.length > 2) t = partes[0] + ',' + partes.slice(1).join('');
+    let inteiro = partes[0];
+    if (maxInteiros !== undefined) inteiro = inteiro.slice(0, maxInteiros);
+    t = inteiro;
+    if (maxDecimais > 0 && partes.length > 1) t += ',' + partes.slice(1).join('').slice(0, maxDecimais);
     setTexto(t);
     if (t === '' || t === ',') { onChange(null); return; }
     const num = Number(t.replace(',', '.'));
@@ -973,6 +978,8 @@ function SituacaoForm({
                     <Td key={col}>
                       <NumeroInput
                         style={cellInputStyle}
+                        maxDecimais={0}
+                        maxInteiros={3}
                         value={cp.formaRuptura[col] ?? 0}
                         onChange={v => atualizarCP(i, { ...cp, formaRuptura: { ...cp.formaRuptura, [col]: v ?? 0 } })}
                       />
