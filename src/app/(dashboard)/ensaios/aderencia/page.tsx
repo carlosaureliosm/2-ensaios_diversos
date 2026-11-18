@@ -289,6 +289,13 @@ function EditorModeloPersonalizado({
     aplicarCamadas(novasCamadas, cores);
   }
 
+  function selecionarCamadaDaLista(idx: number, nomeSelecionado: string) {
+    if (!nomeSelecionado) return;
+    const novasCamadas = modelo.camadas.map((c, i) => (i === idx ? nomeSelecionado : c));
+    const novasCores = cores.map((c, i) => (i === idx ? corCamada(nomeSelecionado) : c));
+    aplicarCamadas(novasCamadas, novasCores);
+  }
+
   function alterarCorCamada(idx: number, novaCor: string) {
     const novasCores = cores.map((c, i) => (i === idx ? novaCor : c));
     onChange({ ...modelo, coresCamadas: novasCores }, colunasManuais);
@@ -529,37 +536,58 @@ function EditorModeloPersonalizado({
                   </div>
                 </div>
 
-                {/* Linha 2: Seletor de cor personalizada + Input do nome da camada */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minWidth: 0 }}>
-                  <input
-                    type="color"
-                    value={corAtual}
-                    onChange={e => alterarCorCamada(idx, e.target.value)}
-                    title="Escolher cor personalizada do sólido"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      padding: 2,
-                      borderRadius: 6,
-                      border: `1.5px solid ${BORDER}`,
-                      background: '#fff',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                    }}
-                  />
+                {/* Linha 2: Seletor de cor personalizada + lista suspensa de camadas + input livre */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minWidth: 0 }}>
+                    <input
+                      type="color"
+                      value={corAtual}
+                      onChange={e => alterarCorCamada(idx, e.target.value)}
+                      title="Escolher cor personalizada do sólido"
+                      style={{
+                        width: 36,
+                        height: 36,
+                        padding: 2,
+                        borderRadius: 6,
+                        border: `1.5px solid ${BORDER}`,
+                        background: '#fff',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <select
+                      aria-label={`Selecionar camada ${idx + 1}`}
+                      value={SUGESTOES_CAMADAS.find(s => s.toLowerCase() === nome.trim().toLowerCase()) ?? ''}
+                      onChange={e => selecionarCamadaDaLista(idx, e.target.value)}
+                      style={{
+                        ...inputStyle,
+                        flex: 1,
+                        minWidth: 0,
+                        width: '100%',
+                        padding: '8px 10px',
+                        fontSize: 13,
+                        background: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="">Selecionar camada da lista...</option>
+                      {SUGESTOES_CAMADAS.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
                   <input
                     list="sugestoes-camadas-aderencia"
                     style={{
                       ...inputStyle,
-                      flex: 1,
-                      minWidth: 0,
                       width: '100%',
+                      minWidth: 0,
                       padding: '8px 10px',
                       fontSize: 13,
                     }}
                     value={nome}
                     onChange={e => alterarNomeCamada(idx, e.target.value)}
-                    placeholder="Nome da camada (ex: Substrato, Chapisco...)"
+                    placeholder="Ou digite um nome personalizado (ex: Substrato, Chapisco...)"
                   />
                 </div>
 
