@@ -122,6 +122,12 @@ const cellInputStyle: React.CSSProperties = {
   outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'center', height: 28,
 };
 
+const gridInputStyle: React.CSSProperties = {
+  padding: '0 4px', border: 'none', borderRadius: 0,
+  fontSize: 12, fontFamily: 'inherit', color: TEXT, background: 'transparent',
+  outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'center', height: 34,
+};
+
 /**
  * Campo numérico decimal (texto, não `type="number"`): aceita só dígitos e uma vírgula como
  * separador decimal (padrão brasileiro), sem as setas nativas do navegador. Mantém um texto local
@@ -1167,13 +1173,17 @@ function SituacaoForm({
         </Campo>
       </div>
 
-      {/* 3. Tabela RESULTADO DO ENSAIO */}
-      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Resultado do ensaio</p>
-      <div style={{ border: `1px solid ${BORDER}`, borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
-        <div style={{ background: '#F4F6F9', padding: '10px 14px', borderBottom: `1.5px solid ${BORDER}`, textAlign: 'center' }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      {/* 3. Tabela RESULTADO DO ENSAIO (Opção 2 — Planilha Técnica Compacta) */}
+      <div style={{ border: '1px solid #94A3B8', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+        <div style={{ background: PRIMARY, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             RESULTADO DO ENSAIO
           </span>
+          {!mobile && (
+            <span style={{ fontSize: 10.5, fontWeight: 500, color: '#BFDBFE' }}>
+              Grade contínua · use Tab para avançar entre células
+            </span>
+          )}
         </div>
 
         {mobile && cpSel ? (
@@ -1223,99 +1233,129 @@ function SituacaoForm({
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: 30 }} />
-              <col style={{ width: 44 }} />
-              <col style={{ width: 44 }} />
-              <col style={{ width: 54 }} />
-              <col style={{ width: 54 }} />
-              {modelo.colunasFormaRuptura.map(col => <col key={col} style={{ width: 36 }} />)}
-              <col style={{ minWidth: 90 }} />
-              <col style={{ width: 80 }} />
+              <col style={{ width: 34 }} />
+              <col style={{ width: 48 }} />
+              <col style={{ width: 48 }} />
+              <col style={{ width: 64 }} />
+              <col style={{ width: 64 }} />
+              {modelo.colunasFormaRuptura.map(col => <col key={col} style={{ width: 38 }} />)}
+              <col style={{ width: 48 }} />
+              <col style={{ minWidth: 110 }} />
+              <col style={{ width: 86 }} />
             </colgroup>
             <thead>
-              <tr style={{ background: BG }}>
-                <Th>Nº CP</Th>
-                <Th>Bloco</Th>
-                <Th>Junta</Th>
-                <Th>Tensão Ra (MPa)</Th>
-                <Th>Prof. ruptura (mm)</Th>
-                {modelo.colunasFormaRuptura.map(col => <Th key={col} vertical>{`${col} (%)`}</Th>)}
-                <Th>Localização</Th>
-                <Th>Fotos</Th>
+              <tr style={{ background: '#F1F5F9' }}>
+                <Th rowSpan={2}>CP</Th>
+                <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Bloco</Th>
+                <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Junta</Th>
+                <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Ra<br /><span style={{ fontSize: 8, fontWeight: 700, color: SUBTEXT }}>(MPa)</span></Th>
+                <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Prof.<br /><span style={{ fontSize: 8, fontWeight: 700, color: SUBTEXT }}>(mm)</span></Th>
+                <th
+                  colSpan={modelo.colunasFormaRuptura.length + 1}
+                  style={{
+                    padding: '4px 6px', fontSize: 9.5, fontWeight: 800, color: PRIMARY,
+                    textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'center',
+                    background: '#DBEAFE', borderLeft: '1.5px solid #94A3B8', borderBottom: '1px solid #93C5FD',
+                  }}
+                >
+                  Forma de Ruptura (%)
+                </th>
+                <Th rowSpan={2} borderLeft="1.5px solid #94A3B8">Localização</Th>
+                <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Fotos</Th>
+              </tr>
+              <tr style={{ background: '#F1F5F9', borderBottom: '1px solid #94A3B8' }}>
+                {modelo.colunasFormaRuptura.map((col, idx) => (
+                  <Th key={col} vertical borderLeft={idx === 0 ? '1.5px solid #94A3B8' : '1px solid #E2E8F0'}>
+                    {col}
+                  </Th>
+                ))}
+                <Th borderLeft="1px solid #CBD5E1">Soma</Th>
               </tr>
             </thead>
             <tbody>
-              {situacao.corposDeProva.map((cp, i) => (
-                <tr key={i} style={{ borderTop: `1px solid ${BORDER}` }}>
-                  <Td><span style={{ fontWeight: 700, color: SUBTEXT }}>{cp.numero}</span></Td>
-                  <Td><input style={cellInputStyle} value={cp.bloco} onChange={e => atualizarCP(i, { ...cp, bloco: e.target.value })} /></Td>
-                  <Td><input style={cellInputStyle} value={cp.junta} onChange={e => atualizarCP(i, { ...cp, junta: e.target.value })} /></Td>
-                  <Td><NumeroInput style={cellInputStyle} value={cp.tensaoRa} onChange={v => atualizarCP(i, { ...cp, tensaoRa: v })} /></Td>
-                  <Td><NumeroInput style={cellInputStyle} value={cp.profRuptura} onChange={v => atualizarCP(i, { ...cp, profRuptura: v })} /></Td>
-                  {modelo.colunasFormaRuptura.map(col => (
-                    <Td key={col}>
+              {situacao.corposDeProva.map((cp, i) => {
+                const raBaixo = cp.tensaoRa !== null && cp.tensaoRa < 0.30;
+                const somaRup = modelo.colunasFormaRuptura.reduce((acc, col) => acc + (cp.formaRuptura[col] ?? 0), 0);
+                const rowBg = i % 2 === 1 ? '#F8FAFC' : '#FFFFFF';
+                return (
+                  <tr key={i} style={{ background: rowBg, borderTop: '1px solid #E2E8F0' }}>
+                    <Td style={{ textAlign: 'center' }}><span style={{ fontWeight: 800, fontSize: 12, color: '#475569' }}>{cp.numero}</span></Td>
+                    <Td editable borderLeft="1px solid #E2E8F0"><input style={gridInputStyle} value={cp.bloco} onChange={e => atualizarCP(i, { ...cp, bloco: e.target.value })} /></Td>
+                    <Td editable borderLeft="1px solid #E2E8F0"><input style={gridInputStyle} value={cp.junta} onChange={e => atualizarCP(i, { ...cp, junta: e.target.value })} /></Td>
+                    <Td editable borderLeft="1px solid #E2E8F0" style={{ background: raBaixo ? '#FEF2F2' : undefined }}>
                       <NumeroInput
-                        style={cellInputStyle}
-                        maxDecimais={0}
-                        maxInteiros={3}
-                        maxValor={100}
-                        value={cp.formaRuptura[col] ?? 0}
-                        onChange={v => atualizarCP(i, { ...cp, formaRuptura: { ...cp.formaRuptura, [col]: v ?? 0 } })}
+                        style={{ ...gridInputStyle, fontWeight: 700, color: raBaixo ? '#B91C1C' : TEXT }}
+                        value={cp.tensaoRa}
+                        onChange={v => atualizarCP(i, { ...cp, tensaoRa: v })}
                       />
                     </Td>
-                  ))}
-                  <Td><input style={{ ...cellInputStyle, textAlign: 'left' }} value={cp.localizacao} onChange={e => atualizarCP(i, { ...cp, localizacao: e.target.value })} /></Td>
-                  <Td>
-                    <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
-                      <FotoSlot foto={cp.fotos[0]} label="1" onEscolher={f => escolherFoto(i, 0, f)} onRemover={() => removerFoto(i, 0)} />
-                      <FotoSlot foto={cp.fotos[1]} label="2" onEscolher={f => escolherFoto(i, 1, f)} onRemover={() => removerFoto(i, 1)} />
-                    </div>
-                  </Td>
-                </tr>
-              ))}
+                    <Td editable borderLeft="1px solid #E2E8F0">
+                      <NumeroInput style={gridInputStyle} value={cp.profRuptura} onChange={v => atualizarCP(i, { ...cp, profRuptura: v })} />
+                    </Td>
+                    {modelo.colunasFormaRuptura.map((col, idx) => {
+                      const val = cp.formaRuptura[col] ?? 0;
+                      return (
+                        <Td key={col} editable borderLeft={idx === 0 ? '1.5px solid #94A3B8' : '1px solid #E2E8F0'}>
+                          <NumeroInput
+                            style={{ ...gridInputStyle, fontWeight: val > 0 ? 800 : 400, color: val > 0 ? PRIMARY : '#CBD5E1' }}
+                            maxDecimais={0}
+                            maxInteiros={3}
+                            maxValor={100}
+                            value={val}
+                            onChange={v => atualizarCP(i, { ...cp, formaRuptura: { ...cp.formaRuptura, [col]: v ?? 0 } })}
+                          />
+                        </Td>
+                      );
+                    })}
+                    <Td borderLeft="1px solid #CBD5E1" style={{ textAlign: 'center', padding: '0 3px' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '2px 5px', borderRadius: 10, fontSize: 10, fontWeight: 800,
+                        background: somaRup === 100 ? '#DCFCE7' : somaRup > 0 ? '#FEF3C7' : '#F1F5F9',
+                        color: somaRup === 100 ? '#166534' : somaRup > 0 ? '#B45309' : '#94A3B8',
+                      }}>
+                        {somaRup}%
+                      </span>
+                    </Td>
+                    <Td editable borderLeft="1.5px solid #94A3B8">
+                      <input style={{ ...gridInputStyle, textAlign: 'left', padding: '0 8px' }} value={cp.localizacao} onChange={e => atualizarCP(i, { ...cp, localizacao: e.target.value })} />
+                    </Td>
+                    <Td borderLeft="1px solid #E2E8F0" style={{ padding: '3px 4px' }}>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                        <FotoSlot foto={cp.fotos[0]} label="1" onEscolher={f => escolherFoto(i, 0, f)} onRemover={() => removerFoto(i, 0)} />
+                        <FotoSlot foto={cp.fotos[1]} label="2" onEscolher={f => escolherFoto(i, 1, f)} onRemover={() => removerFoto(i, 1)} />
+                      </div>
+                    </Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
         )}
 
-        {/* 5. Rodapé bipartido da tabela: Médias calculadas à esquerda + Umidade/Espessura à direita */}
-        <div style={{ borderTop: `1.5px solid ${BORDER}`, background: '#F8F9FA' }}>
-          {/* Linha MÉDIA + UMIDADE MÉDIA */}
-          <div className="aderencia-rodape-row" style={{ borderBottom: `1px solid ${BORDER}`, padding: '6px 12px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Estatistica label="Ra médio" valor={stats.raMedia} unidade="MPa" />
-              <Estatistica label="Prof. ruptura média" valor={stats.profRupturaMedia} unidade="mm" />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                UMIDADE MÉDIA (%):
-              </span>
-              <NumeroInput
-                style={{ ...cellInputStyle, width: 80, padding: '3px 6px', fontWeight: 700, textAlign: 'center', height: 26 }}
-                value={situacao.umidadeMedia}
-                onChange={v => atualizar('umidadeMedia', v)}
-                placeholder="-"
-              />
-            </div>
+        {/* 5. Rodapé em faixa única: estatísticas + Umidade/Espessura */}
+        <div className="aderencia-rodape-unico" style={{ borderTop: '1px solid #94A3B8', background: '#F1F5F9' }}>
+          <Estatistica label="Ra médio" valor={stats.raMedia} unidade="MPa" />
+          <Estatistica label="Prof. média" valor={stats.profRupturaMedia} unidade="mm" borderLeft />
+          <Estatistica label="DP (MPa)" valor={stats.dp} unidade="" borderLeft />
+          <Estatistica label="CV (%)" valor={stats.cv} unidade="%" borderLeft />
+          <div style={{ padding: '8px 10px', borderLeft: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>Umidade média (%)</span>
+            <NumeroInput
+              style={{ ...cellInputStyle, width: 76, height: 24, fontWeight: 700, textAlign: 'center', background: '#fff' }}
+              value={situacao.umidadeMedia}
+              onChange={v => atualizar('umidadeMedia', v)}
+              placeholder="-"
+            />
           </div>
-
-          {/* Linha DP / CV + ESPESSURA MÉDIA */}
-          <div className="aderencia-rodape-row" style={{ padding: '6px 12px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Estatistica label="DP (MPa)" valor={stats.dp} unidade="" />
-              <Estatistica label="CV (%)" valor={stats.cv} unidade="%" />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                ESPESSURA MÉDIA (mm):
-              </span>
-              <NumeroInput
-                style={{ ...cellInputStyle, width: 80, padding: '3px 6px', fontWeight: 700, textAlign: 'center', height: 26 }}
-                value={situacao.espessuraMediaRevestimento}
-                onChange={v => atualizar('espessuraMediaRevestimento', v)}
-                placeholder="-"
-              />
-            </div>
+          <div style={{ padding: '8px 10px', borderLeft: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>Espessura média (mm)</span>
+            <NumeroInput
+              style={{ ...cellInputStyle, width: 76, height: 24, fontWeight: 700, textAlign: 'center', background: '#fff' }}
+              value={situacao.espessuraMediaRevestimento}
+              onChange={v => atualizar('espessuraMediaRevestimento', v)}
+              placeholder="-"
+            />
           </div>
         </div>
       </div>
@@ -1323,24 +1363,42 @@ function SituacaoForm({
   );
 }
 
-function Th({ children, vertical = false }: { children: React.ReactNode; vertical?: boolean }) {
+function Th({ children, vertical = false, rowSpan, borderLeft }: { children: React.ReactNode; vertical?: boolean; rowSpan?: number; borderLeft?: string }) {
   if (vertical) {
     return (
-      <th title={typeof children === 'string' ? children : undefined} style={{ padding: '4px 2px', fontSize: 9, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.02em', textAlign: 'center', height: 100 }}>
+      <th
+        rowSpan={rowSpan}
+        title={typeof children === 'string' ? children : undefined}
+        style={{ padding: '6px 2px', fontSize: 8.5, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em', textAlign: 'center', height: 84, borderLeft, borderBottom: '1px solid #94A3B8' }}
+      >
         <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', display: 'inline-block' }}>{children}</span>
       </th>
     );
   }
-  return <th style={{ padding: '6px 3px', fontSize: 9, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.02em', textAlign: 'center' }}>{children}</th>;
-}
-function Td({ children }: { children: React.ReactNode }) {
-  return <td style={{ padding: '3px 2px' }}>{children}</td>;
-}
-function Estatistica({ label, valor, unidade }: { label: string; valor: number | null; unidade: string }) {
   return (
-    <div>
-      <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
-      <p style={{ margin: '1px 0 0', fontSize: 13.5, fontWeight: 800, color: PRIMARY }}>{valor === null ? '—' : `${valor.toFixed(2)} ${unidade}`}</p>
+    <th
+      rowSpan={rowSpan}
+      style={{ padding: '6px 4px', fontSize: 9.5, fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em', textAlign: 'center', borderLeft, borderBottom: '1px solid #94A3B8' }}
+    >
+      {children}
+    </th>
+  );
+}
+function Td({ children, editable = false, borderLeft, style }: { children: React.ReactNode; editable?: boolean; borderLeft?: string; style?: React.CSSProperties }) {
+  return (
+    <td
+      className={editable ? 'aderencia-grid-cell' : undefined}
+      style={{ padding: 0, borderLeft, transition: 'background 0.1s', ...style }}
+    >
+      {children}
+    </td>
+  );
+}
+function Estatistica({ label, valor, unidade, borderLeft = false }: { label: string; valor: number | null; unidade: string; borderLeft?: boolean }) {
+  return (
+    <div style={{ padding: '8px 10px', borderLeft: borderLeft ? '1px solid #CBD5E1' : undefined, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
+      <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: PRIMARY }}>{valor === null ? '—' : `${valor.toFixed(2)} ${unidade}`}</p>
     </div>
   );
 }
@@ -1621,7 +1679,18 @@ export default function AderenciaPage() {
           display: grid;
           grid-template-columns: 1fr 1fr;
         }
+        .aderencia-grid-cell:focus-within {
+          background: #EFF6FF !important;
+          box-shadow: inset 0 0 0 1.8px #2563EB;
+        }
+        .aderencia-rodape-unico {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
         @media (max-width: 720px) {
+          .aderencia-rodape-unico {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
           .aderencia-ficha-grid {
             grid-template-columns: 1fr !important;
           }
