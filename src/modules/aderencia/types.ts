@@ -43,6 +43,8 @@ export interface CorpoDeProva {
   fotos: [FotoAnexo | null, FotoAnexo | null]
 }
 
+export type CriterioRa = '0.20' | '0.30' | 'nbr13755'
+
 export interface SituacaoAderencia {
   numero: number // 1, 2, 3... (exibido em algarismo romano no relatório: I, II, III...)
   tipoRevestimento: string
@@ -62,6 +64,8 @@ export interface SituacaoAderencia {
   modeloCamadasId: string
   /** quando modeloCamadasId === 'personalizado', armazena a definição completa criada pelo usuário */
   modeloPersonalizado?: ModeloSistemaCamadas
+  /** Critério normativo para avaliação de Ra nesta situação (Tabela 01: 0,20/0,30 ou Tabela 02: NBR 13755). */
+  criterioRa?: CriterioRa
   observacoesEsquema: string
   corposDeProva: CorpoDeProva[]
   umidadeMedia: number | null // %

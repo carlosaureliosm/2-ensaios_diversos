@@ -9,7 +9,8 @@ import {
   cmParaEmu,
   registrarImagem,
 } from '@/lib/docx/esclerometria';
-import { numeroRomano } from '@/modules/aderencia/utils';
+import { formatarRltAderencia, numeroRomano, obterLimitesCriterioRa, sugerirCriterioRa } from '@/modules/aderencia/utils';
+export { formatarRltAderencia };
 import { calcularEstatisticasCPs } from '@/modules/aderencia/calculos';
 import { resolverModeloSituacao } from '@/modules/aderencia/modelosCamadas';
 import type { AderenciaCabecalho, CorpoDeProva, FotoAnexo, SituacaoAderencia } from '@/modules/aderencia/types';
@@ -44,15 +45,6 @@ export function formatarNumero(n: number | null | undefined, casas = 2): string 
 export function formatarDataBR(valor: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((valor ?? '').trim());
   return m ? `${m[3]}/${m[2]}/${m[1]}` : (valor ?? '');
-}
-
-/** Número do relatório no padrão oficial; se o usuário já digitou "RLT...." completo, mantém. */
-export function formatarRltAderencia(rlt: string): string {
-  const n = (rlt ?? '').trim();
-  if (!n) return 'RLT.LAU-XXX.26-00';
-  if (/^RLT/i.test(n)) return n;
-  if (/^\d+$/.test(n)) return `RLT.LAU-${n.padStart(3, '0')}.26-00`;
-  return `RLT.LAU-${n}.26-00`;
 }
 
 /** Cor hexadecimal (sem `#`) para cada camada na legenda ao lado do esquema, fiel à planilha RAAC. */
@@ -150,6 +142,8 @@ export function montarDadosAderencia(payload: AderenciaDocxPayload): {
 
     // Fotos anexadas nos CPs desta situação (1 se tiver 1 foto, 2 se tiver 2 fotos)
     const fotosAnexoSit: Array<{ marcador: string; legenda: string }> = [];
+    const criterioSit = sit.criterioRa ?? sugerirCriterioRa(cabecalho.normas, sit.modeloCamadasId, sit.tipoRevestimento);
+    const limiteRaSit = obterLimitesCriterioRa(criterioSit).minimo;
 
     const corposDeProva = sit.corposDeProva.map(cp => {
       const numeroStr = String(cp.numero).padStart(3, '0');
@@ -182,8 +176,8 @@ export function montarDadosAderencia(payload: AderenciaDocxPayload): {
       });
 
       const raValido = cp.tensaoRa !== null && cp.tensaoRa !== undefined && !isNaN(cp.tensaoRa);
-      const raBaixo = raValido && (cp.tensaoRa as number) < LIMITE_RA_MPA;
-      const raOk = raValido && (cp.tensaoRa as number) >= LIMITE_RA_MPA;
+      const raBaixo = raValido && (cp.tensaoRa as number) < limiteRaSit;
+      const raOk = raValido && (cp.tensaoRa as number) >= limiteRaSit;
       const raVazio = !raValido;
 
       return {

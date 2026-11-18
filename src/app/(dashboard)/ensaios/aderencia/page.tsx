@@ -13,6 +13,10 @@ import {
   corCamada,
   svgEsquemaCamadas,
   numeroRomano,
+  formatarRltAderencia,
+  sugerirCriterioRa,
+  obterLimitesCriterioRa,
+  avaliarPanoRa,
   obterModeloCamadas,
   gerarColunasFormaRuptura,
   criarModeloPersonalizadoPadrao,
@@ -26,6 +30,7 @@ import {
   type FotoAnexo,
   type AderenciaCabecalho,
   type AderenciaNormas,
+  type CriterioRa,
 } from '@/modules/aderencia';
 import { svgParaPng } from '@/modules/aderencia/svgParaPng';
 import { useUserStore } from '@/store/userStore';
@@ -1064,10 +1069,12 @@ function formatarDataDigitada(valor: string): string {
 function SituacaoForm({
   situacao,
   modelo,
+  normas,
   onChange,
 }: {
   situacao: SituacaoAderencia;
   modelo: ModeloSistemaCamadas;
+  normas: AderenciaNormas;
   onChange: (next: SituacaoAderencia) => void;
 }) {
   function atualizar<K extends keyof SituacaoAderencia>(campo: K, valor: SituacaoAderencia[K]) {
@@ -1112,18 +1119,33 @@ function SituacaoForm({
   const cpIdx = Math.min(cpAtual, Math.max(0, situacao.corposDeProva.length - 1));
   const cpSel = situacao.corposDeProva[cpIdx];
   const cpPreenchido = (cp: CorpoDeProva) => cp.tensaoRa !== null && cp.tensaoRa !== undefined;
+  const criterioEfetivo = situacao.criterioRa ?? sugerirCriterioRa(normas, situacao.modeloCamadasId, situacao.tipoRevestimento);
+  const limitesRa = obterLimitesCriterioRa(criterioEfetivo);
+  const avaliacaoPano = avaliarPanoRa(situacao.corposDeProva, criterioEfetivo);
 
   return (
     <div style={{ minWidth: 0, maxWidth: '100%' }}>
       {/* 1. Ficha técnica da situação — mesmo padrão de grade contínua da tabela */}
       <div style={{ border: '1px solid #94A3B8', borderRadius: 8, overflow: 'hidden', background: '#fff', marginBottom: 14 }}>
-        <div style={{ background: PRIMARY, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ background: PRIMARY, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             DADOS DA SITUAÇÃO
           </span>
-          <span style={{ fontSize: 10.5, fontWeight: 500, color: '#BFDBFE' }}>
-            {modelo.nome}
-          </span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, color: '#BFDBFE' }}>
+            Critério Ra:
+            <select
+              value={criterioEfetivo}
+              onChange={e => atualizar('criterioRa', e.target.value as CriterioRa)}
+              style={{
+                background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: 5, padding: '2px 6px', fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
+              }}
+            >
+              <option value="0.20" style={{ color: TEXT, background: '#fff' }}>≥ 0,20 MPa (Tabela 01)</option>
+              <option value="0.30" style={{ color: TEXT, background: '#fff' }}>≥ 0,30 MPa (Tabela 01)</option>
+              <option value="nbr13755" style={{ color: TEXT, background: '#fff' }}>NBR 13755 (0,30 / 0,50 MPa)</option>
+            </select>
+          </label>
         </div>
 
         {/* 5 pares de 2 colunas */}
@@ -1199,11 +1221,22 @@ function SituacaoForm({
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             RESULTADO DO ENSAIO
           </span>
-          {!mobile && (
-            <span style={{ fontSize: 10.5, fontWeight: 500, color: '#BFDBFE' }}>
-              Grade contínua · use Tab para avançar entre células
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {avaliacaoPano && (
+              <span style={{
+                padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 800,
+                background: avaliacaoPano.status === 'aprovado' ? '#DCFCE7' : avaliacaoPano.status === 'atencao' ? '#FEF3C7' : '#FEE2E2',
+                color: avaliacaoPano.status === 'aprovado' ? '#166534' : avaliacaoPano.status === 'atencao' ? '#B45309' : '#B91C1C',
+              }}>
+                {avaliacaoPano.texto}
+              </span>
+            )}
+            {!mobile && (
+              <span style={{ fontSize: 10.5, fontWeight: 500, color: '#BFDBFE' }}>
+                Grade contínua · use Tab para avançar entre células
+              </span>
+            )}
+          </div>
         </div>
 
         {mobile && cpSel ? (
@@ -1294,7 +1327,8 @@ function SituacaoForm({
             </thead>
             <tbody>
               {situacao.corposDeProva.map((cp, i) => {
-                const raBaixo = cp.tensaoRa !== null && cp.tensaoRa < 0.30;
+                const raBaixo = cp.tensaoRa !== null && cp.tensaoRa < limitesRa.minimo;
+                const raAtencao = cp.tensaoRa !== null && limitesRa.recomendado !== null && cp.tensaoRa >= limitesRa.minimo && cp.tensaoRa < limitesRa.recomendado;
                 const somaRup = modelo.colunasFormaRuptura.reduce((acc, col) => acc + (cp.formaRuptura[col] ?? 0), 0);
                 const rowBg = i % 2 === 1 ? '#F8FAFC' : '#FFFFFF';
                 return (
@@ -1302,9 +1336,9 @@ function SituacaoForm({
                     <Td style={{ textAlign: 'center' }}><span style={{ fontWeight: 800, fontSize: 12, color: '#475569' }}>{cp.numero}</span></Td>
                     <Td editable borderLeft="1px solid #E2E8F0"><input style={gridInputStyle} value={cp.bloco} onChange={e => atualizarCP(i, { ...cp, bloco: e.target.value })} /></Td>
                     <Td editable borderLeft="1px solid #E2E8F0"><input style={gridInputStyle} value={cp.junta} onChange={e => atualizarCP(i, { ...cp, junta: e.target.value })} /></Td>
-                    <Td editable borderLeft="1px solid #E2E8F0" style={{ background: raBaixo ? '#FEF2F2' : undefined }}>
+                    <Td editable borderLeft="1px solid #E2E8F0" style={{ background: raBaixo ? '#FEF2F2' : raAtencao ? '#FFFBEB' : undefined }}>
                       <NumeroInput
-                        style={{ ...gridInputStyle, fontWeight: 700, color: raBaixo ? '#B91C1C' : TEXT }}
+                        style={{ ...gridInputStyle, fontWeight: 700, color: raBaixo ? '#B91C1C' : raAtencao ? '#B45309' : TEXT }}
                         value={cp.tensaoRa}
                         onChange={v => atualizarCP(i, { ...cp, tensaoRa: v })}
                       />
@@ -1657,7 +1691,7 @@ export default function AderenciaPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${cabecalho.rltNumero.trim() || 'laudo-aderencia'}.docx`;
+      a.download = `${formatarRltAderencia(cabecalho.rltNumero)}.docx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -1933,6 +1967,7 @@ export default function AderenciaPage() {
             <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
               <SituacaoForm
                 situacao={situacoes[situacaoAtual]}
+                normas={cabecalho.normas}
                 modelo={
                   resolverModeloSituacao(situacoes[situacaoAtual]) ??
                   obterPersonalizadoOuPadrao(situacaoAtual)
