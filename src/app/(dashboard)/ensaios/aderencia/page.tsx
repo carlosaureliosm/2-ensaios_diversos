@@ -170,19 +170,19 @@ function NumeroInput({ value, onChange, style, placeholder, maxDecimais = 2, max
 }
 
 const SUGESTOES_CAMADAS = [
-  'Substrato',
-  'Concreto',
-  'Contrapiso',
   'Alvenaria',
-  'Chapisco',
-  'Emboço',
-  'Reboco',
   'Argamassa Colante',
   'Cerâmica',
-  'Porcelanato',
+  'Chapisco',
+  'Concreto',
+  'Contrapiso',
+  'Emboço',
   'Gesso',
-  'Regularização',
   'Pintura',
+  'Porcelanato',
+  'Reboco',
+  'Regularização',
+  'Substrato',
 ];
 
 function ModeloCard({
@@ -564,8 +564,11 @@ function EditorModeloPersonalizado({
                         flex: 1,
                         minWidth: 0,
                         width: '100%',
-                        padding: '8px 10px',
+                        height: 'auto',
+                        minHeight: 36,
+                        padding: '7px 10px',
                         fontSize: 13,
+                        lineHeight: 1.35,
                         background: '#fff',
                         cursor: 'pointer',
                       }}
@@ -582,8 +585,11 @@ function EditorModeloPersonalizado({
                       ...inputStyle,
                       width: '100%',
                       minWidth: 0,
-                      padding: '8px 10px',
+                      height: 'auto',
+                      minHeight: 36,
+                      padding: '7px 10px',
                       fontSize: 13,
+                      lineHeight: 1.35,
                     }}
                     value={nome}
                     onChange={e => alterarNomeCamada(idx, e.target.value)}
@@ -1511,10 +1517,19 @@ export default function AderenciaPage() {
           .sb-u { padding: 6px 8px !important; }
         }
         @media (max-width: 720px) {
-          html, body { overflow-x: clip; touch-action: pan-y pinch-zoom; overscroll-behavior-x: none; }
+          html, body { overflow-x: clip; touch-action: pan-y; overscroll-behavior-x: none; }
           .aderencia-main { width: 100%; min-width: 0; box-sizing: border-box; }
           .aderencia-main * { min-width: 0; }
-          .aderencia-main input, .aderencia-main textarea, .aderencia-main select { max-width: 100%; box-sizing: border-box; }
+          .aderencia-main input, .aderencia-main textarea, .aderencia-main select {
+            max-width: 100%;
+            box-sizing: border-box;
+            font-size: 16px !important;
+            min-height: 36px;
+            height: auto !important;
+          }
+          .aderencia-main input[type="color"], .aderencia-main input[type="checkbox"] {
+            min-height: 0;
+          }
         }
         .aderencia-main { overflow-x: clip; }
         @media (max-width: 640px) {
