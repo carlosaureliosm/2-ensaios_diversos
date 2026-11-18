@@ -1427,6 +1427,15 @@ export default function AderenciaPage() {
           }
         }
         html, body { overflow-x: hidden; max-width: 100%; }
+        @media (max-width: 600px) {
+          .header-root { padding: 0 12px !important; flex-wrap: nowrap !important; }
+          .header-left { gap: 10px !important; flex-shrink: 1; min-width: 0; overflow: hidden; }
+          .header-right { gap: 4px !important; flex-shrink: 0; }
+          .header-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .header-cargo, .header-divider { display: none !important; }
+          .signout-text { display: none; }
+          .sb-u { padding: 6px 8px !important; }
+        }
         @media (max-width: 720px) {
           html, body { overflow-x: clip; touch-action: pan-y pinch-zoom; overscroll-behavior-x: none; }
           .aderencia-main { width: 100%; min-width: 0; box-sizing: border-box; }
