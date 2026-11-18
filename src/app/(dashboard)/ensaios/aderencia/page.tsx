@@ -796,10 +796,10 @@ function removerFotoStorage(path: string) {
   fetch(`/api/ensaios/aderencia/foto?path=${encodeURIComponent(path)}`, { method: 'DELETE' }).catch(() => {});
 }
 
-function FotoSlot({ foto, onEscolher, onRemover, label }: { foto: FotoAnexo | null; onEscolher: (file: File) => void; onRemover: () => void; label: string }) {
+function FotoSlot({ foto, onEscolher, onRemover, label, tamanho = 36 }: { foto: FotoAnexo | null; onEscolher: (file: File) => void; onRemover: () => void; label: string; tamanho?: number }) {
   const id = `foto-${label}-${Math.random().toString(36).slice(2)}`;
   return (
-    <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
+    <div style={{ position: 'relative', width: tamanho, height: tamanho, flexShrink: 0 }}>
       <input
         id={id}
         type="file"
@@ -820,6 +820,20 @@ function FotoSlot({ foto, onEscolher, onRemover, label }: { foto: FotoAnexo | nu
     </div>
   );
 }
+
+function useIsMobile(max = 720) {
+  const [m, setM] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${max}px)`);
+    const atualizar = () => setM(mq.matches);
+    atualizar();
+    mq.addEventListener('change', atualizar);
+    return () => mq.removeEventListener('change', atualizar);
+  }, [max]);
+  return m;
+}
+
+const navCpBtn: React.CSSProperties = { width: 44, height: 40, borderRadius: 8, border: `1.5px solid ${BORDER}`, background: '#fff', fontSize: 20, fontWeight: 700, color: PRIMARY, cursor: 'pointer' };
 
 // ── Formulário de uma Situação ──────────────────────────────────
 function SituacaoForm({
@@ -868,11 +882,16 @@ function SituacaoForm({
   }
 
   const stats = calcularEstatisticasCPs(situacao.corposDeProva);
+  const mobile = useIsMobile();
+  const [cpAtual, setCpAtual] = useState(0);
+  const cpIdx = Math.min(cpAtual, Math.max(0, situacao.corposDeProva.length - 1));
+  const cpSel = situacao.corposDeProva[cpIdx];
+  const cpPreenchido = (cp: CorpoDeProva) => cp.tensaoRa !== null && cp.tensaoRa !== undefined;
 
   return (
-    <div>
+    <div style={{ minWidth: 0, maxWidth: '100%' }}>
       {/* 1. Cabeçalho da situação — em pares de 2 colunas fiel à planilha de referência */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '6px 12px', marginBottom: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '6px 12px', marginBottom: 8 }}>
         <Campo label="Tipo de revestimento">
           <input style={{ ...inputStyle, textTransform: 'uppercase' }} value={situacao.tipoRevestimento} onChange={e => atualizar('tipoRevestimento', e.target.value.toUpperCase())} placeholder="EX: VERTICAL INTERNO" />
         </Campo>
@@ -910,7 +929,7 @@ function SituacaoForm({
       </div>
 
       {/* 2. Faixa tripla: Argamassa colante | Revestimento | Dimensões (cm) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '6px 12px', marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '6px 12px', marginBottom: 10 }}>
         <Campo label="Argamassa colante">
           <input style={inputStyle} value={situacao.argamassaColante} onChange={e => atualizar('argamassaColante', e.target.value)} />
         </Campo>
@@ -923,7 +942,7 @@ function SituacaoForm({
       </div>
 
       {/* Esquema + observações */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12, alignItems: 'center', marginBottom: 12, padding: '8px 12px', background: BG, border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+      <div className="aderencia-esquema-sit" style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: 12, alignItems: 'center', marginBottom: 12, padding: '8px 12px', background: BG, border: `1px solid ${BORDER}`, borderRadius: 8 }}>
         <div dangerouslySetInnerHTML={{ __html: svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas) }} style={{ lineHeight: 0 }} />
         <Campo label="Observações do esquema">
           <textarea
@@ -944,6 +963,50 @@ function SituacaoForm({
           </span>
         </div>
 
+        {mobile && cpSel ? (
+          <div style={{ padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <button type="button" onClick={() => setCpAtual(Math.max(0, cpIdx - 1))} disabled={cpIdx === 0} style={{ ...navCpBtn, opacity: cpIdx === 0 ? 0.4 : 1 }}>‹</button>
+              <b style={{ fontSize: 15, color: PRIMARY }}>CP {cpSel.numero} de {situacao.corposDeProva.length}</b>
+              <button type="button" onClick={() => setCpAtual(Math.min(situacao.corposDeProva.length - 1, cpIdx + 1))} disabled={cpIdx >= situacao.corposDeProva.length - 1} style={{ ...navCpBtn, opacity: cpIdx >= situacao.corposDeProva.length - 1 ? 0.4 : 1 }}>›</button>
+            </div>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+              {situacao.corposDeProva.map((cp, j) => (
+                <button key={j} type="button" onClick={() => setCpAtual(j)} style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: j === cpIdx ? PRIMARY : cpPreenchido(cp) ? '#bfe3c6' : '#e5e9f0', color: j === cpIdx ? '#fff' : TEXT }}>{cp.numero}</button>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <Campo label="Bloco"><input style={inputStyle} value={cpSel.bloco} onChange={e => atualizarCP(cpIdx, { ...cpSel, bloco: e.target.value })} /></Campo>
+              <Campo label="Junta"><input style={inputStyle} value={cpSel.junta} onChange={e => atualizarCP(cpIdx, { ...cpSel, junta: e.target.value })} /></Campo>
+              <Campo label="Tensão Ra (MPa)"><NumeroInput style={inputStyle} value={cpSel.tensaoRa} onChange={v => atualizarCP(cpIdx, { ...cpSel, tensaoRa: v })} /></Campo>
+              <Campo label="Prof. ruptura (mm)"><NumeroInput style={inputStyle} value={cpSel.profRuptura} onChange={v => atualizarCP(cpIdx, { ...cpSel, profRuptura: v })} /></Campo>
+            </div>
+            <p style={{ margin: '12px 0 6px', fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase' }}>Forma de ruptura (%)</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {modelo.colunasFormaRuptura.map(col => (
+                <Campo key={col} label={col}>
+                  <NumeroInput
+                    style={inputStyle}
+                    maxDecimais={0}
+                    maxInteiros={3}
+                    maxValor={100}
+                    value={cpSel.formaRuptura[col] ?? 0}
+                    onChange={v => atualizarCP(cpIdx, { ...cpSel, formaRuptura: { ...cpSel.formaRuptura, [col]: v ?? 0 } })}
+                  />
+                </Campo>
+              ))}
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <Campo label="Localização (ponto da amostra)"><input style={inputStyle} value={cpSel.localizacao} onChange={e => atualizarCP(cpIdx, { ...cpSel, localizacao: e.target.value })} /></Campo>
+            </div>
+            <p style={{ margin: '12px 0 6px', fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase' }}>Fotos</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <FotoSlot tamanho={64} foto={cpSel.fotos[0]} label="1" onEscolher={f => escolherFoto(cpIdx, 0, f)} onRemover={() => removerFoto(cpIdx, 0)} />
+              <FotoSlot tamanho={64} foto={cpSel.fotos[1]} label="2" onEscolher={f => escolherFoto(cpIdx, 1, f)} onRemover={() => removerFoto(cpIdx, 1)} />
+            </div>
+            <button type="button" onClick={() => setCpAtual(Math.min(situacao.corposDeProva.length - 1, cpIdx + 1))} disabled={cpIdx >= situacao.corposDeProva.length - 1} style={{ marginTop: 14, width: '100%', padding: '11px 0', borderRadius: 8, border: 'none', background: GOLD, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: cpIdx >= situacao.corposDeProva.length - 1 ? 0.4 : 1 }}>Próximo CP ›</button>
+          </div>
+        ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
             <colgroup>
@@ -1000,6 +1063,7 @@ function SituacaoForm({
             </tbody>
           </table>
         </div>
+        )}
 
         {/* 5. Rodapé bipartido da tabela: Médias calculadas à esquerda + Umidade/Espessura à direita */}
         <div style={{ borderTop: `1.5px solid ${BORDER}`, background: '#F8F9FA' }}>
@@ -1362,7 +1426,11 @@ export default function AderenciaPage() {
             gap: 10px !important;
           }
         }
+        html, body { overflow-x: hidden; max-width: 100%; }
+        .aderencia-main { overflow-x: clip; }
         @media (max-width: 640px) {
+          .aderencia-esquema-sit { grid-template-columns: minmax(0, 1fr) !important; justify-items: center; }
+          .aderencia-esquema-sit > :last-child { width: 100%; justify-self: stretch; }
           .aderencia-main {
             padding: 16px 10px 50px !important;
           }
@@ -1398,7 +1466,7 @@ export default function AderenciaPage() {
           <>
             <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
               <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Cabeçalho do relatório</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px 16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '12px 16px' }}>
                 <Campo label="Nº RLT" htmlFor="ad-rlt"><input id="ad-rlt" style={inputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', e.target.value)} placeholder="Ex: 045" /></Campo>
                 <Campo label="Cliente" htmlFor="ad-cliente"><input id="ad-cliente" style={inputStyle} value={cabecalho.cliente} onChange={e => atualizarCabecalho('cliente', e.target.value)} /></Campo>
                 <Campo label="Obra" htmlFor="ad-obra"><input id="ad-obra" style={inputStyle} value={cabecalho.obra} onChange={e => atualizarCabecalho('obra', e.target.value)} /></Campo>
