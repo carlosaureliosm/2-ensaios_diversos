@@ -1366,7 +1366,7 @@ export default function AderenciaPage() {
   }
 
   return (
-    <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif", width: '100%', maxWidth: '100vw', overflowX: 'clip' }}>
       <style>{`
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
@@ -1427,6 +1427,12 @@ export default function AderenciaPage() {
           }
         }
         html, body { overflow-x: hidden; max-width: 100%; }
+        @media (max-width: 720px) {
+          html, body { overflow-x: clip; touch-action: pan-y pinch-zoom; overscroll-behavior-x: none; }
+          .aderencia-main { width: 100%; min-width: 0; box-sizing: border-box; }
+          .aderencia-main * { min-width: 0; }
+          .aderencia-main input, .aderencia-main textarea, .aderencia-main select { max-width: 100%; box-sizing: border-box; }
+        }
         .aderencia-main { overflow-x: clip; }
         @media (max-width: 640px) {
           .aderencia-esquema-sit { grid-template-columns: minmax(0, 1fr) !important; justify-items: center; }
