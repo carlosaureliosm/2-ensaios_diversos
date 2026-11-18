@@ -3,15 +3,17 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 
-type Ensaio = { id: string; label: string; href: string; icon: string };
+type Ensaio = { id: string; label: string; href: string; icon: string; emBreve?: boolean };
 
+// emBreve: módulo cuja página ainda é só um placeholder ("Módulo em construção.") — ver
+// src/app/(dashboard)/ensaios/{carbonatacao,ultrassom,potencial-corrosao}/page.tsx.
 const ENSAIOS: Ensaio[] = [
   { id: 'esclerometria', label: 'Esclerometria',             href: '/ensaios/esclerometria',      icon: '⬡' },
   { id: 'pacometria',    label: 'Pacometria',                href: '/ensaios/pacometria',          icon: '⊕' },
   { id: 'resistividade', label: 'Resistividade do Concreto', href: '/ensaios/resistividade',       icon: '∿' },
-  { id: 'potencial',     label: 'Potencial de Corrosão',     href: '/ensaios/potencial-corrosao',  icon: '⚡' },
-  { id: 'carbonatacao',  label: 'Carbonatação',              href: '/ensaios/carbonatacao',        icon: '◈' },
-  { id: 'ultrassom',     label: 'Ultrassom',                 href: '/ensaios/ultrassom',           icon: '◎' },
+  { id: 'potencial',     label: 'Potencial de Corrosão',     href: '/ensaios/potencial-corrosao',  icon: '⚡', emBreve: true },
+  { id: 'carbonatacao',  label: 'Carbonatação',              href: '/ensaios/carbonatacao',        icon: '◈', emBreve: true },
+  { id: 'ultrassom',     label: 'Ultrassom',                 href: '/ensaios/ultrassom',           icon: '◎', emBreve: true },
   { id: 'aderencia',     label: 'Aderência',                 href: '/ensaios/aderencia',           icon: '⬢' },
 ];
 
@@ -78,8 +80,6 @@ export default function DashboardPage() {
           transform: translateX(3px);
         }
 
-        .fab:hover { background: #b08c18 !important; box-shadow: 0 6px 20px rgba(200,160,32,0.45) !important; }
-
         .page-title {
           font-size: 11px;
           font-weight: 700;
@@ -125,9 +125,21 @@ export default function DashboardPage() {
               key={ensaio.id}
               href={ensaio.href}
               className="ensaio-card"
+              style={{ position: 'relative' }}
               onMouseEnter={() => setHoveredCard(ensaio.id)}
               onMouseLeave={() => setHoveredCard(null)}
             >
+              {ensaio.emBreve && (
+                <span style={{
+                  position: 'absolute', top: 14, right: 14,
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
+                  color: '#9098B0', background: '#F0F2F8',
+                  border: '1px solid #E8EAF0', borderRadius: 20,
+                  padding: '2px 8px',
+                }}>
+                  EM BREVE
+                </span>
+              )}
               <span
                 className="card-icon"
                 style={{ fontSize: 22, color: '#CBD2E0', transition: 'color 0.2s', lineHeight: 1, marginBottom: 12 }}
@@ -137,7 +149,7 @@ export default function DashboardPage() {
               <div style={{ width: '100%' }}>
                 <span
                   className="card-label"
-                  style={{ fontSize: 14, fontWeight: 700, color: '#2C3A5C', lineHeight: 1.3, display: 'block' }}
+                  style={{ fontSize: 14, fontWeight: 700, color: ensaio.emBreve ? '#6B7490' : '#2C3A5C', lineHeight: 1.3, display: 'block' }}
                 >
                   {ensaio.label}
                 </span>
@@ -157,25 +169,6 @@ export default function DashboardPage() {
           ))}
         </div>
       </main>
-
-      {/* FAB */}
-      <button
-        className="fab"
-        title="Novo ensaio"
-        style={{
-          position: 'fixed', bottom: 24, right: 24,
-          width: 52, height: 52, borderRadius: '50%',
-          backgroundColor: '#C8A020', color: '#1E3264',
-          fontSize: 28, fontWeight: 700,
-          border: 'none', cursor: 'pointer',
-          boxShadow: '0 4px 16px rgba(200,160,32,0.35)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'background 0.15s, box-shadow 0.15s',
-          fontFamily: 'inherit',
-        }}
-      >
-        +
-      </button>
     </div>
   );
 }
