@@ -252,7 +252,7 @@ export function montarDadosAderencia(payload: AderenciaDocxPayload): {
       dp: formatarNumero(stats.dp, 2),
       cv: cvStr,
       umidadeMedia: formatarNumero(sit.umidadeMedia, 1),
-      espessuraMediaRevestimento: formatarNumero(sit.espessuraMediaRevestimento, 2),
+      espessuraMediaRevestimento: formatarNumero(stats.profRupturaMedia ?? sit.espessuraMediaRevestimento, 2),
     };
   });
 

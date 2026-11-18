@@ -1368,15 +1368,7 @@ function SituacaoForm({
               placeholder="-"
             />
           </div>
-          <div style={{ padding: '8px 10px', borderLeft: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>Espessura média (mm)</span>
-            <NumeroInput
-              style={{ ...cellInputStyle, width: 76, height: 24, fontWeight: 700, textAlign: 'center', background: '#fff' }}
-              value={situacao.espessuraMediaRevestimento}
-              onChange={v => atualizar('espessuraMediaRevestimento', v)}
-              placeholder="-"
-            />
-          </div>
+          <Estatistica label="Espessura média" valor={stats.profRupturaMedia} unidade="mm" borderLeft />
         </div>
       </div>
     </div>
