@@ -54,9 +54,6 @@ function placaSobreSuperficieSemRecorte(camadaAcabamento: string): boolean {
 }
 
 const DEFS = `<defs>
-  <pattern id="hxVoid" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <line x1="0" y1="0" x2="0" y2="6" stroke="#9AA0AC" stroke-width="1"/>
-  </pattern>
   <pattern id="hxMetal" width="4" height="4" patternUnits="userSpaceOnUse">
     <line x1="0" y1="0" x2="0" y2="4" stroke="${METAL}" stroke-width="2"/>
   </pattern>
@@ -100,14 +97,6 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
   const cx = ox + bandW / 2
   const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
 
-  // patches de vazio (núcleo cortado) flanqueando o disco, na superfície de acabamento
-  const voidW = 26
-  const xVazioEsq = cx - discoW / 2 - voidW - 2
-  const xVazioDir = cx + discoW / 2 + 2
-  const vazios = `${embutida ? `<rect x="${xVazioEsq}" y="${topoY}" width="${voidW}" height="6" fill="#FFFFFF"/><rect x="${xVazioDir}" y="${topoY}" width="${voidW}" height="6" fill="#FFFFFF"/>` : ''}
-    <rect x="${xVazioEsq}" y="${topoY}" width="${voidW}" height="6" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>
-    <rect x="${xVazioDir}" y="${topoY}" width="${voidW}" height="6" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>`
-
   // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre contrapiso)
   const discoY = embutida ? topoY : topoY - 6
   const disco = `${embutida ? `<rect x="${cx - discoW / 2}" y="${discoY}" width="${discoW}" height="6" fill="#FFFFFF"/>` : ''}
@@ -118,7 +107,6 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
-    ${vazios}
     ${disco}
     ${labels}
   </svg>`
@@ -151,18 +139,9 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
   const faceX = ox + camadas.length * bandW
   const cy = oy + bandH / 2
   const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
-  const recorteX = embutida ? faceX - 6 : faceX
-
-  // patches de vazio flanqueando o disco, na face de acabamento
-  const voidH = 40
-  const yVazioCima = cy - discoH / 2 - voidH - 2
-  const yVazioBaixo = cy + discoH / 2 + 2
-  const vazios = `${embutida ? `<rect x="${recorteX}" y="${yVazioCima}" width="6" height="${voidH}" fill="#FFFFFF"/><rect x="${recorteX}" y="${yVazioBaixo}" width="6" height="${voidH}" fill="#FFFFFF"/>` : ''}
-    <rect x="${recorteX}" y="${yVazioCima}" width="6" height="${voidH}" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>
-    <rect x="${recorteX}" y="${yVazioBaixo}" width="6" height="${voidH}" fill="url(#hxVoid)" stroke="${PRIMARY}" stroke-width="0.5"/>`
 
   // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre emboço)
-  const discoX = recorteX
+  const discoX = embutida ? faceX - 6 : faceX
   const disco = `${embutida ? `<rect x="${discoX}" y="${cy - discoH / 2}" width="6" height="${discoH}" fill="#FFFFFF"/>` : ''}
     <rect x="${discoX}" y="${cy - discoH / 2}" width="6" height="${discoH}" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
     <line x1="${discoX + 6}" y1="${cy}" x2="${discoX + rodW}" y2="${cy}" stroke="${METAL}" stroke-width="2.4"/>
@@ -171,7 +150,6 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
-    ${vazios}
     ${disco}
     ${labels}
   </svg>`
