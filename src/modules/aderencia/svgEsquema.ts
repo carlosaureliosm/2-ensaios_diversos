@@ -48,9 +48,14 @@ function escapeXml(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function placaSobreSuperficieSemRecorte(camadaAcabamento: string): boolean {
-  const n = camadaAcabamento.trim().toLowerCase()
-  return n.includes('contrapiso') || n.includes('emboço') || n.includes('emboco')
+function camadasDeCorte(camadas: string[]): number {
+  if (camadas.length === 0) return 0
+  const acabamento = camadas[camadas.length - 1].trim().toLowerCase()
+  if (acabamento.includes('contrapiso') || acabamento.includes('emboço') || acabamento.includes('emboco')) {
+    return 0
+  }
+  const penultima = camadas.length >= 2 ? camadas[camadas.length - 2].trim().toLowerCase() : ''
+  return penultima.includes('colante') ? 2 : 1
 }
 
 const DEFS = `<defs>
@@ -95,19 +100,22 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
 
   const topoY = oy
   const cx = ox + bandW / 2
-  const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
+  const nCortes = camadasDeCorte(camadas)
 
-  // espaço retangular fino nas laterais da placa indicando o recorte na camada (exceto sobre contrapiso)
-  const folga = 3
+  // dois cortes paralelos finos ao lado da placa (até o fundo da argamassa colante ou só na camada de gesso)
+  const corteW = 3
   const xEsq = cx - discoW / 2
   const xDir = cx + discoW / 2
-  const recorte = embutida
-    ? `<rect x="${xEsq - folga}" y="${topoY - 0.6}" width="${discoW + folga * 2}" height="6.6" fill="#FFFFFF"/>
-    <polyline points="${xEsq - folga},${topoY} ${xEsq - folga},${topoY + 6} ${xDir + folga},${topoY + 6} ${xDir + folga},${topoY}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>`
+  const corteH = nCortes * bandH
+  const cortes = nCortes > 0
+    ? `<rect x="${xEsq - corteW}" y="${topoY - 0.6}" width="${corteW}" height="${corteH + 0.6}" fill="#FFFFFF"/>
+    <polyline points="${xEsq - corteW},${topoY} ${xEsq - corteW},${topoY + corteH} ${xEsq},${topoY + corteH} ${xEsq},${topoY}" fill="none" stroke="${PRIMARY}" stroke-width="0.8"/>
+    <rect x="${xDir}" y="${topoY - 0.6}" width="${corteW}" height="${corteH + 0.6}" fill="#FFFFFF"/>
+    <polyline points="${xDir},${topoY} ${xDir},${topoY + corteH} ${xDir + corteW},${topoY + corteH} ${xDir + corteW},${topoY}" fill="none" stroke="${PRIMARY}" stroke-width="0.8"/>`
     : ''
 
-  // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre contrapiso)
-  const discoY = embutida ? topoY : topoY - 6
+  // disco metálico + haste de tração sobre a superfície da última camada
+  const discoY = topoY - 6
   const disco = `<rect x="${xEsq}" y="${discoY}" width="${discoW}" height="6" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
     <line x1="${cx}" y1="${discoY - rodH + 6}" x2="${cx}" y2="${discoY}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${cx}" cy="${discoY - rodH + 6}" r="3.2" fill="${METAL}"/>`
@@ -115,7 +123,7 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
-    ${recorte}
+    ${cortes}
     ${disco}
     ${labels}
   </svg>`
@@ -147,19 +155,23 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
 
   const faceX = ox + camadas.length * bandW
   const cy = oy + bandH / 2
-  const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
+  const nCortes = camadasDeCorte(camadas)
 
-  // espaço retangular fino nas laterais da placa indicando o recorte na camada (exceto sobre emboço)
-  const folga = 3
+  // dois cortes paralelos finos ao lado da placa (até o fundo da argamassa colante ou só na camada de gesso)
+  const corteH = 3
   const yCima = cy - discoH / 2
   const yBaixo = cy + discoH / 2
-  const recorte = embutida
-    ? `<rect x="${faceX - 6}" y="${yCima - folga}" width="6.6" height="${discoH + folga * 2}" fill="#FFFFFF"/>
-    <polyline points="${faceX},${yCima - folga} ${faceX - 6},${yCima - folga} ${faceX - 6},${yBaixo + folga} ${faceX},${yBaixo + folga}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>`
+  const corteW = nCortes * bandW
+  const corteX = faceX - corteW
+  const cortes = nCortes > 0
+    ? `<rect x="${corteX}" y="${yCima - corteH}" width="${corteW + 0.6}" height="${corteH}" fill="#FFFFFF"/>
+    <polyline points="${faceX},${yCima - corteH} ${corteX},${yCima - corteH} ${corteX},${yCima} ${faceX},${yCima}" fill="none" stroke="${PRIMARY}" stroke-width="0.8"/>
+    <rect x="${corteX}" y="${yBaixo}" width="${corteW + 0.6}" height="${corteH}" fill="#FFFFFF"/>
+    <polyline points="${faceX},${yBaixo} ${corteX},${yBaixo} ${corteX},${yBaixo + corteH} ${faceX},${yBaixo + corteH}" fill="none" stroke="${PRIMARY}" stroke-width="0.8"/>`
     : ''
 
-  // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre emboço)
-  const discoX = embutida ? faceX - 6 : faceX
+  // disco metálico + haste de tração sobre a face da última camada
+  const discoX = faceX
   const disco = `<rect x="${discoX}" y="${yCima}" width="6" height="${discoH}" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
     <line x1="${discoX + 6}" y1="${cy}" x2="${discoX + rodW}" y2="${cy}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${discoX + rodW}" cy="${cy}" r="3.2" fill="${METAL}"/>`
@@ -167,7 +179,7 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
-    ${recorte}
+    ${cortes}
     ${disco}
     ${labels}
   </svg>`
