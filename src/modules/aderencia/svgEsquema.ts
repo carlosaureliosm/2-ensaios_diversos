@@ -97,14 +97,13 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
   const cx = ox + bandW / 2
   const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
 
-  // chanfro nas laterais da placa indicando o recorte aberto na camada (exceto sobre contrapiso)
-  const chanfro = 7
+  // espaço retangular fino nas laterais da placa indicando o recorte na camada (exceto sobre contrapiso)
+  const folga = 3
   const xEsq = cx - discoW / 2
   const xDir = cx + discoW / 2
   const recorte = embutida
-    ? `<polygon points="${xEsq - chanfro},${topoY - 0.6} ${xDir + chanfro},${topoY - 0.6} ${xDir + chanfro},${topoY} ${xDir},${topoY + 6} ${xEsq},${topoY + 6} ${xEsq - chanfro},${topoY}" fill="#FFFFFF"/>
-    <polyline points="${xEsq - chanfro},${topoY} ${xEsq},${topoY + 6}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>
-    <polyline points="${xDir + chanfro},${topoY} ${xDir},${topoY + 6}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>`
+    ? `<rect x="${xEsq - folga}" y="${topoY - 0.6}" width="${discoW + folga * 2}" height="6.6" fill="#FFFFFF"/>
+    <polyline points="${xEsq - folga},${topoY} ${xEsq - folga},${topoY + 6} ${xDir + folga},${topoY + 6} ${xDir + folga},${topoY}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>`
     : ''
 
   // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre contrapiso)
@@ -150,14 +149,13 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
   const cy = oy + bandH / 2
   const embutida = !placaSobreSuperficieSemRecorte(camadas[camadas.length - 1] ?? '')
 
-  // chanfro nas laterais da placa indicando o recorte aberto na camada (exceto sobre emboço)
-  const chanfro = 7
+  // espaço retangular fino nas laterais da placa indicando o recorte na camada (exceto sobre emboço)
+  const folga = 3
   const yCima = cy - discoH / 2
   const yBaixo = cy + discoH / 2
   const recorte = embutida
-    ? `<polygon points="${faceX + 0.6},${yCima - chanfro} ${faceX + 0.6},${yBaixo + chanfro} ${faceX},${yBaixo + chanfro} ${faceX - 6},${yBaixo} ${faceX - 6},${yCima} ${faceX},${yCima - chanfro}" fill="#FFFFFF"/>
-    <polyline points="${faceX},${yCima - chanfro} ${faceX - 6},${yCima}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>
-    <polyline points="${faceX},${yBaixo + chanfro} ${faceX - 6},${yBaixo}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>`
+    ? `<rect x="${faceX - 6}" y="${yCima - folga}" width="6.6" height="${discoH + folga * 2}" fill="#FFFFFF"/>
+    <polyline points="${faceX},${yCima - folga} ${faceX - 6},${yCima - folga} ${faceX - 6},${yBaixo + folga} ${faceX},${yBaixo + folga}" fill="none" stroke="${PRIMARY}" stroke-width="0.9"/>`
     : ''
 
   // disco metálico + haste de tração (embutido no recorte da camada, exceto sobre emboço)
