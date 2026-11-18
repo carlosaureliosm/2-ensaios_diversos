@@ -254,9 +254,19 @@ function EditorModeloPersonalizado({
   onChange: (nextModelo: ModeloSistemaCamadas, nextColunasManuais: boolean) => void;
 }) {
   const cores = modelo.camadas.map((c, idx) => modelo.coresCamadas?.[idx] || corCamada(c));
+  const ultimaCamada = (modelo.camadas[modelo.camadas.length - 1] ?? '').trim().toLowerCase();
+  const acabamentoSemCortePadrao =
+    ultimaCamada.includes('contrapiso') ||
+    ultimaCamada.includes('emboço') ||
+    ultimaCamada.includes('emboco');
 
   function aplicarCamadas(novasCamadas: string[], novasCores: string[], disp = modelo.disposicao) {
     const novasColunas = colunasManuais ? modelo.colunasFormaRuptura : gerarColunasFormaRuptura(novasCamadas);
+    const novaUltima = (novasCamadas[novasCamadas.length - 1] ?? '').trim().toLowerCase();
+    const mantemOpcaoCorte =
+      novaUltima.includes('contrapiso') ||
+      novaUltima.includes('emboço') ||
+      novaUltima.includes('emboco');
     onChange(
       {
         ...modelo,
@@ -264,6 +274,7 @@ function EditorModeloPersonalizado({
         camadas: novasCamadas,
         coresCamadas: novasCores,
         colunasFormaRuptura: novasColunas,
+        profundidadeCorte: mantemOpcaoCorte ? modelo.profundidadeCorte : undefined,
       },
       colunasManuais,
     );
@@ -634,6 +645,41 @@ function EditorModeloPersonalizado({
               overflow: 'hidden',
             }}
           />
+          {acabamentoSemCortePadrao && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: '100%' }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Tipo de ensaio
+              </span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {([
+                  { label: 'Superficial (sem corte)', valor: 0 },
+                  { label: 'Profundo (com corte)', valor: 1 },
+                ] as const).map(op => {
+                  const ativo = op.valor === 1 ? modelo.profundidadeCorte === 1 : modelo.profundidadeCorte !== 1;
+                  return (
+                    <button
+                      key={op.valor}
+                      type="button"
+                      onClick={() => onChange({ ...modelo, profundidadeCorte: op.valor }, colunasManuais)}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: 7,
+                        border: `1.5px solid ${ativo ? PRIMARY : BORDER}`,
+                        background: ativo ? PRIMARY : '#fff',
+                        color: ativo ? '#fff' : TEXT,
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {op.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <span style={{ fontSize: 11, color: SUBTEXT, textAlign: 'center', lineHeight: 1.35 }}>
             O disco de tração (adesivo epóxi + placa metálica) é desenhado automaticamente sobre a última camada.
           </span>

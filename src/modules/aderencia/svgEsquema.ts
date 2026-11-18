@@ -62,6 +62,9 @@ const DEFS = `<defs>
   <pattern id="hxMetal" width="4" height="4" patternUnits="userSpaceOnUse">
     <line x1="0" y1="0" x2="0" y2="4" stroke="${METAL}" stroke-width="2"/>
   </pattern>
+  <pattern id="hxMetalV" width="4" height="4" patternUnits="userSpaceOnUse">
+    <line x1="0" y1="0" x2="4" y2="0" stroke="${METAL}" stroke-width="2"/>
+  </pattern>
 </defs>`
 
 /**
@@ -195,7 +198,7 @@ function svgParede(camadas: string[], coresCamadas?: string[], profundidadeCorte
 
   // disco metálico + haste de tração sobre a face da última camada
   const discoX = faceX
-  const disco = `<rect x="${discoX}" y="${yCima}" width="6" height="${discoH}" fill="url(#hxMetal)" stroke="${PRIMARY}" stroke-width="1"/>
+  const disco = `<rect x="${discoX}" y="${yCima}" width="6" height="${discoH}" fill="url(#hxMetalV)" stroke="${PRIMARY}" stroke-width="1"/>
     <line x1="${discoX + 6}" y1="${cy}" x2="${discoX + rodW}" y2="${cy}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${discoX + rodW}" cy="${cy}" r="3.2" fill="${METAL}"/>`
 
