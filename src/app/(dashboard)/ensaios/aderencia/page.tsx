@@ -945,7 +945,7 @@ function SituacaoForm({
               <col style={{ width: 44 }} />
               <col style={{ width: 54 }} />
               <col style={{ width: 54 }} />
-              {modelo.colunasFormaRuptura.map(col => <col key={col} style={{ width: 28 }} />)}
+              {modelo.colunasFormaRuptura.map(col => <col key={col} style={{ width: 36 }} />)}
               <col style={{ minWidth: 90 }} />
               <col style={{ width: 80 }} />
             </colgroup>
