@@ -201,3 +201,9 @@ umber | null no estado.
 - Sempre que uma mudança no código for concluída e validada (
 pm run test e 
 px next build), fazer **commit e push direto para a main** sem precisar esperar confirmação separada.
+
+15. ✅ **Croquis SVG, 8 modelos e construtor personalizado (2026-11-18, commits `cffb595`..`667511b`)** — `src/modules/aderencia/svgEsquema.ts`, `modelosCamadas.ts`, `types.ts`, `src/app/(dashboard)/ensaios/aderencia/page.tsx`:
+    - **Croquis SVG (`svgEsquema.ts`)**: placa sempre na face externa da última camada com hachura perpendicular nas duas orientações (`hxMetal` no Piso, `hxMetalV` na Parede); cortes paralelos finos (`3 px`) ao lado da placa atravessando 0 camadas (superficial), 1 camada (Gesso, ou Contrapiso/Emboço com corte) ou 2 camadas (até o fundo da Argamassa Colante); nomes das camadas em chamadas externas (à direita no Piso, em escada abaixo na Parede) com largura dinâmica do `viewBox`.
+    - **8 modelos pré-configurados (`types.ts`, `modelosCamadas.ts`)**: adicionado `profundidadeCorte?: number` em `ModeloSistemaCamadas` e os modelos `piso-contrapiso-corte` e `parede-reboco-corte` (`profundidadeCorte: 1`), mantendo `piso-contrapiso` e `parede-reboco` como superficiais (`0`).
+    - **Construtor personalizado (`EditorModeloPersonalizado` em `page.tsx`)**: seletor **Superficial (sem corte) / Profundo (com corte)** quando o acabamento for `contrapiso`/`emboço`/`emboco`; lista suspensa (`<select>`) em ordem alfabética + campo livre por camada; `<input type="color">` em `42×40 px` e paleta de 9 cores em linha única no mobile; seção **Colunas de "Forma de Ruptura (%)"** em lista vertical com botões `↑` / `↓` / `×` e barra de adição no rodapé.
+    - **Mobile sem auto-zoom**: em `<=720px`, campos (`input:not([type="color"]):not([type="checkbox"])`, `select`, `textarea`) usam `font-size: 16px !important` e `touch-action: pan-y`.
