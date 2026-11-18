@@ -190,3 +190,4 @@ A aba **FLS.** citada originalmente não existe na planilha real fornecida pelo 
 umber | null no estado.
     - **FotoSlot menor** (36×36 px, antes 54×54) e botão de remover reduzido, para caber sem rolagem.
 13. ✅ **Limites nos campos numéricos (2026-11-18)**: NumeroInput ganhou as props maxDecimais (padrão 2 casas após a vírgula) e maxInteiros. Todos os campos numéricos decimais (Ra, prof. ruptura, umidade, espessura) aceitam no máximo 2 casas decimais. Os campos de % de forma de ruptura usam maxDecimais={0} + maxInteiros={3}: só inteiros de até 3 dígitos.
+    - Atualização: NumeroInput ganhou maxValor; os campos de % de forma de ruptura usam maxValor={100} e, se o usuário digitar acima de 100, o valor é limitado a 100.
