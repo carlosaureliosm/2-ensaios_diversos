@@ -195,3 +195,9 @@ umber | null no estado.
     - Reforço (2026-11-18): como `overflow-x: hidden` sozinho não impedia o arrastar lateral no celular, em ≤720px foram adicionados `touch-action: pan-y pinch-zoom` e `overscroll-behavior-x: none` em `html, body`, `overflow-x: clip`/`max-width: 100vw` no contêiner raiz da página e `min-width: 0` nos filhos de `.aderencia-main`. Causa exata do estouro de largura não foi medida (sem navegador no ambiente); se voltar a ocorrer, inspecionar no DevTools qual elemento tem `scrollWidth` maior que a tela.
     - Causa real do conteúdo cortado no celular (2026-11-18, achada com navegador em 360px): o `Header` compartilhado passava da largura da tela (`Sair` em ~359px numa tela de ~345px) porque a página Aderência não tinha o CSS mobile do cabeçalho que as outras páginas têm. Adicionado `@media (max-width: 600px)` com `.header-*`/`.signout-text`/`.sb-u` ao `<style>` de `aderencia/page.tsx` (mesmo padrão da esclerometria). Verificado em 360 e 320px: nenhum elemento passa da largura. Observação: em telas muito estreitas o link "Usuários" do menu fica parcialmente escondido atrás do avatar (igual às outras páginas). Para medir layout no navegador: `page.evaluate` é bloqueado no sandbox do subagente de browser; usar `boundingBox` dos elementos.
     - Validação final mobile (2026-11-18): testado no navegador em 440×956 (iPhone 16 Pro Max, todas as seções: configuração, topo, esquema, stepper, rodapé) com 0 overflows (largura `html` 424,8px), além de 390px, 375px, 360px e 320px, e validado pelo usuário no iPhone 14 físico e no DevTools após recarregamento forçado.
+
+## Fluxo de entrega (registrado em 2026-11-18)
+
+- Sempre que uma mudança no código for concluída e validada (
+pm run test e 
+px next build), fazer **commit e push direto para a main** sem precisar esperar confirmação separada.

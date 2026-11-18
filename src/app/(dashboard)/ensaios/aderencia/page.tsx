@@ -253,6 +253,7 @@ function EditorModeloPersonalizado({
   colunasManuais: boolean;
   onChange: (nextModelo: ModeloSistemaCamadas, nextColunasManuais: boolean) => void;
 }) {
+  const [novaColunaTexto, setNovaColunaTexto] = useState('');
   const cores = modelo.camadas.map((c, idx) => modelo.coresCamadas?.[idx] || corCamada(c));
   const ultimaCamada = (modelo.camadas[modelo.camadas.length - 1] ?? '').trim().toLowerCase();
   const acabamentoSemCortePadrao =
@@ -330,14 +331,24 @@ function EditorModeloPersonalizado({
     onChange({ ...modelo, colunasFormaRuptura: novasCols }, true);
   }
 
-  function adicionarColunaRuptura() {
+  function adicionarColunaRuptura(nomeInformado?: string) {
     if (modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA) return;
     const cols = [...modelo.colunasFormaRuptura];
     const idxVazios = cols.findIndex(c => c.trim().toLowerCase() === 'vazios');
-    const novaCol = `Col ${cols.length}`;
+    const limpo = (nomeInformado ?? '').trim();
+    const novaCol = limpo || `Col ${cols.length}`;
     if (idxVazios >= 0) cols.splice(idxVazios, 0, novaCol);
     else cols.push(novaCol);
     onChange({ ...modelo, colunasFormaRuptura: cols }, true);
+    if (limpo) setNovaColunaTexto('');
+  }
+
+  function moverColunaRuptura(idx: number, direcao: -1 | 1) {
+    const destino = idx + direcao;
+    if (destino < 0 || destino >= modelo.colunasFormaRuptura.length) return;
+    const novasCols = [...modelo.colunasFormaRuptura];
+    [novasCols[idx], novasCols[destino]] = [novasCols[destino], novasCols[idx]];
+    onChange({ ...modelo, colunasFormaRuptura: novasCols }, true);
   }
 
   function removerColunaRuptura(idx: number) {
@@ -545,10 +556,12 @@ function EditorModeloPersonalizado({
                       onChange={e => alterarCorCamada(idx, e.target.value)}
                       title="Escolher cor personalizada do sólido"
                       style={{
-                        width: 36,
-                        height: 36,
-                        padding: 2,
-                        borderRadius: 6,
+                        width: 42,
+                        height: 40,
+                        minWidth: 42,
+                        minHeight: 40,
+                        padding: 3,
+                        borderRadius: 8,
                         border: `1.5px solid ${BORDER}`,
                         background: '#fff',
                         cursor: 'pointer',
@@ -598,29 +611,30 @@ function EditorModeloPersonalizado({
                 </div>
 
                 {/* Linha 3: Paleta rápida de cores padrão do relatório */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', paddingTop: 2 }}>
-                  <span style={{ fontSize: 10, color: SUBTEXT, marginRight: 2 }}>Cores padrão:</span>
-                  {PALETA_CORES_CAMADAS.map(p => {
-                    const ativa = corAtual.toUpperCase() === p.cor.toUpperCase();
-                    return (
-                      <button
-                        key={p.cor}
-                        type="button"
-                        title={p.nome}
-                        onClick={() => alterarCorCamada(idx, p.cor)}
-                        style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 4,
-                          background: p.cor,
-                          border: ativa ? `2px solid ${PRIMARY}` : '1px solid #9AA0AC',
-                          cursor: 'pointer',
-                          padding: 0,
-                          flexShrink: 0,
-                        }}
-                      />
-                    );
-                  })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 2 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, color: SUBTEXT }}>Cores padrão:</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${PALETA_CORES_CAMADAS.length}, minmax(0, 1fr))`, gap: 5, width: '100%' }}>
+                    {PALETA_CORES_CAMADAS.map(p => {
+                      const ativa = corAtual.toUpperCase() === p.cor.toUpperCase();
+                      return (
+                        <button
+                          key={p.cor}
+                          type="button"
+                          title={p.nome}
+                          onClick={() => alterarCorCamada(idx, p.cor)}
+                          style={{
+                            width: '100%',
+                            height: 22,
+                            borderRadius: 4,
+                            background: p.cor,
+                            border: ativa ? `2px solid ${PRIMARY}` : '1px solid #9AA0AC',
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );
@@ -731,99 +745,207 @@ function EditorModeloPersonalizado({
               {colunasManuais ? '(editadas manualmente)' : '(geradas automaticamente pelas camadas)'}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {colunasManuais && (
-              <button
-                type="button"
-                onClick={restaurarColunasAutomaticas}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  border: `1px solid ${PRIMARY}`,
-                  background: '#fff',
-                  color: PRIMARY,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                ↻ Regerar pelas camadas
-              </button>
-            )}
+          {colunasManuais && (
             <button
               type="button"
-              onClick={adicionarColunaRuptura}
-              disabled={modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA}
+              onClick={restaurarColunasAutomaticas}
               style={{
-                padding: '6px 12px',
+                padding: '6px 10px',
                 borderRadius: 6,
-                border: `1px solid ${BORDER}`,
+                border: `1px solid ${PRIMARY}`,
                 background: '#fff',
                 color: PRIMARY,
                 fontSize: 11,
                 fontWeight: 700,
-                cursor: modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA ? 'not-allowed' : 'pointer',
-                opacity: modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA ? 0.4 : 1,
+                cursor: 'pointer',
                 fontFamily: 'inherit',
               }}
             >
-              + Coluna
+              ↻ Regerar pelas camadas
             </button>
-          </div>
+          )}
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%' }}>
-          {modelo.colunasFormaRuptura.map((col, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                background: '#fff',
-                border: `1px solid ${BORDER}`,
-                borderRadius: 7,
-                padding: '5px 8px',
-                maxWidth: '100%',
-                boxSizing: 'border-box',
-              }}
-            >
-              <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{idx + 1}.</span>
-              <input
+        <div
+          style={{
+            border: `1px solid ${BORDER}`,
+            borderRadius: 10,
+            background: '#fff',
+            overflow: 'hidden',
+            width: '100%',
+          }}
+        >
+          {modelo.colunasFormaRuptura.map((col, idx) => {
+            const ehPrimeira = idx === 0;
+            const ehUltima = idx === modelo.colunasFormaRuptura.length - 1;
+            return (
+              <div
+                key={idx}
                 style={{
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: TEXT,
-                  width: Math.min(180, Math.max(54, (col.length + 1) * 7.5)),
-                  fontFamily: 'inherit',
-                  background: 'transparent',
-                }}
-                value={col}
-                onChange={e => editarColunaRuptura(idx, e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => removerColunaRuptura(idx)}
-                disabled={modelo.colunasFormaRuptura.length <= 1}
-                title="Remover coluna"
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: DANGER,
-                  fontWeight: 800,
-                  fontSize: 13,
-                  cursor: modelo.colunasFormaRuptura.length <= 1 ? 'not-allowed' : 'pointer',
-                  opacity: modelo.colunasFormaRuptura.length <= 1 ? 0.3 : 1,
-                  padding: '0 2px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '7px 10px',
+                  borderBottom: ehUltima ? 'none' : '1px solid #F1F5F9',
                 }}
               >
-                ×
-              </button>
-            </div>
-          ))}
+                <span
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 99,
+                    background: '#EEF2FF',
+                    color: PRIMARY,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {idx + 1}
+                </span>
+                <input
+                  aria-label={`Nome da coluna ${idx + 1}`}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: TEXT,
+                    fontFamily: 'inherit',
+                    background: 'transparent',
+                    padding: '4px 0',
+                  }}
+                  value={col}
+                  onChange={e => editarColunaRuptura(idx, e.target.value)}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => moverColunaRuptura(idx, -1)}
+                    disabled={ehPrimeira}
+                    title="Mover coluna para cima"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: `1px solid ${BORDER}`,
+                      background: '#F8FAFC',
+                      color: PRIMARY,
+                      cursor: ehPrimeira ? 'not-allowed' : 'pointer',
+                      opacity: ehPrimeira ? 0.3 : 1,
+                      fontWeight: 800,
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moverColunaRuptura(idx, 1)}
+                    disabled={ehUltima}
+                    title="Mover coluna para baixo"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: `1px solid ${BORDER}`,
+                      background: '#F8FAFC',
+                      color: PRIMARY,
+                      cursor: ehUltima ? 'not-allowed' : 'pointer',
+                      opacity: ehUltima ? 0.3 : 1,
+                      fontWeight: 800,
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                    }}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removerColunaRuptura(idx)}
+                    disabled={modelo.colunasFormaRuptura.length <= 1}
+                    title="Remover coluna"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: '1px solid #FECACA',
+                      background: '#FEF2F2',
+                      color: DANGER,
+                      fontWeight: 800,
+                      fontSize: 14,
+                      cursor: modelo.colunasFormaRuptura.length <= 1 ? 'not-allowed' : 'pointer',
+                      opacity: modelo.colunasFormaRuptura.length <= 1 ? 0.3 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Barra de adição rápida no rodapé */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, width: '100%' }}>
+          <input
+            type="text"
+            value={novaColunaTexto}
+            onChange={e => setNovaColunaTexto(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                adicionarColunaRuptura(novaColunaTexto);
+              }
+            }}
+            disabled={modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA}
+            placeholder="Nova coluna (ex: Sub/Emb)..."
+            style={{
+              ...inputStyle,
+              flex: 1,
+              minWidth: 0,
+              height: 'auto',
+              minHeight: 36,
+              padding: '7px 10px',
+              fontSize: 13,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => adicionarColunaRuptura(novaColunaTexto)}
+            disabled={modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA}
+            style={{
+              padding: '8px 14px',
+              borderRadius: 7,
+              border: 'none',
+              background: PRIMARY,
+              color: '#fff',
+              fontSize: 12.5,
+              fontWeight: 700,
+              cursor: modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA ? 'not-allowed' : 'pointer',
+              opacity: modelo.colunasFormaRuptura.length >= MAX_COLUNAS_FORMA_RUPTURA ? 0.45 : 1,
+              fontFamily: 'inherit',
+              flexShrink: 0,
+            }}
+          >
+            + Adicionar
+          </button>
         </div>
       </div>
     </div>
@@ -1520,15 +1642,12 @@ export default function AderenciaPage() {
           html, body { overflow-x: clip; touch-action: pan-y; overscroll-behavior-x: none; }
           .aderencia-main { width: 100%; min-width: 0; box-sizing: border-box; }
           .aderencia-main * { min-width: 0; }
-          .aderencia-main input, .aderencia-main textarea, .aderencia-main select {
+          .aderencia-main input:not([type="color"]):not([type="checkbox"]), .aderencia-main textarea, .aderencia-main select {
             max-width: 100%;
             box-sizing: border-box;
             font-size: 16px !important;
             min-height: 36px;
             height: auto !important;
-          }
-          .aderencia-main input[type="color"], .aderencia-main input[type="checkbox"] {
-            min-height: 0;
           }
         }
         .aderencia-main { overflow-x: clip; }
