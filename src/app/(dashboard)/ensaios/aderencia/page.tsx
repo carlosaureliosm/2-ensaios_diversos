@@ -122,6 +122,46 @@ const cellInputStyle: React.CSSProperties = {
   outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'center', height: 28,
 };
 
+/**
+ * Campo numérico decimal (texto, não `type="number"`): aceita só dígitos e uma vírgula como
+ * separador decimal (padrão brasileiro), sem as setas nativas do navegador. Mantém um texto local
+ * para não "engolir" a vírgula digitada (ex: "0,") enquanto o valor externo ainda é um number — só
+ * resincroniza do valor externo quando ele muda por outro motivo (reset de linha, autosave, etc.).
+ */
+function NumeroInput({ value, onChange, style, placeholder }: {
+  value: number | null; onChange: (v: number | null) => void; style?: React.CSSProperties; placeholder?: string;
+}) {
+  const paraTexto = (v: number | null) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
+  const [texto, setTexto] = useState(paraTexto(value));
+
+  useEffect(() => {
+    const atual = texto === '' || texto === ',' ? null : Number(texto.replace(',', '.'));
+    if (atual !== value && !(Number.isNaN(atual) && value === null)) setTexto(paraTexto(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    let t = e.target.value.replace(/[^0-9,]/g, '');
+    const partes = t.split(',');
+    if (partes.length > 2) t = partes[0] + ',' + partes.slice(1).join('');
+    setTexto(t);
+    if (t === '' || t === ',') { onChange(null); return; }
+    const num = Number(t.replace(',', '.'));
+    if (!Number.isNaN(num)) onChange(num);
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      style={style}
+      value={texto}
+      placeholder={placeholder}
+      onChange={handleChange}
+    />
+  );
+}
+
 const SUGESTOES_CAMADAS = [
   'Substrato',
   'Concreto',
@@ -752,7 +792,7 @@ function removerFotoStorage(path: string) {
 function FotoSlot({ foto, onEscolher, onRemover, label }: { foto: FotoAnexo | null; onEscolher: (file: File) => void; onRemover: () => void; label: string }) {
   const id = `foto-${label}-${Math.random().toString(36).slice(2)}`;
   return (
-    <div style={{ position: 'relative', width: 54, height: 54, flexShrink: 0 }}>
+    <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
       <input
         id={id}
         type="file"
@@ -763,7 +803,7 @@ function FotoSlot({ foto, onEscolher, onRemover, label }: { foto: FotoAnexo | nu
       {foto ? (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
           <img src={`data:${foto.contentType};base64,${foto.base64}`} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, border: `1.5px solid ${BORDER}` }} />
-          <button type="button" onClick={onRemover} title="Remover foto" style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: DANGER, color: '#fff', border: '2px solid #fff', fontSize: 10, lineHeight: '14px', cursor: 'pointer', padding: 0 }}>×</button>
+          <button type="button" onClick={onRemover} title="Remover foto" style={{ position: 'absolute', top: -5, right: -5, width: 15, height: 15, borderRadius: '50%', background: DANGER, color: '#fff', border: '1.5px solid #fff', fontSize: 9, lineHeight: '11px', cursor: 'pointer', padding: 0 }}>×</button>
         </div>
       ) : (
         <label htmlFor={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', borderRadius: 6, border: `1.5px dashed ${BORDER}`, cursor: 'pointer', color: SUBTEXT, fontSize: 9, fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>
@@ -898,7 +938,17 @@ function SituacaoForm({
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 760 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: 30 }} />
+              <col style={{ width: 44 }} />
+              <col style={{ width: 44 }} />
+              <col style={{ width: 54 }} />
+              <col style={{ width: 54 }} />
+              {modelo.colunasFormaRuptura.map(col => <col key={col} style={{ width: 36 }} />)}
+              <col style={{ minWidth: 90 }} />
+              <col style={{ width: 80 }} />
+            </colgroup>
             <thead>
               <tr style={{ background: BG }}>
                 <Th>Nº CP</Th>
@@ -906,7 +956,7 @@ function SituacaoForm({
                 <Th>Junta</Th>
                 <Th>Tensão Ra (MPa)</Th>
                 <Th>Prof. ruptura (mm)</Th>
-                {modelo.colunasFormaRuptura.map(col => <Th key={col}>{col} (%)</Th>)}
+                {modelo.colunasFormaRuptura.map(col => <Th key={col} vertical>{`${col} (%)`}</Th>)}
                 <Th>Localização</Th>
                 <Th>Fotos</Th>
               </tr>
@@ -917,23 +967,20 @@ function SituacaoForm({
                   <Td><span style={{ fontWeight: 700, color: SUBTEXT }}>{cp.numero}</span></Td>
                   <Td><input style={cellInputStyle} value={cp.bloco} onChange={e => atualizarCP(i, { ...cp, bloco: e.target.value })} /></Td>
                   <Td><input style={cellInputStyle} value={cp.junta} onChange={e => atualizarCP(i, { ...cp, junta: e.target.value })} /></Td>
-                  <Td><input type="number" style={cellInputStyle} value={cp.tensaoRa ?? ''} onChange={e => atualizarCP(i, { ...cp, tensaoRa: e.target.value === '' ? null : Number(e.target.value) })} /></Td>
-                  <Td><input type="number" style={cellInputStyle} value={cp.profRuptura ?? ''} onChange={e => atualizarCP(i, { ...cp, profRuptura: e.target.value === '' ? null : Number(e.target.value) })} /></Td>
+                  <Td><NumeroInput style={cellInputStyle} value={cp.tensaoRa} onChange={v => atualizarCP(i, { ...cp, tensaoRa: v })} /></Td>
+                  <Td><NumeroInput style={cellInputStyle} value={cp.profRuptura} onChange={v => atualizarCP(i, { ...cp, profRuptura: v })} /></Td>
                   {modelo.colunasFormaRuptura.map(col => (
                     <Td key={col}>
-                      <input
-                        type="number"
+                      <NumeroInput
                         style={cellInputStyle}
                         value={cp.formaRuptura[col] ?? 0}
-                        min={0}
-                        max={100}
-                        onChange={e => atualizarCP(i, { ...cp, formaRuptura: { ...cp.formaRuptura, [col]: Number(e.target.value) } })}
+                        onChange={v => atualizarCP(i, { ...cp, formaRuptura: { ...cp.formaRuptura, [col]: v ?? 0 } })}
                       />
                     </Td>
                   ))}
-                  <Td><input style={{ ...cellInputStyle, minWidth: 120, textAlign: 'left' }} value={cp.localizacao} onChange={e => atualizarCP(i, { ...cp, localizacao: e.target.value })} /></Td>
+                  <Td><input style={{ ...cellInputStyle, textAlign: 'left' }} value={cp.localizacao} onChange={e => atualizarCP(i, { ...cp, localizacao: e.target.value })} /></Td>
                   <Td>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
                       <FotoSlot foto={cp.fotos[0]} label="1" onEscolher={f => escolherFoto(i, 0, f)} onRemover={() => removerFoto(i, 0)} />
                       <FotoSlot foto={cp.fotos[1]} label="2" onEscolher={f => escolherFoto(i, 1, f)} onRemover={() => removerFoto(i, 1)} />
                     </div>
@@ -956,11 +1003,10 @@ function SituacaoForm({
               <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                 UMIDADE MÉDIA (%):
               </span>
-              <input
-                type="number"
+              <NumeroInput
                 style={{ ...cellInputStyle, width: 80, padding: '3px 6px', fontWeight: 700, textAlign: 'center', height: 26 }}
-                value={situacao.umidadeMedia ?? ''}
-                onChange={e => atualizar('umidadeMedia', e.target.value === '' ? null : Number(e.target.value))}
+                value={situacao.umidadeMedia}
+                onChange={v => atualizar('umidadeMedia', v)}
                 placeholder="-"
               />
             </div>
@@ -976,11 +1022,10 @@ function SituacaoForm({
               <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                 ESPESSURA MÉDIA (mm):
               </span>
-              <input
-                type="number"
+              <NumeroInput
                 style={{ ...cellInputStyle, width: 80, padding: '3px 6px', fontWeight: 700, textAlign: 'center', height: 26 }}
-                value={situacao.espessuraMediaRevestimento ?? ''}
-                onChange={e => atualizar('espessuraMediaRevestimento', e.target.value === '' ? null : Number(e.target.value))}
+                value={situacao.espessuraMediaRevestimento}
+                onChange={v => atualizar('espessuraMediaRevestimento', v)}
                 placeholder="-"
               />
             </div>
@@ -991,11 +1036,18 @@ function SituacaoForm({
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th style={{ padding: '6px 4px', fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', textAlign: 'center' }}>{children}</th>;
+function Th({ children, vertical = false }: { children: React.ReactNode; vertical?: boolean }) {
+  if (vertical) {
+    return (
+      <th title={typeof children === 'string' ? children : undefined} style={{ padding: '4px 2px', fontSize: 9, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.02em', textAlign: 'center', height: 100 }}>
+        <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', display: 'inline-block' }}>{children}</span>
+      </th>
+    );
+  }
+  return <th style={{ padding: '6px 3px', fontSize: 9, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.02em', textAlign: 'center' }}>{children}</th>;
 }
 function Td({ children }: { children: React.ReactNode }) {
-  return <td style={{ padding: '3px 4px', minWidth: 56 }}>{children}</td>;
+  return <td style={{ padding: '3px 2px' }}>{children}</td>;
 }
 function Estatistica({ label, valor, unidade }: { label: string; valor: number | null; unidade: string }) {
   return (
@@ -1242,6 +1294,14 @@ export default function AderenciaPage() {
   return (
     <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield;
+        }
         .aderencia-ficha-grid {
           display: grid;
           grid-template-columns: 1.35fr 1fr;
@@ -1308,7 +1368,7 @@ export default function AderenciaPage() {
       `}</style>
       <Header paginaAtiva="ensaios" />
 
-      <main className="aderencia-main" style={{ maxWidth: 860, margin: '0 auto', padding: '24px 20px 60px' }}>
+      <main className="aderencia-main" style={{ maxWidth: etapa === 'situacoes' ? 1040 : 860, margin: '0 auto', padding: '24px 20px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, marginBottom: 20 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Resistência de Aderência à Tração</h1>
