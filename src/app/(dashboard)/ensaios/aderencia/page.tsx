@@ -968,7 +968,7 @@ function comprimirImagem(file: File): Promise<FotoAnexo> {
         const canvas = document.createElement('canvas');
         canvas.width = width; canvas.height = height;
         canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-        const base64 = canvas.toDataURL('image/jpeg', 0.65).split(',')[1] ?? '';
+        const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1] ?? '';
         resolve({ base64, width, height, contentType: 'image/jpeg' });
       };
       img.onerror = reject;
@@ -1038,6 +1038,17 @@ function useIsMobile(max = 720) {
 const navCpBtn: React.CSSProperties = { width: 44, height: 40, borderRadius: 8, border: `1.5px solid ${BORDER}`, background: '#fff', fontSize: 20, fontWeight: 700, color: PRIMARY, cursor: 'pointer' };
 
 // ── Formulário de uma Situação ──────────────────────────────────
+function somenteDigitos(valor: string): string {
+  return valor.replace(/\D/g, '');
+}
+
+function formatarDataDigitada(valor: string): string {
+  const d = valor.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
 function SituacaoForm({
   situacao,
   modelo,
@@ -1098,21 +1109,21 @@ function SituacaoForm({
           <input style={{ ...inputStyle, textTransform: 'uppercase' }} value={situacao.tipoRevestimento} onChange={e => atualizar('tipoRevestimento', e.target.value.toUpperCase())} placeholder="EX: VERTICAL INTERNO" />
         </Campo>
         <Campo label="Data do ensaio">
-          <input style={inputStyle} value={situacao.dataEnsaio} onChange={e => atualizar('dataEnsaio', e.target.value)} placeholder="DD/MM/AAAA" />
+          <input style={inputStyle} inputMode="numeric" maxLength={10} value={situacao.dataEnsaio} onChange={e => atualizar('dataEnsaio', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
         </Campo>
 
         <Campo label="Nº de corpos de prova">
-          <input type="number" style={inputStyle} min={1} value={situacao.numCPs} onChange={e => alterarNumCPs(Number(e.target.value))} />
+          <input type="text" inputMode="numeric" style={inputStyle} value={situacao.numCPs} onChange={e => alterarNumCPs(Number(somenteDigitos(e.target.value)))} />
         </Campo>
         <Campo label="Data de aplicação">
-          <input style={inputStyle} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', e.target.value)} placeholder="DD/MM/AAAA ou NÃO INFORMADA" />
+          <input style={inputStyle} inputMode="numeric" maxLength={10} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
         </Campo>
 
         <Campo label="Substrato">
           <input style={inputStyle} value={situacao.substrato} onChange={e => atualizar('substrato', e.target.value)} />
         </Campo>
         <Campo label="Idade de ruptura (dias)">
-          <input style={inputStyle} value={situacao.idadeRupturaDias} onChange={e => atualizar('idadeRupturaDias', e.target.value)} placeholder="EX: >28" />
+          <input style={inputStyle} inputMode="numeric" value={situacao.idadeRupturaDias} onChange={e => atualizar('idadeRupturaDias', somenteDigitos(e.target.value))} placeholder="EX: 28" />
         </Campo>
 
         <Campo label="Chapisco">
@@ -1690,7 +1701,7 @@ export default function AderenciaPage() {
             <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
               <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Cabeçalho do relatório</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '12px 16px' }}>
-                <Campo label="Nº RLT" htmlFor="ad-rlt"><input id="ad-rlt" style={inputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', e.target.value)} placeholder="Ex: 045" /></Campo>
+                <Campo label="Nº RLT" htmlFor="ad-rlt"><input id="ad-rlt" inputMode="numeric" style={inputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', somenteDigitos(e.target.value))} placeholder="Ex: 045" /></Campo>
                 <Campo label="Cliente" htmlFor="ad-cliente"><input id="ad-cliente" style={inputStyle} value={cabecalho.cliente} onChange={e => atualizarCabecalho('cliente', e.target.value)} /></Campo>
                 <Campo label="Obra" htmlFor="ad-obra"><input id="ad-obra" style={inputStyle} value={cabecalho.obra} onChange={e => atualizarCabecalho('obra', e.target.value)} /></Campo>
                 <Campo label="Construtora" htmlFor="ad-construtora"><input id="ad-construtora" style={inputStyle} value={cabecalho.construtora} onChange={e => atualizarCabecalho('construtora', e.target.value)} /></Campo>
