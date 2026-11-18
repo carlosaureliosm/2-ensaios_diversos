@@ -75,13 +75,15 @@ export function svgEsquemaCamadas(camadas: string[], disposicao: 'piso' | 'pared
 
 // ── PISO: camadas empilhadas na vertical, disco puxado para cima ──────────────
 function svgPiso(camadas: string[], coresCamadas?: string[]): string {
-  const bandW = 170
+  const bandW = 130
   const bandH = 22
   const ox = 10
   const discoW = 34
   const rodH = 20
   const H_topo = rodH + 6
-  const W = bandW + ox * 2
+  const maxLen = Math.max(...camadas.map(c => c.trim().length), 8)
+  const labelSpace = Math.max(70, Math.round(maxLen * 5.0) + 12)
+  const W = ox + bandW + 15 + labelSpace + 6
   const H = H_topo + camadas.length * bandH + 10
 
   const oy = H_topo
@@ -94,8 +96,9 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
     const y = oy + idxFromTop * bandH
     const fill = coresCamadas?.[i] || corCamada(nome)
     bands += `<rect x="${ox}" y="${y}" width="${bandW}" height="${bandH}" fill="${escapeXml(fill)}" stroke="${PRIMARY}" stroke-width="1"/>`
-    const ly = y + bandH / 2 + 3
-    labels += `<text x="${ox + bandW / 2}" y="${ly}" text-anchor="middle" font-size="8" fill="${TEXT}" font-family="sans-serif">${escapeXml(nome.toUpperCase())}</text>`
+    const yMid = y + bandH / 2
+    labels += `<line x1="${ox + bandW}" y1="${yMid}" x2="${ox + bandW + 11}" y2="${yMid}" stroke="#64748B" stroke-width="0.8"/>`
+    labels += `<text x="${ox + bandW + 14}" y="${yMid + 3}" font-size="7.5" fill="${TEXT}" font-family="sans-serif">${escapeXml(nome.toUpperCase())}</text>`
   })
 
   const topoY = oy
@@ -120,7 +123,7 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
     <line x1="${cx}" y1="${discoY - rodH + 6}" x2="${cx}" y2="${discoY}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${cx}" cy="${discoY - rodH + 6}" r="3.2" fill="${METAL}"/>`
 
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.15)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
     ${cortes}
@@ -131,29 +134,35 @@ function svgPiso(camadas: string[], coresCamadas?: string[]): string {
 
 // ── PAREDE: camadas lado a lado na horizontal, disco puxado para o lado ───────
 function svgParede(camadas: string[], coresCamadas?: string[]): string {
-  const bandW = 26
-  const bandH = 150
-  const oy = 20
+  const bandW = 24
+  const bandH = 120
+  const oy = 14
   const discoH = 30
   const rodW = 24
   const W_direita = rodW + 10
   const ox = 12
-  const W = ox + camadas.length * bandW + W_direita
-  const H = oy + bandH + 14
+  const faceX = ox + camadas.length * bandW
 
   let bands = ''
   let labels = ''
+  let maxXLabel = faceX + W_direita
 
   // camadas[0] = base (ex.: substrato/alvenaria), desenhada à esquerda; a última = acabamento, à direita.
   camadas.forEach((nome, i) => {
     const x = ox + i * bandW
     const fill = coresCamadas?.[i] || corCamada(nome)
     bands += `<rect x="${x}" y="${oy}" width="${bandW}" height="${bandH}" fill="${escapeXml(fill)}" stroke="${PRIMARY}" stroke-width="1"/>`
-    const lx = x + bandW / 2 + 3
-    labels += `<text x="${lx}" y="${oy + bandH / 2}" text-anchor="middle" font-size="7.5" fill="${TEXT}" font-family="sans-serif" transform="rotate(-90,${lx},${oy + bandH / 2})">${escapeXml(nome.toUpperCase())}</text>`
+    const xMid = x + bandW / 2
+    const degrau = camadas.length - 1 - i
+    const yLinha = oy + bandH + 10 + degrau * 13
+    labels += `<polyline points="${xMid},${oy + bandH} ${xMid},${yLinha} ${xMid + 6},${yLinha}" fill="none" stroke="#64748B" stroke-width="0.7"/>`
+    labels += `<text x="${xMid + 9}" y="${yLinha + 2.5}" font-size="7" fill="${TEXT}" font-family="sans-serif">${escapeXml(nome.toUpperCase())}</text>`
+    const fimTexto = xMid + 9 + Math.round(nome.trim().length * 4.9) + 6
+    if (fimTexto > maxXLabel) maxXLabel = fimTexto
   })
 
-  const faceX = ox + camadas.length * bandW
+  const W = maxXLabel
+  const H = oy + bandH + 10 + Math.max(0, camadas.length - 1) * 13 + 10
   const cy = oy + bandH / 2
   const nCortes = camadasDeCorte(camadas)
 
@@ -176,7 +185,7 @@ function svgParede(camadas: string[], coresCamadas?: string[]): string {
     <line x1="${discoX + 6}" y1="${cy}" x2="${discoX + rodW}" y2="${cy}" stroke="${METAL}" stroke-width="2.4"/>
     <circle cx="${discoX + rodW}" cy="${cy}" r="3.2" fill="${METAL}"/>`
 
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.25)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width: 100%; max-width: ${Math.round(W * 1.15)}px; height: auto; display: block;" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     ${bands}
     ${cortes}
