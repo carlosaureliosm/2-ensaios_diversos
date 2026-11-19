@@ -253,3 +253,26 @@ Todos os módulos de ensaio — os já prontos (`aderencia`, `esclerometria`, `r
   - Nos campos de Forma de Ruptura (%), removido o "0" fantasma exibido por padrão (alue={val > 0 ? val : null}) e adicionada navegação pelas 4 setas do teclado (ArrowLeft, ArrowRight, ArrowUp, ArrowDown) além do Enter (oNavegarFormaRuptura).
 - **Anti-zoom global em campos no mobile — iOS e Android (2026-11-19)**: src/app/layout.tsx exporta iewport (width: 'device-width', initialScale: 1, maximumScale: 1, userScalable: false) e src/app/globals.css aplica em @media (max-width: 768px) ont-size: 16px !important + 	ouch-action: manipulation para input (exceto color/checkbox/adio/ile), 	extarea e select, além de 	ouch-action: pan-y e 	ext-size-adjust: 100% em html, body.
 - **Esclerometria — bigorna (10 golpes) com 2 dígitos e auto-avanço (2026-11-19)**: em sclerometria/page.tsx, os 10 campos da Verificação do Aparelho (Bigorna) passaram a usar igornaRefs, inputMode="numeric" pattern="[0-9]*" maxLength={2}, aceitando apenas 2 dígitos e avançando automaticamente para o próximo campo ao digitar o 2º dígito (mesmo comportamento já confirmado nos 16 impactos de Dados de Campo e do Modo Obra).
+
+## Plano pendente — Assinatura dupla padronizada (João Ribeiro de Carvalho + Engenheiro do ensaio) (registrado em 2026-11-19)
+
+**Objetivo**: garantir em **todos os módulos e relatórios gerados** (atuais e futuros) a assinatura dupla:
+1. **Assinatura fixa do gestor do setor (ARTs)**: **João Ribeiro de Carvalho** — `Engenheiro Civil` — `CREA Nº49780 – PE` (imagem já existe em `public/modelo_esclerometria.docx` e `public/modelo_resistividade.docx` como `word/media/image6.jpeg`, 1.882 bytes).
+2. **Assinatura dinâmica do engenheiro/usuário que está preenchendo o ensaio**: `[[resp_assinatura]]` + `[[resp_nome]]` + `Engenheiro Civil` + `CREA Nº [[resp_crea]]` (baixada do Storage via `baixarAssinaturaDoUsuario(user)` no servidor, ou assinatura/dados alternativos quando o usuário marca "outro responsável").
+
+### Diagnóstico atual (verificado em 2026-11-19)
+
+- **`public/modelo_esclerometria.docx`**: **já possui** as duas assinaturas lado a lado (`rId13 -> word/media/image6.jpeg` + `João Ribeiro de Carvalho / Engenheiro Civil / CREA Nº49780 – PE` à esquerda; `[[resp_assinatura]] / [[resp_nome]] / Engenheiro Civil / CREA Nº [[resp_crea]]` à direita). **Não quebrar este template.**
+- **`public/modelo_resistividade.docx`**: **já possui** a mesma estrutura de assinatura dupla (`rId11 -> word/media/image6.jpeg` + João Ribeiro de Carvalho à esquerda; `[[resp_assinatura]]` + responsável dinâmico à direita). **Validar se a UI e a rota `api/ensaios/resistividade/docx/route.ts` estão 100% alinhadas com `esclerometria`.**
+- **`public/modelo_aderencia.docx` (`scripts/build-modelo-aderencia.js`)**: atualmente só possui **1 assinatura** no rodapé final ao lado do quadro `NOTAS:` (`[[resp_assinatura]] / [[resp_nome]] / CREA: [[resp_crea]]`). **Falta adicionar a assinatura fixa de João Ribeiro de Carvalho** sem quebrar o layout do quadro `NOTAS:` + assinaturas.
+  - Atenção: `scripts/build-modelo-aderencia.js` clona `public/modelo_esclerometria.docx` e remove mídias não usadas — portanto, pode preservar/extrair `word/media/image6.jpeg` (ou salvar uma cópia estática em `public/assinatura_joao.jpeg` ou reaproveitar o rId no build) e embutir o `<w:drawing>` da assinatura de João Ribeiro de Carvalho no bloco final junto à assinatura do engenheiro logado (ex.: quadro `NOTAS:` em largura total e, abaixo, tabela de 2 colunas com as duas assinaturas lado a lado, ou duas colunas de assinatura ao lado/abaixo de `NOTAS:`, cuidando para caber limpo na página).
+- **UI dos módulos (`esclerometria`, `resistividade`, `aderencia`, `pacometria` e futuros)**:
+  - Padronizar a exibição do bloco **Responsável Técnico / Assinaturas** (idealmente em um componente compartilhado ou padrão documentado) deixando explícito que **João Ribeiro de Carvalho (CREA Nº49780 – PE)** assina fixamente como gestor do setor + o engenheiro logado (com opção de outro responsável se aplicável).
+  - Em `aderencia/page.tsx`: atualmente envia `userName`, `userCrea`, `userAssinatura` silenciosamente do `useUserStore`; avaliar exibir o resumo das duas assinaturas na tela de configuração/finalização (sem poluir o formulário).
+  - Em `pacometria/page.tsx` e futuros módulos (`carbonatacao`, `ultrassom`, `potencial-corrosao`): já nascerem com a assinatura dupla padronizada desde o início.
+
+### Cuidados obrigatórios na execução
+
+1. **Nunca quebrar os templates já validados** (`modelo_esclerometria.docx`, `modelo_resistividade.docx`, `modelo_aderencia.docx`) — validar com testes de geração DOCX (`npm run test` + checagem de XML bem-formado, sem tags `[[...]]` sobrando, rels e content-types válidos) e `npx next build`.
+2. **Manter a regra de segurança (SSRF)**: a assinatura do usuário logado continua sendo baixada no servidor via `baixarAssinaturaDoUsuario(user)` (`user_metadata.assinatura_path`), nunca via `fetch` de URL vinda do cliente.
+3. **Atenção aos testes existentes**: em `src/app/api/ensaios/aderencia/docx/route.test.ts`, verificar se a contagem de `<w:drawing>` / `media/` precisa ser atualizada caso a imagem fixa de João entre como `<w:drawing>` estático no `modelo_aderencia.docx`.
