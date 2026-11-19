@@ -75,6 +75,8 @@ export interface SituacaoAderencia {
   /** Formato da placa de tração (padrão: circular). Define a área usada no cálculo de Ra. */
   formatoPlaca?: FormatoPlaca
   observacoesEsquema: string
+  /** Título opcional exibido no topo do gráfico de resultado desta situação (padrão automático se vazio). */
+  tituloGrafico?: string
   corposDeProva: CorpoDeProva[]
   umidadeMedia: number | null // %
   espessuraMediaRevestimento: number | null // mm

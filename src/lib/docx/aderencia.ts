@@ -23,6 +23,8 @@ const TOTAL_SUBCOLUNAS_RUPTURA = 10;
 export type SituacaoPayload = Omit<SituacaoAderencia, 'corposDeProva'> & {
   /** Esquema (croqui) já rasterizado em PNG pelo navegador (SVG → canvas). Opcional. */
   esquema?: FotoAnexo | null;
+  /** Gráfico de resultado por situação já rasterizado em PNG pelo navegador (SVG → canvas). Opcional. */
+  grafico?: FotoAnexo | null;
   corposDeProva: CorpoDeProva[];
 };
 
@@ -66,6 +68,7 @@ function corHexCamada(nome: string): string {
 // O sufixo `_END` evita que `..._1` case por engano com `..._10`.
 
 export const marcadorEsquema = (s: number) => `ESQUEMA_PH_${s}_END`;
+export const marcadorGrafico = (s: number) => `GRAFICO_PH_${s}_END`;
 export const marcadorFoto = (s: number, cp: number, k: 1 | 2) => `FOTO_PH_${s}_${cp}_${k}_END`;
 export const marcadorCorCamada = (hex: string) => `QUAD_COR_${hex}_END`;
 
@@ -117,6 +120,20 @@ export function montarDadosAderencia(payload: AderenciaDocxPayload): {
         height: sit.esquema.height,
         maxLarguraCm: 4.4,
         maxAlturaCm: 3.4,
+      });
+    }
+
+    let graficoMarcador = '';
+    if (fotoValida(sit.grafico)) {
+      graficoMarcador = marcadorGrafico(sit.numero);
+      imagens.push({
+        marcador: graficoMarcador,
+        buffer: bufferDeBase64(sit.grafico.base64),
+        contentType: sit.grafico.contentType || 'image/png',
+        width: sit.grafico.width,
+        height: sit.grafico.height,
+        maxLarguraCm: 17.0,
+        maxAlturaCm: 11.0,
       });
     }
 
@@ -241,6 +258,8 @@ export function montarDadosAderencia(payload: AderenciaDocxPayload): {
       corposDeProva,
       temFotos: linhasFotos.length > 0,
       linhasFotos,
+      temGrafico: !!graficoMarcador,
+      graficoImagem: graficoMarcador,
       raMedia: formatarNumero(stats.raMedia, 2),
       profRupturaMedia: formatarNumero(stats.profRupturaMedia, 1),
       dp: formatarNumero(stats.dp, 2),
@@ -267,6 +286,7 @@ export function montarDadosAderencia(payload: AderenciaDocxPayload): {
     nbr13754: !!n.nbr13754,
     nbr13755: !!n.nbr13755,
     situacoes,
+    temGraficos: situacoes.some(s => s.temGrafico),
     resp_nome: payload.respNome || '-',
     resp_crea: payload.respCrea || '-',
   };

@@ -2,5 +2,6 @@
 export * from './types'
 export * from './modelosCamadas'
 export * from './svgEsquema'
+export * from './svgGraficoResultado'
 export * from './utils'
 export * from './calculos'

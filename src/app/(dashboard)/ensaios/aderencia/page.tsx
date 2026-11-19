@@ -12,6 +12,8 @@ import {
   PALETA_CORES_CAMADAS,
   corCamada,
   svgEsquemaCamadas,
+  svgGraficoResultado,
+  tituloPadraoGrafico,
   numeroRomano,
   formatarRltAderencia,
   sugerirCriterioRa,
@@ -1581,6 +1583,41 @@ function SituacaoForm({
           </div>
           <Estatistica label="Espessura média" valor={stats.profRupturaMedia} unidade="mm" borderLeft />
         </div>
+
+        {/* 6. Gráfico de Resultado (por situação — vai após o anexo de fotos no relatório) */}
+        <div style={{ borderTop: '1.5px solid #94A3B8', background: '#fff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '8px 14px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+            <div>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Gráfico de Resultado
+              </span>
+              <span style={{ marginLeft: 8, fontSize: 11, color: SUBTEXT }}>
+                Incluído no relatório após o anexo de fotos
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 240px', maxWidth: 380 }}>
+              <label
+                htmlFor={`titulo-grafico-${situacao.numero}`}
+                style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+              >
+                Título:
+              </label>
+              <input
+                id={`titulo-grafico-${situacao.numero}`}
+                style={{ ...inputStyle, height: 28, fontSize: 12 }}
+                value={situacao.tituloGrafico ?? ''}
+                placeholder={tituloPadraoGrafico(situacao)}
+                onChange={e => atualizar('tituloGrafico', e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'center', background: '#fff' }}>
+            <div
+              style={{ width: '100%', maxWidth: 720, lineHeight: 0 }}
+              dangerouslySetInnerHTML={{ __html: svgGraficoResultado(situacao) }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1840,17 +1877,21 @@ export default function AderenciaPage() {
     if (!cabecalho.rltNumero.trim()) { alert('Informe o Nº do relatório (RLT) antes de gerar.'); setEtapa('config'); return; }
     setGerandoDocx(true);
     try {
-      // O esquema (SVG) é rasterizado em PNG aqui no navegador, pois o DOCX não embute SVG de forma confiável.
+      // O esquema e o gráfico (SVGs) são rasterizados em PNG aqui no navegador, pois o DOCX não embute SVG de forma confiável.
       const situacoesPayload = await Promise.all(
         situacoes.map(async (s, idx) => {
           const modelo = resolverModeloSituacao(s) ?? (s.modeloCamadasId === ID_MODELO_PERSONALIZADO ? obterPersonalizadoOuPadrao(idx) : undefined);
-          const esquema = modelo
-            ? await svgParaPng(svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas, modelo.profundidadeCorte))
-            : null;
+          const [esquema, grafico] = await Promise.all([
+            modelo
+              ? svgParaPng(svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas, modelo.profundidadeCorte))
+              : Promise.resolve(null),
+            svgParaPng(svgGraficoResultado(s), 3),
+          ]);
           return {
             ...s,
             ...(s.modeloCamadasId === ID_MODELO_PERSONALIZADO && modelo ? { modeloPersonalizado: modelo } : {}),
             esquema,
+            grafico,
           };
         })
       );

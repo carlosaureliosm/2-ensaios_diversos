@@ -12,7 +12,9 @@
 //     destaque vermelho para Ra < 0,30 MPa e rodapé bipartido (Média/DP/CV + Umidade/Espessura).
 //   - Capítulo 5 (Anexo - Sistema de Revestimento (Imagens)): no final do relatório, exibindo
 //     1 ou 2 fotos por CP conforme anexadas no site, em grade 2 colunas com moldura e legenda
-//     abaixo de cada foto contendo o nº e o nome do ponto da amostra, seguido do quadro NOTAS + Assinatura.
+//     abaixo de cada foto contendo o nº e o nome do ponto da amostra.
+//   - Capítulo 6 (Gráficos de Resultado): após o anexo de fotos, um gráfico de barras horizontais
+//     por situação (identificação das amostras nas linhas × tensão Ra em MPa), seguido do quadro NOTAS + Assinatura.
 
 const path = require('path');
 const PizZip = require(path.join(__dirname, '..', 'node_modules', 'pizzip'));
@@ -702,7 +704,45 @@ parts.push(para(run('[[/temFotos]]', { size: 2 }), { spacingBefore: 0, spacingAf
 parts.push(para(run('[[/situacoes]]', { size: 2 }), { spacingBefore: 0, spacingAfter: 0, line: 20 }));
 
 // ══════════════════════════════════════════════════════════════
-// 4. RODAPÉ FINAL — QUADRO NOTAS + ASSINATURA (LADO A LADO, IGUAL À PLANILHA)
+// 4. CAPÍTULO 6 — GRÁFICOS DE RESULTADO (APÓS O ANEXO DE FOTOS)
+// ══════════════════════════════════════════════════════════════
+parts.push(para(run('[[#temGraficos]]', { size: 2 }), { spacingBefore: 0, spacingAfter: 0, line: 20 }));
+parts.push(para('', { pageBreakBefore: true, spacingBefore: 0, spacingAfter: 0, line: 20 }));
+
+parts.push(tbl([5000], [
+  trow([
+    tc(5000, [
+      para(run('6. GRÁFICOS DE RESULTADO', { bold: true, size: 16 }), { jc: 'left' }),
+    ], {
+      align: 'left',
+      borders: { top: B_MED, bottom: B_MED, left: B_MED, right: B_MED },
+    }),
+  ]),
+], { borders: 'outer', cellMarginTop: 25, cellMarginBottom: 25, cellMarginLeft: 70, cellMarginRight: 70 }));
+
+parts.push(para(run('[[#situacoes]]', { size: 2 }), { spacingBefore: 0, spacingAfter: 0, line: 20 }));
+parts.push(para(run('[[#temGrafico]]', { size: 2 }), { spacingBefore: 0, spacingAfter: 0, line: 20 }));
+
+parts.push(para('', { spacingBefore: 40, spacingAfter: 20, line: 60 }));
+parts.push(tbl([5000], [
+  trow([
+    tc(5000, [
+      para(run('6.[[numSit]] SITUAÇÃO [[numeroRomano]]', { bold: true, size: 15 }), { jc: 'left', spacingAfter: 40 }),
+      para(run('[[graficoImagem]]'), { jc: 'center', spacingBefore: 20, spacingAfter: 20 }),
+    ], {
+      align: 'center', vAlign: 'center',
+      borders: { top: B_THIN, bottom: B_THIN, left: B_THIN, right: B_THIN },
+      margins: { top: 60, bottom: 60, left: 70, right: 70 },
+    }),
+  ], { cantSplit: true }),
+], { borders: 'none', cellMarginTop: 20, cellMarginBottom: 20 }));
+
+parts.push(para(run('[[/temGrafico]]', { size: 2 }), { spacingBefore: 0, spacingAfter: 0, line: 20 }));
+parts.push(para(run('[[/situacoes]]', { size: 2 }), { spacingBefore: 0, spacingAfter: 0, line: 20 }));
+parts.push(para(run('[[/temGraficos]]', { size: 2 }), { spacingBefore: 0, spacingAfter: 0, line: 20 }));
+
+// ══════════════════════════════════════════════════════════════
+// 5. RODAPÉ FINAL — QUADRO NOTAS + ASSINATURA (LADO A LADO, IGUAL À PLANILHA)
 // ══════════════════════════════════════════════════════════════
 parts.push(para('', { spacingBefore: 40, spacingAfter: 20, line: 80 }));
 parts.push(tbl([3150, 1850], [

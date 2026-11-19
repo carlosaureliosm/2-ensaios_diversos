@@ -231,4 +231,51 @@ describe('geração DOCX de aderência (ponta a ponta)', () => {
     expect(xml).toContain('w:fill="FFAA00"')
     expect(xml).not.toMatch(/QUAD_COR_/)
   })
+
+  it('inclui seção 6. GRÁFICOS DE RESULTADO por situação após o anexo de fotos', async () => {
+    const s1 = { ...situacao(1, 'piso-contrapiso', 4, true), grafico: foto(720, 276) }
+    const s2 = { ...situacao(2, 'piso-contrapiso', 6, false), grafico: foto(720, 332) }
+    const body = {
+      cabecalho: {
+        rltNumero: '77', cliente: 'Cliente', obra: 'Obra', construtora: 'Construtora',
+        endereco: 'Rua C, 3', dataEmissao: '2026-11-19',
+        normas: { nbr13528_1: true, nbr13528_1_parte2: false, nbr13528_1_parte3: false, nbr13749: false, nbr13753: false, nbr13754: false, nbr13755: false },
+      },
+      situacoes: [s1, s2],
+      respNome: 'Eng. Teste', respCrea: '99999',
+    }
+
+    const res = await POST(new NextRequest('http://localhost/api/ensaios/aderencia/docx', { method: 'POST', body: JSON.stringify(body) }))
+    expect(res.status).toBe(200)
+    const zip = new PizZip(Buffer.from(await res.arrayBuffer()))
+    const xml = zip.file('word/document.xml')!.asText()
+
+    expect(xml).not.toMatch(/\[\[|\]\]/)
+    expect(xml).not.toMatch(/_PH_|PLACEHOLDER/)
+    expect(xml).toContain('6. GRÁFICOS DE RESULTADO')
+    expect(xml).toContain('6.1 SITUAÇÃO I')
+    expect(xml).toContain('6.2 SITUAÇÃO II')
+
+    // Ordem no documento: Capítulo 4 -> Capítulo 5 (Anexo de fotos) -> Capítulo 6 (Gráficos) -> NOTAS finais
+    const idxCap4 = xml.indexOf('4. SISTEMA DE REVESTIMENTO')
+    const idxCap5 = xml.indexOf('5. ANEXO - SISTEMA DE REVESTIMENTO (IMAGENS)')
+    const idxCap6 = xml.indexOf('6. GRÁFICOS DE RESULTADO')
+    const idxNotas = xml.indexOf('NOTAS:')
+    expect(idxCap4).toBeGreaterThan(-1)
+    expect(idxCap5).toBeGreaterThan(idxCap4)
+    expect(idxCap6).toBeGreaterThan(idxCap5)
+    expect(idxNotas).toBeGreaterThan(idxCap6)
+
+    // 2 esquemas + 4*2 fotos da s1 + 2 gráficos = 12 drawings
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(12)
+
+    // XML bem-formado
+    const pilha: string[] = []
+    for (const m of xml.matchAll(/<(\/?)([\w:.-]+)(?:\s[^>]*?)?(\/?)>/g)) {
+      if (m[3] === '/') continue
+      if (m[1] === '/') expect(pilha.pop()).toBe(m[2])
+      else pilha.push(m[2])
+    }
+    expect(pilha).toEqual([])
+  })
 })
