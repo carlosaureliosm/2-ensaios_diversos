@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header';
-import { PlanilhaStyles, EnsaioCabecalho, EnsaioTabs } from '@/components/PlanilhaUI';
+import { PlanilhaStyles, EnsaioCabecalho, EnsaioTabs, InteiroInput } from '@/components/PlanilhaUI';
 import { ResponsavelTecnicoPanel } from '@/components/ResponsavelTecnicoPanel';
 import {
   MODELOS_SISTEMA_CAMADAS,
@@ -2317,14 +2317,11 @@ export default function AderenciaPage() {
                   >
                     −
                   </button>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
+                  <InteiroInput
                     value={numSituacoes}
                     min={MIN_SITUACOES}
                     max={MAX_SITUACOES}
-                    onChange={e => alterarNumSituacoes(Number(e.target.value) || MIN_SITUACOES)}
+                    onChange={alterarNumSituacoes}
                     style={{ width: 60, textAlign: 'center', padding: '9px 6px', borderRadius: 7, border: `1.5px solid ${BORDER}`, fontSize: 15, fontWeight: 700, color: TEXT, fontFamily: 'inherit' }}
                   />
                   <button

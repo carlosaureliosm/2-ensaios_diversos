@@ -11,6 +11,7 @@ import {
   PlanilhaStyles,
   EnsaioCabecalho,
   EnsaioTabs,
+  InteiroInput,
   fichaInputStyle,
   tabelaHeaderStyle,
   tabelaThTextStyle,
@@ -533,19 +534,19 @@ function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: ModalAmos
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px 16px', marginBottom: 20 }}>
                 {isCirc ? (
                   <>
-                    <Campo label="Diâmetro D (cm)" htmlFor="geom-d"><input id="geom-d" type="number" inputMode="numeric" pattern="[0-9]*" style={inputStyle} value={D} min={5} onChange={e => setD(Number(e.target.value))} /></Campo>
-                    <Campo label="Nº barras (total)" htmlFor="geom-bcirc"><input id="geom-bcirc" type="number" inputMode="numeric" pattern="[0-9]*" style={inputStyle} value={barras['circ'] ?? 6} min={1} onChange={e => setBarras(p => ({ ...p, circ: Number(e.target.value) }))} /></Campo>
+                    <Campo label="Diâmetro D (cm)" htmlFor="geom-d"><InteiroInput id="geom-d" style={inputStyle} value={D} min={5} onChange={setD} /></Campo>
+                    <Campo label="Nº barras (total)" htmlFor="geom-bcirc"><InteiroInput id="geom-bcirc" style={inputStyle} value={barras['circ'] ?? 6} min={1} onChange={n => setBarras(p => ({ ...p, circ: n }))} /></Campo>
                   </>
                 ) : (
                   <>
-                    <Campo label="Dimensão X (cm)" htmlFor="geom-x"><input id="geom-x" type="number" inputMode="numeric" pattern="[0-9]*" style={inputStyle} value={X} min={5} onChange={e => setX(Number(e.target.value))} /></Campo>
-                    <Campo label="Dimensão Y (cm)" htmlFor="geom-y"><input id="geom-y" type="number" inputMode="numeric" pattern="[0-9]*" style={inputStyle} value={Y} min={5} onChange={e => setY(Number(e.target.value))} /></Campo>
+                    <Campo label="Dimensão X (cm)" htmlFor="geom-x"><InteiroInput id="geom-x" style={inputStyle} value={X} min={5} onChange={setX} /></Campo>
+                    <Campo label="Dimensão Y (cm)" htmlFor="geom-y"><InteiroInput id="geom-y" style={inputStyle} value={Y} min={5} onChange={setY} /></Campo>
                     {/* Barras por face habilitada */}
                     {(['1X', '2X', '1Y', '2Y'] as string[]).map(f => {
                       const enabled = faces.includes(f);
                       return (
                         <Campo key={f} label={`Barras ${FACE_LABELS[f]}`} htmlFor={`geom-b${f}`}>
-                          <input id={`geom-b${f}`} type="number" inputMode="numeric" pattern="[0-9]*" style={{ ...inputStyle, opacity: enabled ? 1 : 0.4 }} disabled={!enabled} value={barras[f] ?? 2} min={1} onChange={e => setBarras(p => ({ ...p, [f]: Number(e.target.value) }))} />
+                          <InteiroInput id={`geom-b${f}`} style={{ ...inputStyle, opacity: enabled ? 1 : 0.4 }} disabled={!enabled} value={barras[f] ?? 2} min={1} onChange={n => setBarras(p => ({ ...p, [f]: n }))} />
                         </Campo>
                       );
                     })}
@@ -591,10 +592,13 @@ function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: ModalAmos
                         {/* nEstribos */}
                         <div style={{ marginBottom: 12 }}>
                           <Campo label="Nº de estribos no trecho" htmlFor={`ne-${face}`}>
-                            <input id={`ne-${face}`} type="number" inputMode="numeric" pattern="[0-9]*" style={{ ...inputStyle, maxWidth: 120 }} value={fd.nEstribos} min={1} onChange={e => {
-                              const n = Math.max(1, parseInt(e.target.value) || 1);
-                              updateFaceData(face, f => ensureFaceArrays({ ...f, nEstribos: n }, nBarras));
-                            }} />
+                            <InteiroInput
+                              id={`ne-${face}`}
+                              style={{ ...inputStyle, maxWidth: 120 }}
+                              value={fd.nEstribos}
+                              min={1}
+                              onChange={n => updateFaceData(face, f => ensureFaceArrays({ ...f, nEstribos: n }, nBarras))}
+                            />
                           </Campo>
                         </div>
                         <div style={{ height: 1, background: BORDER, marginBottom: 12 }} />

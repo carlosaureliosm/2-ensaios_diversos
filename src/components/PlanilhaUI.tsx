@@ -4,7 +4,8 @@
 // (referência: módulo de Aderência). Usado por todos os módulos de ensaio
 // existentes e futuros para manter cores, tabelas, fichas e responsividade uniformes.
 
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
 
 export const CORES_PLANILHA = {
   PRIMARY: '#1E3264',
@@ -492,5 +493,96 @@ export function EnsaioTabs<T extends string>({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Campo numérico inteiro padronizado (type="text" + inputMode="numeric").
+ * Permite apagar o conteúdo livremente durante a digitação sem restaurar o mínimo
+ * no meio do onChange; o valor mínimo/fallback só é aplicado no onBlur.
+ */
+export function InteiroInput({
+  value,
+  onChange,
+  min = 1,
+  max,
+  fallback,
+  id,
+  style,
+  className,
+  disabled,
+  placeholder,
+  onKeyDown,
+}: {
+  value: number;
+  onChange: (valor: number) => void;
+  min?: number;
+  max?: number;
+  fallback?: number;
+  id?: string;
+  style?: CSSProperties;
+  className?: string;
+  disabled?: boolean;
+  placeholder?: string;
+  onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
+}) {
+  const [texto, setTexto] = useState(String(value));
+  const focadoRef = useRef(false);
+
+  useEffect(() => {
+    if (!focadoRef.current) {
+      setTexto(String(value));
+    }
+  }, [value]);
+
+  const handleChange = (bruto: string) => {
+    const digitos = bruto.replace(/\D/g, '');
+    if (digitos === '') {
+      setTexto('');
+      return;
+    }
+    let n = parseInt(digitos, 10);
+    if (max !== undefined && n > max) {
+      n = max;
+      setTexto(String(n));
+    } else {
+      setTexto(digitos);
+    }
+    if (n >= min) {
+      onChange(n);
+    }
+  };
+
+  const handleBlur = () => {
+    focadoRef.current = false;
+    const padrao = fallback ?? min;
+    const n = texto === '' ? padrao : parseInt(texto, 10);
+    let final = Number.isNaN(n) ? padrao : n;
+    if (final < min) final = min;
+    if (max !== undefined && final > max) final = max;
+    setTexto(String(final));
+    if (final !== value) {
+      onChange(final);
+    }
+  };
+
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      className={className}
+      disabled={disabled}
+      placeholder={placeholder}
+      style={style}
+      value={texto}
+      onFocus={() => {
+        focadoRef.current = true;
+      }}
+      onChange={(e) => handleChange(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={onKeyDown}
+    />
   );
 }
