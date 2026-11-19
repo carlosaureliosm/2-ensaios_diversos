@@ -1476,6 +1476,17 @@ function Estatistica({ label, valor, unidade, borderLeft = false }: { label: str
     </div>
   );
 }
+/** Painel no padrão "planilha técnica": barra azul-escura de título + corpo em grade contínua. */
+function PainelPlanilha({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div style={{ border: '1px solid #94A3B8', borderRadius: 8, overflow: 'hidden', background: '#fff', marginBottom: 14 }}>
+      <div style={{ background: PRIMARY, padding: '8px 14px' }}>
+        <span style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{titulo}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
 function CelulaFicha({ label, children, borderRight = false, borderBottom = true }: {
   label: string; children: React.ReactNode; borderRight?: boolean; borderBottom?: boolean;
 }) {
@@ -1770,6 +1781,15 @@ export default function AderenciaPage() {
           display: grid;
           grid-template-columns: auto minmax(0, 1fr);
         }
+        .aderencia-cab-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .aderencia-normas-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 6px 16px;
+        }
         .aderencia-tripla-row {
           display: grid;
           grid-template-columns: 1.35fr 1fr 0.9fr;
@@ -1800,7 +1820,7 @@ export default function AderenciaPage() {
           .ficha-celula {
             border-right: none !important;
           }
-          .aderencia-tripla-row {
+          .aderencia-tripla-row, .aderencia-cab-grid, .aderencia-normas-grid {
             grid-template-columns: 1fr !important;
           }
           .aderencia-esquema-row, .aderencia-esquema-sit {
@@ -1870,33 +1890,34 @@ export default function AderenciaPage() {
 
         {etapa === 'config' && (
           <>
-            <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
-              <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Cabeçalho do relatório</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '12px 16px' }}>
-                <Campo label="Nº RLT" htmlFor="ad-rlt"><input id="ad-rlt" inputMode="numeric" style={inputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', somenteDigitos(e.target.value))} placeholder="Ex: 045" /></Campo>
-                <Campo label="Cliente" htmlFor="ad-cliente"><input id="ad-cliente" style={inputStyle} value={cabecalho.cliente} onChange={e => atualizarCabecalho('cliente', e.target.value)} /></Campo>
-                <Campo label="Obra" htmlFor="ad-obra"><input id="ad-obra" style={inputStyle} value={cabecalho.obra} onChange={e => atualizarCabecalho('obra', e.target.value)} /></Campo>
-                <Campo label="Construtora" htmlFor="ad-construtora"><input id="ad-construtora" style={inputStyle} value={cabecalho.construtora} onChange={e => atualizarCabecalho('construtora', e.target.value)} /></Campo>
-                <Campo label="Endereço" htmlFor="ad-endereco"><input id="ad-endereco" style={inputStyle} value={cabecalho.endereco} onChange={e => atualizarCabecalho('endereco', e.target.value)} /></Campo>
-                <Campo label="Data de emissão" htmlFor="ad-data"><input id="ad-data" type="date" style={inputStyle} value={cabecalho.dataEmissao} onChange={e => atualizarCabecalho('dataEmissao', e.target.value)} /></Campo>
+            <PainelPlanilha titulo="Cabeçalho do relatório">
+              <div className="aderencia-cab-grid">
+                <CelulaFicha label="Nº RLT" borderRight><input id="ad-rlt" inputMode="numeric" style={fichaInputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', somenteDigitos(e.target.value))} placeholder="EX: 045" /></CelulaFicha>
+                <CelulaFicha label="Cliente" borderRight><input id="ad-cliente" style={fichaInputStyle} value={cabecalho.cliente} onChange={e => atualizarCabecalho('cliente', e.target.value)} /></CelulaFicha>
+                <CelulaFicha label="Obra"><input id="ad-obra" style={fichaInputStyle} value={cabecalho.obra} onChange={e => atualizarCabecalho('obra', e.target.value)} /></CelulaFicha>
+                <CelulaFicha label="Construtora" borderRight><input id="ad-construtora" style={fichaInputStyle} value={cabecalho.construtora} onChange={e => atualizarCabecalho('construtora', e.target.value)} /></CelulaFicha>
+                <CelulaFicha label="Endereço" borderRight><input id="ad-endereco" style={fichaInputStyle} value={cabecalho.endereco} onChange={e => atualizarCabecalho('endereco', e.target.value)} /></CelulaFicha>
+                <CelulaFicha label="Data de emissão"><input id="ad-data" type="date" style={fichaInputStyle} value={cabecalho.dataEmissao} onChange={e => atualizarCabecalho('dataEmissao', e.target.value)} /></CelulaFicha>
               </div>
-              <p style={{ margin: '18px 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Norma(s) de referência</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {NORMAS_OPCOES.map(n => (
-                  <label key={n.campo} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: TEXT, marginLeft: n.sub ? 24 : 0, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={cabecalho.normas[n.campo]}
-                      onChange={e => atualizarCabecalho('normas', { ...cabecalho.normas, [n.campo]: e.target.checked })}
-                    />
-                    {n.label}
-                  </label>
-                ))}
+              <div style={{ padding: '8px 12px 10px', borderTop: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+                <p style={{ margin: '0 0 6px', fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Norma(s) de referência</p>
+                <div className="aderencia-normas-grid">
+                  {NORMAS_OPCOES.map(n => (
+                    <label key={n.campo} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: TEXT, marginLeft: n.sub ? 22 : 0, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={cabecalho.normas[n.campo]}
+                        onChange={e => atualizarCabecalho('normas', { ...cabecalho.normas, [n.campo]: e.target.checked })}
+                      />
+                      {n.label}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            </PainelPlanilha>
 
-            <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
-              <Campo label="Número de Situações">
+            <PainelPlanilha titulo="Número de situações">
+              <div style={{ padding: '10px 14px', background: '#fff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <button
                     type="button"
@@ -1924,16 +1945,16 @@ export default function AderenciaPage() {
                   </button>
                   <span style={{ fontSize: 12, color: SUBTEXT }}>Situação{numSituacoes > 1 ? 'ões' : ''} {numeroRomano(1)}{numSituacoes > 1 ? ` a ${numeroRomano(numSituacoes)}` : ''}</span>
                 </div>
-              </Campo>
-            </div>
+              </div>
+            </PainelPlanilha>
 
             {modeloPorSituacao.map((modeloId, i) => {
               const modeloCustom = obterPersonalizadoOuPadrao(i);
               const isCustom = modeloId === ID_MODELO_PERSONALIZADO;
               return (
-                <div key={i} className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
-                  <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: PRIMARY }}>Situação {numeroRomano(i + 1)} — Modelo de sistema de camadas</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 14 }}>
+                <PainelPlanilha key={i} titulo={`Situação ${numeroRomano(i + 1)} — Modelo de sistema de camadas`}>
+                  <div style={{ padding: 12, background: '#fff' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
                     {MODELOS_SISTEMA_CAMADAS.map(modelo => (
                       <ModeloCard key={modelo.id} modelo={modelo} selecionado={modeloId === modelo.id} onSelecionar={() => selecionarModelo(i, modelo.id)} />
                     ))}
@@ -1951,7 +1972,8 @@ export default function AderenciaPage() {
                       onChange={(nextM, nextManuais) => atualizarModeloPersonalizado(i, nextM, nextManuais)}
                     />
                   )}
-                </div>
+                  </div>
+                </PainelPlanilha>
               );
             })}
 
