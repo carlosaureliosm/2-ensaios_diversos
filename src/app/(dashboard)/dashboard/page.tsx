@@ -2,19 +2,20 @@
 
 import { useState } from 'react';
 import Header from '@/components/Header';
+import { EnsaioIcon } from '@/components/EnsaioIcons';
 
-type Ensaio = { id: string; label: string; href: string; icon: string; emBreve?: boolean };
+type Ensaio = { id: string; label: string; href: string; emBreve?: boolean };
 
 // emBreve: módulo cuja página ainda é só um placeholder ("Módulo em construção.") — ver
 // src/app/(dashboard)/ensaios/{carbonatacao,ultrassom,potencial-corrosao}/page.tsx.
 const ENSAIOS: Ensaio[] = [
-  { id: 'esclerometria', label: 'Esclerometria',             href: '/ensaios/esclerometria',      icon: '⬡' },
-  { id: 'pacometria',    label: 'Pacometria',                href: '/ensaios/pacometria',          icon: '⊕' },
-  { id: 'resistividade', label: 'Resistividade do Concreto', href: '/ensaios/resistividade',       icon: '∿' },
-  { id: 'potencial',     label: 'Potencial de Corrosão',     href: '/ensaios/potencial-corrosao',  icon: '⚡', emBreve: true },
-  { id: 'carbonatacao',  label: 'Carbonatação',              href: '/ensaios/carbonatacao',        icon: '◈', emBreve: true },
-  { id: 'ultrassom',     label: 'Ultrassom',                 href: '/ensaios/ultrassom',           icon: '◎', emBreve: true },
-  { id: 'aderencia',     label: 'Aderência',                 href: '/ensaios/aderencia',           icon: '⬢' },
+  { id: 'esclerometria', label: 'Esclerometria',             href: '/ensaios/esclerometria', },
+  { id: 'pacometria',    label: 'Pacometria',                href: '/ensaios/pacometria', },
+  { id: 'resistividade', label: 'Resistividade do Concreto', href: '/ensaios/resistividade', },
+  { id: 'potencial',     label: 'Potencial de Corrosão',     href: '/ensaios/potencial-corrosao', emBreve: true },
+  { id: 'carbonatacao',  label: 'Carbonatação',              href: '/ensaios/carbonatacao', emBreve: true },
+  { id: 'ultrassom',     label: 'Ultrassom',                 href: '/ensaios/ultrassom', emBreve: true },
+  { id: 'aderencia',     label: 'Aderência',                 href: '/ensaios/aderencia', },
 ];
 
 export default function DashboardPage() {
@@ -142,9 +143,9 @@ export default function DashboardPage() {
               )}
               <span
                 className="card-icon"
-                style={{ fontSize: 22, color: '#CBD2E0', transition: 'color 0.2s', lineHeight: 1, marginBottom: 12 }}
+                style={{ color: '#CBD2E0', transition: 'color 0.2s', lineHeight: 0, marginBottom: 12 }}
               >
-                {ensaio.icon}
+                <EnsaioIcon id={ensaio.id} size={44} />
               </span>
               <div style={{ width: '100%' }}>
                 <span
