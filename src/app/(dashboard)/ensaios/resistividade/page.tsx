@@ -5,6 +5,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { buscarUrlAssinatura } from '@/lib/assinatura';
+import {
+  PainelPlanilha,
+  CelulaFicha,
+  PlanilhaStyles,
+  fichaInputStyle,
+  tabelaHeaderStyle,
+  tabelaThTextStyle,
+} from '@/components/PlanilhaUI';
 
 // ── Constantes visuais ──────────────────────────────────────────
 const PRIMARY     = '#1E3264';
@@ -576,6 +584,7 @@ export default function ResistividadePage() {
         }
       `}</style>
 
+      <PlanilhaStyles />
       <Header displayName={userName || userEmail} initials={initials} cargo={userCargo} onSignOut={handleSignOut} />
 
       {/* Modal bottom-sheet — ponto do Modo Obra */}
@@ -706,52 +715,61 @@ export default function ResistividadePage() {
         {/* ABA 1 — Cabeçalho e Aparelho                          */}
         {/* ═══════════════════════════════════════════════════════ */}
         {aba === 'cabecalho' && (
-          <div style={{ paddingTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ paddingTop: 18 }}>
 
             {/* Dados da Obra */}
-            <section className="section-pad" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Dados da Obra e Cliente</h3>
-              <div className="grid-rlt" style={{ display: 'grid', gridTemplateColumns: '140px 150px 1fr', gap: '12px 16px', marginBottom: 12 }}>
-                <Campo label="Nº do RLT" htmlFor="rlt-input"><input id="rlt-input" style={inputStyle} inputMode="numeric" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} /></Campo>
-                <Campo label="Data de Emissão" htmlFor="data-input"><input id="data-input" style={inputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} /></Campo>
-                <Campo label="Cliente" htmlFor="cliente-input"><input id="cliente-input" style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.cliente} onChange={e => setCab(c => ({ ...c, cliente: e.target.value.toUpperCase() }))} placeholder="NOME DO CLIENTE" /></Campo>
+            <PainelPlanilha titulo="Dados da Obra e Cliente">
+              <div className="planilha-grid-rlt">
+                <CelulaFicha label="Nº do RLT" htmlFor="rlt-input" borderRight>
+                  <input id="rlt-input" style={fichaInputStyle} inputMode="numeric" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} />
+                </CelulaFicha>
+                <CelulaFicha label="Data de Emissão" htmlFor="data-input" borderRight>
+                  <input id="data-input" style={fichaInputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} />
+                </CelulaFicha>
+                <CelulaFicha label="Cliente" htmlFor="cliente-input">
+                  <input id="cliente-input" style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.cliente} onChange={e => setCab(c => ({ ...c, cliente: e.target.value.toUpperCase() }))} placeholder="NOME DO CLIENTE" />
+                </CelulaFicha>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px', marginBottom: 12 }}>
-                <Campo label="Obra" htmlFor="obra-input"><input id="obra-input" style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.obra} onChange={e => setCab(c => ({ ...c, obra: e.target.value.toUpperCase() }))} placeholder="DESCRIÇÃO DA OBRA" /></Campo>
-                <Campo label="A/C (Att.)" htmlFor="att-input"><input id="att-input" style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.att} onChange={e => setCab(c => ({ ...c, att: e.target.value.toUpperCase() }))} placeholder="A/C DE…" /></Campo>
+              <div className="planilha-grid-2">
+                <CelulaFicha label="Obra" htmlFor="obra-input" borderRight>
+                  <input id="obra-input" style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.obra} onChange={e => setCab(c => ({ ...c, obra: e.target.value.toUpperCase() }))} placeholder="DESCRIÇÃO DA OBRA" />
+                </CelulaFicha>
+                <CelulaFicha label="A/C (Att.)" htmlFor="att-input">
+                  <input id="att-input" style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.att} onChange={e => setCab(c => ({ ...c, att: e.target.value.toUpperCase() }))} placeholder="A/C DE…" />
+                </CelulaFicha>
               </div>
-              <Campo label="Endereço" htmlFor="end-input"><input id="end-input" style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.endereco} onChange={e => setCab(c => ({ ...c, endereco: e.target.value.toUpperCase() }))} placeholder="ENDEREÇO COMPLETO DA OBRA" /></Campo>
-              <div style={{ marginTop: 12 }}>
-                <Campo label="Coordenadas GPS (Opcional — Prioridade Sobre Endereço no Mapa)" htmlFor="gps-input">
-                  <input id="gps-input" style={inputStyle} value={gps} onChange={e => setGps(e.target.value)} placeholder="Ex: -8.0522,-34.9286" />
-                </Campo>
-                <p style={{ margin: '5px 0 0', fontSize: 11, color: SUBTEXT }}>Se preenchido, o pino do mapa será posicionado nas coordenadas informadas.</p>
+              <div className="planilha-grid-2">
+                <CelulaFicha label="Endereço" htmlFor="end-input" borderRight borderBottom={false}>
+                  <input id="end-input" style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.endereco} onChange={e => setCab(c => ({ ...c, endereco: e.target.value.toUpperCase() }))} placeholder="ENDEREÇO COMPLETO DA OBRA" />
+                </CelulaFicha>
+                <CelulaFicha label="Coordenadas GPS (Opcional — prioridade no mapa)" htmlFor="gps-input" borderBottom={false}>
+                  <input id="gps-input" style={fichaInputStyle} value={gps} onChange={e => setGps(e.target.value)} placeholder="Ex: -8.0522,-34.9286" />
+                </CelulaFicha>
               </div>
-            </section>
+            </PainelPlanilha>
 
             {/* Responsável técnico */}
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Responsável Técnico</h3>
-
+            <PainelPlanilha titulo="Responsável Técnico">
+              <div style={{ padding: '14px' }}>
               {/* Bloco padrão — dados do perfil */}
               <div style={{
                 display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
-                padding: '14px 16px', borderRadius: 10,
-                background: outroResp ? '#F8F9FA' : '#F0F4FC',
-                border: `1.5px solid ${outroResp ? BORDER : PRIMARY + '44'}`,
-                marginBottom: 14, opacity: outroResp ? 0.5 : 1,
+                padding: '12px 14px', borderRadius: 8,
+                background: outroResp ? '#F8FAFC' : '#F1F5F9',
+                border: `1px solid ${outroResp ? '#E2E8F0' : '#CBD5E1'}`,
+                marginBottom: 12, opacity: outroResp ? 0.5 : 1,
                 transition: 'all 0.2s',
               }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Engenheiro Responsável TECOMAT</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: TEXT }}>{userName || <span style={{ color: SUBTEXT }}>—</span>}</p>
+                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Engenheiro Responsável TECOMAT</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: TEXT }}>{userName || <span style={{ color: SUBTEXT }}>—</span>}</p>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>CREA</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: userCrea ? TEXT : SUBTEXT }}>{userCrea || 'Não cadastrado'}</p>
+                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>CREA</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: userCrea ? TEXT : SUBTEXT }}>{userCrea || 'Não cadastrado'}</p>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Assinatura</p>
+                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Assinatura</p>
                   {userAssinatura
                     ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -763,7 +781,7 @@ export default function ResistividadePage() {
               </div>
 
               {/* Checkbox outro responsável */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: outroResp ? 14 : 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: outroResp ? 12 : 0 }}>
                 <input
                   type="checkbox"
                   checked={outroResp}
@@ -773,7 +791,7 @@ export default function ResistividadePage() {
                   }}
                   style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: 13, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT }}>
                   Outro responsável para este relatório
                 </span>
               </label>
@@ -781,10 +799,10 @@ export default function ResistividadePage() {
               {/* Campos expandidos quando "outro responsável" marcado */}
               {outroResp && (
                 <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 14,
-                  padding: '16px', borderRadius: 10,
-                  background: '#F0F4FC',
-                  border: `1.5px solid ${PRIMARY}44`,
+                  display: 'flex', flexDirection: 'column', gap: 12,
+                  padding: '14px', borderRadius: 8,
+                  background: '#F8FAFC',
+                  border: '1px solid #CBD5E1',
                   animation: 'fadeIn 0.15s ease',
                 }}>
                   <div className="grid-outro-resp" style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '12px 16px' }}>
@@ -807,15 +825,16 @@ export default function ResistividadePage() {
                   </Campo>
                 </div>
               )}
-            </section>
-            {/* Opções do Relatório */}
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Opções do Relatório</h3>
+              </div>
+            </PainelPlanilha>
 
+            {/* Opções do Relatório */}
+            <PainelPlanilha titulo="Opções do Relatório">
+              <div style={{ padding: '14px' }}>
               {/* Motivação */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: TEXT }}>
-                  <input type="checkbox" checked={usaMotivacao} onChange={e => setUsaMotivacao(e.target.checked)} />
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12.5, color: usaMotivacao ? PRIMARY : SUBTEXT }}>
+                  <input type="checkbox" checked={usaMotivacao} onChange={e => setUsaMotivacao(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
                   Incluir motivação do ensaio
                 </label>
                 {usaMotivacao && (
@@ -831,9 +850,9 @@ export default function ResistividadePage() {
               </div>
 
               {/* Foto geral */}
-              <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: TEXT }}>
-                  <input type="checkbox" checked={usaFotoGeral} onChange={e => { setUsaFotoGeral(e.target.checked); if (!e.target.checked) { setFotoGeralFile(null); setFotoGeralPreview(null); } }} />
+              <div style={{ paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12.5, color: usaFotoGeral ? PRIMARY : SUBTEXT }}>
+                  <input type="checkbox" checked={usaFotoGeral} onChange={e => { setUsaFotoGeral(e.target.checked); if (!e.target.checked) { setFotoGeralFile(null); setFotoGeralPreview(null); } }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
                   Incluir foto geral da estrutura
                 </label>
                 {usaFotoGeral && (
@@ -851,9 +870,9 @@ export default function ResistividadePage() {
               </div>
 
               {/* Croqui */}
-              <div style={{ marginTop: 16 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: TEXT }}>
-                  <input type="checkbox" checked={usaCroqui} onChange={e => { setUsaCroqui(e.target.checked); if (!e.target.checked) { setCroquiFile(null); setCroquiPreview(null); } }} />
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12.5, color: usaCroqui ? PRIMARY : SUBTEXT }}>
+                  <input type="checkbox" checked={usaCroqui} onChange={e => { setUsaCroqui(e.target.checked); if (!e.target.checked) { setCroquiFile(null); setCroquiPreview(null); } }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
                   Incluir croqui com indicação dos elementos ensaiados
                 </label>
                 {usaCroqui && (
@@ -869,16 +888,18 @@ export default function ResistividadePage() {
                   </div>
                 )}
               </div>
-            </section>
+              </div>
+            </PainelPlanilha>
 
             {/* Notas */}
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Notas / Observações</h3>
-              <textarea value={cab.notas} onChange={e => setCab(c => ({ ...c, notas: e.target.value }))} rows={3} placeholder="Observações gerais sobre o ensaio…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
-            </section>
+            <PainelPlanilha titulo="Notas / Observações">
+              <CelulaFicha label="Observações gerais" borderBottom={false}>
+                <textarea value={cab.notas} onChange={e => setCab(c => ({ ...c, notas: e.target.value }))} rows={3} placeholder="Observações gerais sobre o ensaio…" style={{ ...fichaInputStyle, height: 'auto', minHeight: 64, resize: 'vertical', lineHeight: 1.5, padding: '4px 0' }} />
+              </CelulaFicha>
+            </PainelPlanilha>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setAba('campo')} className="btn-pri" style={{ padding: '11px 28px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', backgroundColor: PRIMARY, color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(30,50,100,0.2)', transition: 'all 0.15s' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <button onClick={() => setAba('campo')} className="btn-pri" style={{ padding: '11px 22px', borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', backgroundColor: PRIMARY, color: '#fff', border: 'none', transition: 'all 0.15s' }}>
                 Avançar para Dados de Campo →
               </button>
             </div>
@@ -889,38 +910,38 @@ export default function ResistividadePage() {
         {/* ABA 2 — Dados de Campo                                */}
         {/* ═══════════════════════════════════════════════════════ */}
         {aba === 'campo' && (
-          <div style={{ paddingTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ paddingTop: 18 }}>
 
             {/* Formulário inserção */}
-            <section style={{ background: '#fff', border: `1px solid ${editandoId ? GOLD : BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, color: editandoId ? '#8B6914' : PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                  {editandoId ? '✎  Editando Medição' : '+  Inserir Nova Medição'}
-                </h3>
-                {grupos.filter(g => g.pontos.length > 0).length > 0 && !editandoId && (
-                  <button onClick={() => setShowImportar(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: GREEN_LIGHT, color: GREEN, border: `1.5px solid ${GREEN_BORDER}` }}>
+            <PainelPlanilha
+              titulo={editandoId ? '✎ Editando Medição' : '+ Inserir Nova Medição'}
+              corBarra={editandoId ? '#8B6914' : PRIMARY}
+              direita={
+                grupos.filter(g => g.pontos.length > 0).length > 0 && !editandoId ? (
+                  <button onClick={() => setShowImportar(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#DCFCE7', color: '#166534', border: 'none' }}>
                     Importar do Modo Obra ({grupos.reduce((s, g) => s + g.pontos.length, 0)})
                   </button>
-                )}
-              </div>
-
+                ) : undefined
+              }
+            >
+              <div style={{ padding: '14px' }}>
               {/* Identificação + posição */}
-              <div className="grid-med-id" style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 16, marginBottom: 16 }}>
+              <div className="grid-med-id" style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 14, marginBottom: 14 }}>
                 <Campo label="Identificação do elemento (ex: P7 – 6º Andar)" htmlFor="elem-input">
                   <input id="elem-input" style={{ ...inputStyle, textTransform: 'uppercase' }} value={elemento} onChange={e => setElemento(e.target.value.toUpperCase())} placeholder="EX: P7 – 6º ANDAR, V3 – VIGA COBERTURA…" onKeyDown={e => e.key === 'Enter' && leituraRefs.current[0]?.focus()} />
                 </Campo>
                 <Campo label="Posição">
                   <div style={{ display: 'flex', gap: 6 }}>
                     {['Superior', 'Inferior', 'Lateral'].map(p => (
-                      <button key={p} onClick={() => setPosicao(p)} style={{ flex: 1, padding: '8px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: posicao === p ? PRIMARY : '#F0F2F8', color: posicao === p ? '#fff' : SUBTEXT, border: `2px solid ${posicao === p ? PRIMARY : 'transparent'}` }}>{p}</button>
+                      <button key={p} onClick={() => setPosicao(p)} style={{ flex: 1, padding: '8px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: posicao === p ? PRIMARY : '#F1F5F9', color: posicao === p ? '#fff' : SUBTEXT, border: `1.5px solid ${posicao === p ? PRIMARY : '#E2E8F0'}` }}>{p}</button>
                     ))}
                   </div>
                 </Campo>
               </div>
 
               {/* 5 leituras */}
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Leituras de Resistividade (kΩ·cm) — mínimo 1, máximo 5
                 </p>
                 <div className="leituras-wrap" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -937,7 +958,7 @@ export default function ResistividadePage() {
                           else if (e.key === 'Enter') { e.preventDefault(); const nx = leituraRefs.current[i + 1]; if (nx) nx.focus(); else processarMedicao(); }
                         }}
                         placeholder="0,0"
-                        style={{ width: 68, textAlign: 'center', padding: '9px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 7, fontSize: 14, fontFamily: 'inherit', color: TEXT, background: v ? '#F0F4FC' : '#fff', outline: 'none', transition: 'all 0.1s' }}
+                        style={{ width: 68, textAlign: 'center', padding: '8px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 7, fontSize: 14, fontFamily: 'inherit', color: TEXT, background: v ? '#EFF6FF' : '#fff', outline: 'none', transition: 'all 0.1s' }}
                         className="num-in"
                         aria-label={`Leitura ${i + 1}`}
                       />
@@ -947,8 +968,8 @@ export default function ResistividadePage() {
               </div>
 
               {/* Foto do ponto */}
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Foto do Ponto (memorial fotográfico)</p>
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Foto do Ponto (memorial fotográfico)</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <input ref={fotoInputRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; setFotoFile(f); setFotoPreview(URL.createObjectURL(f)); }} />
                   <button onClick={() => fotoInputRef.current?.click()} aria-label={fotoPreview ? 'Trocar foto do ponto' : 'Selecionar foto do ponto'} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>
@@ -966,32 +987,37 @@ export default function ResistividadePage() {
               </div>
 
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={processarMedicao} disabled={!elemento.trim()} className="btn-pri" style={{ padding: '10px 22px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: elemento.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', backgroundColor: editandoId ? GOLD : PRIMARY, color: editandoId ? PRIMARY : '#fff', border: 'none', opacity: elemento.trim() ? 1 : 0.5 }}>
+                <button onClick={processarMedicao} disabled={!elemento.trim()} className="btn-pri" style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: elemento.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', backgroundColor: editandoId ? GOLD : PRIMARY, color: editandoId ? PRIMARY : '#fff', border: 'none', opacity: elemento.trim() ? 1 : 0.5 }}>
                   {editandoId ? '✓ Salvar Alterações' : '+ Calcular e Adicionar'}
                 </button>
-                {editandoId && <button onClick={() => { setEditandoId(null); limparFormMedicao(); }} style={{ padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>Cancelar</button>}
-                <button onClick={limparFormMedicao} style={{ padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>Limpar Campos</button>
+                {editandoId && <button onClick={() => { setEditandoId(null); limparFormMedicao(); }} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F1F5F9', color: SUBTEXT, border: '1px solid #E2E8F0' }}>Cancelar</button>}
+                <button onClick={limparFormMedicao} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F1F5F9', color: SUBTEXT, border: '1px solid #E2E8F0' }}>Limpar Campos</button>
               </div>
-            </section>
+              </div>
+            </PainelPlanilha>
 
             {/* Tabela de resultados — desktop */}
-            <section className="medicoes-table-section" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(30,50,100,0.06)' }}>
+            <div className="medicoes-table-section">
+            <PainelPlanilha
+              titulo="Resultado do Ensaio"
+              direita={<span style={{ fontSize: 10.5, fontWeight: 600, color: '#BFDBFE' }}>{medicoes.length} mediç{medicoes.length !== 1 ? 'ões' : 'ão'}</span>}
+              marginBottom={0}
+            >
               <div className="table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-                <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 100px 70px 70px 70px 70px 70px 78px 80px 120px 68px', padding: '11px 16px', background: EXCEL_BLUE, minWidth: 860 }}>
+                <div style={{ ...tabelaHeaderStyle, display: 'grid', gridTemplateColumns: '36px 1fr 100px 70px 70px 70px 70px 70px 78px 80px 120px 68px', padding: '9px 14px', minWidth: 860 }}>
                   {['#', 'ELEMENTO', 'POSIÇÃO', 'L1', 'L2', 'L3', 'L4', 'L5', 'MÉDIA', 'DESV. PAD.', 'CLASSIFICAÇÃO', 'AÇÕES'].map(h => (
-                    <span key={h} style={{ fontSize: 9.5, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>{h}</span>
+                    <span key={h} style={tabelaThTextStyle}>{h}</span>
                   ))}
                 </div>
                 {medicoes.length === 0 ? (
-                  <div style={{ padding: '48px 0', textAlign: 'center', color: SUBTEXT }}>
-                    <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.2 }}>∿</div>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhuma medição inserida</p>
+                  <div style={{ padding: '44px 0', textAlign: 'center', color: SUBTEXT }}>
+                    <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhuma medição inserida</p>
                     <p style={{ margin: '4px 0 0', fontSize: 12 }}>Preencha o formulário acima para adicionar a primeira medição</p>
                   </div>
                 ) : medicoes.map((m, idx) => {
                   const editing = editandoId === m.id;
                   return (
-                    <div key={m.id} className="row-h" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 100px 70px 70px 70px 70px 70px 78px 80px 120px 68px', padding: '10px 16px', borderBottom: idx < medicoes.length - 1 ? `1px solid ${BORDER}` : 'none', alignItems: 'center', background: editing ? '#FFFBEC' : idx % 2 === 1 ? '#F8F9FC' : '#fff', transition: 'background 0.1s', minWidth: 860 }}>
+                    <div key={m.id} className="row-h" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 100px 70px 70px 70px 70px 70px 78px 80px 120px 68px', padding: '9px 14px', borderBottom: idx < medicoes.length - 1 ? '1px solid #E2E8F0' : 'none', alignItems: 'center', background: editing ? '#FFFBEC' : idx % 2 === 1 ? '#F8FAFC' : '#fff', transition: 'background 0.1s', minWidth: 860 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: SUBTEXT, textAlign: 'center' }}>{m.item}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{m.elemento}</span>
@@ -1016,16 +1042,17 @@ export default function ResistividadePage() {
                   );
                 })}
               </div>
-            </section>
+            </PainelPlanilha>
+            </div>
 
             {/* Cards mobile — medições */}
             <div className="medicoes-cards-section">
               {medicoes.length === 0 ? (
-                <div style={{ padding: '40px 0', textAlign: 'center', color: SUBTEXT }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhuma medição inserida</p>
+                <div style={{ padding: '36px 0', textAlign: 'center', color: SUBTEXT, background: '#fff', border: '1px solid #94A3B8', borderRadius: 8 }}>
+                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhuma medição inserida</p>
                 </div>
               ) : medicoes.map(m => (
-                <div key={m.id} style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
+                <div key={m.id} style={{ background: '#fff', border: '1px solid #94A3B8', borderRadius: 8, padding: '12px 14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
@@ -1067,10 +1094,10 @@ export default function ResistividadePage() {
         {/* ABA 3 — Modo Obra                                     */}
         {/* ═══════════════════════════════════════════════════════ */}
         {aba === 'obra' && (
-          <div style={{ paddingTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ paddingTop: 18 }}>
 
             {/* Banner modo obra */}
-            <div style={{ padding: '12px 18px', background: GREEN_LIGHT, border: `1.5px solid ${GREEN_BORDER}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ padding: '10px 14px', background: GREEN_LIGHT, border: `1px solid ${GREEN_BORDER}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GREEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20h20"/><path d="M6 20v-4a6 6 0 0 1 12 0v4"/><path d="M12 4v4"/><path d="M4 12a8 8 0 0 1 16 0"/></svg>
               <div>
                 <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: GREEN }}>MODO OBRA — Coleta sem calcular</p>
@@ -1079,20 +1106,19 @@ export default function ResistividadePage() {
             </div>
 
             {/* Criar grupo */}
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '16px 20px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 800, color: GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>+ Novo Grupo</h3>
-              <div style={{ display: 'flex', gap: 10 }}>
+            <PainelPlanilha titulo="+ Novo Grupo" corBarra={GREEN}>
+              <div style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
                 <input style={{ ...inputStyle, flex: 1 }} value={novoGrupoNome} onChange={e => setNovoGrupoNome(e.target.value)} onKeyDown={e => e.key === 'Enter' && criarGrupo()} placeholder="Ex: Bloco A — Pilares Térreo" />
-                <button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: novoGrupoNome.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: GREEN, color: '#fff', border: 'none', opacity: novoGrupoNome.trim() ? 1 : 0.5, flexShrink: 0 }}>Criar Grupo</button>
+                <button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} style={{ padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: novoGrupoNome.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: GREEN, color: '#fff', border: 'none', opacity: novoGrupoNome.trim() ? 1 : 0.5, flexShrink: 0 }}>Criar Grupo</button>
               </div>
-            </section>
+            </PainelPlanilha>
 
             {/* Lista de grupos */}
             {grupos.map(g => {
               const ativo = grupoAtivoId === g.id;
               const expandido = gruposExpandidos.has(g.id);
               return (
-                <section key={g.id} style={{ background: '#fff', border: `1.5px solid ${ativo ? GREEN : BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: ativo ? `0 0 0 3px ${GREEN}22` : '0 1px 4px rgba(30,50,100,0.04)' }}>
+                <section key={g.id} style={{ background: '#fff', border: `1px solid ${ativo ? GREEN : '#94A3B8'}`, borderRadius: 8, overflow: 'hidden', marginBottom: 14 }}>
                   {/* Header do grupo */}
                   <div className="grupo-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: ativo ? GREEN_LIGHT : '#FAFBFD', borderBottom: expandido ? `1px solid ${BORDER}` : 'none', cursor: 'pointer' }} onClick={() => toggleGrupo(g.id)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

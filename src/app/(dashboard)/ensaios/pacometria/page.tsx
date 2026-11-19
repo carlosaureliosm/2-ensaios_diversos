@@ -5,6 +5,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { buscarUrlAssinatura } from '@/lib/assinatura';
+import {
+  PainelPlanilha,
+  CelulaFicha,
+  PlanilhaStyles,
+  fichaInputStyle,
+  tabelaHeaderStyle,
+  tabelaThTextStyle,
+} from '@/components/PlanilhaUI';
 
 // ── Constantes visuais ──────────────────────────────────────────
 const PRIMARY     = '#1E3264';
@@ -870,66 +878,79 @@ export default function PacometriaPage() {
         @media(max-width:600px){.tab-icon{display:block;margin-bottom:2px}}
       `}</style>
 
+      <PlanilhaStyles />
       <Header displayName={userName} initials={initials} cargo={userCargo} onSignOut={handleSignOut} />
 
-      {/* Tabs */}
-      <div className="tabs-row" style={{ background: '#fff', borderBottom: `1px solid ${BORDER}`, display: 'flex', padding: '0 28px' }}>
-        {([['cabecalho', 'Cabeçalho e Aparelho', 'Cab.'], ['campo', 'Dados de Campo', 'Dados'], ['obra', 'Modo Obra', 'Obra']] as const).map(([id, full, short]) => (
-          <button key={id} className={`tab-btn${aba === id ? ' tab-ativo' : ''}`} onClick={() => setAba(id)}>
-            <span className="tab-label-full">{`${id === 'cabecalho' ? '1.' : id === 'campo' ? '2.' : '3.'} ${full}`}</span>
-            <span className="tab-label-short">{short}</span>
-          </button>
-        ))}
-        <div style={{ flex: 1 }} />
-        {salvoMsg && <span style={{ fontSize: 11, color: SUCCESS, fontWeight: 700, alignSelf: 'center', marginRight: 8 }}>✓ {salvoMsg}</span>}
-      </div>
+      <main className="main-pacometria" style={{ maxWidth: 1060, margin: '0 auto', padding: '24px 20px' }}>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <a href="/dashboard" style={{ fontSize: 12, color: SUBTEXT, textDecoration: 'none' }}>Ensaios</a>
+            <span style={{ fontSize: 12, color: SUBTEXT }}>›</span>
+            <span style={{ fontSize: 12, color: PRIMARY, fontWeight: 700 }}>Pacometria</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 12 }}>
+              <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Pacometria</h1>
+              <p style={{ margin: '4px 0 0', fontSize: 12.5, color: SUBTEXT }}>Localização de armaduras e cobrimento do concreto</p>
+            </div>
+            {salvoMsg && <span style={{ fontSize: 12, color: SUCCESS, fontWeight: 600 }}>✓ {salvoMsg}</span>}
+          </div>
+        </div>
 
-      <main className="main-pacometria" style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>
+        {/* Tabs */}
+        <div className="tabs-row" style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, marginBottom: 18 }}>
+          {([['cabecalho', 'Cabeçalho e Aparelho', 'Cab.'], ['campo', 'Dados de Campo', 'Dados'], ['obra', 'Modo Obra', 'Obra']] as const).map(([id, full, short]) => (
+            <button key={id} className={`tab-btn${aba === id ? ' tab-ativo' : ''}`} onClick={() => setAba(id)} style={{ borderBottom: aba === id ? `3px solid ${GOLD}` : '3px solid transparent', marginBottom: -2 }}>
+              <span className="tab-label-full">{`${id === 'cabecalho' ? '1.' : id === 'campo' ? '2.' : '3.'} ${full}`}</span>
+              <span className="tab-label-short">{short}</span>
+            </button>
+          ))}
+        </div>
 
         {/* ── ABA 1: CABEÇALHO ── */}
         {aba === 'cabecalho' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div>
             {/* Identificação */}
-            <section style={{ background: '#fff', borderRadius: 10, border: `1px solid ${BORDER}`, padding: '20px 24px' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Identificação do Relatório</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
-                <Campo label="Nº do Relatório" htmlFor="rlt">
-                  <input id="rlt" style={inputStyle} value={cab.rlt} onChange={e => setCab(p => ({ ...p, rlt: e.target.value }))} placeholder="Ex: 042" />
-                </Campo>
-                <Campo label="Data de Emissão" htmlFor="data">
-                  <input id="data" style={inputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(p => ({ ...p, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} />
-                </Campo>
-                <Campo label="Cliente" htmlFor="cliente">
-                  <input id="cliente" style={inputStyle} value={cab.cliente} onChange={e => setCab(p => ({ ...p, cliente: e.target.value }))} />
-                </Campo>
-                <Campo label="Obra" htmlFor="obra">
-                  <input id="obra" style={inputStyle} value={cab.obra} onChange={e => setCab(p => ({ ...p, obra: e.target.value }))} />
-                </Campo>
-                <Campo label="A/T (Att.)" htmlFor="att">
-                  <input id="att" style={inputStyle} value={cab.att} onChange={e => setCab(p => ({ ...p, att: e.target.value }))} />
-                </Campo>
-                <Campo label="Endereço" htmlFor="end">
-                  <input id="end" style={inputStyle} value={cab.endereco} onChange={e => setCab(p => ({ ...p, endereco: e.target.value }))} />
-                </Campo>
+            <PainelPlanilha titulo="Identificação do Relatório">
+              <div className="planilha-grid-3">
+                <CelulaFicha label="Nº do Relatório" htmlFor="rlt" borderRight>
+                  <input id="rlt" style={fichaInputStyle} value={cab.rlt} onChange={e => setCab(p => ({ ...p, rlt: e.target.value }))} placeholder="Ex: 042" />
+                </CelulaFicha>
+                <CelulaFicha label="Data de Emissão" htmlFor="data" borderRight>
+                  <input id="data" style={fichaInputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(p => ({ ...p, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} />
+                </CelulaFicha>
+                <CelulaFicha label="Cliente" htmlFor="cliente">
+                  <input id="cliente" style={fichaInputStyle} value={cab.cliente} onChange={e => setCab(p => ({ ...p, cliente: e.target.value }))} />
+                </CelulaFicha>
               </div>
-            </section>
+              <div className="planilha-grid-3">
+                <CelulaFicha label="Obra" htmlFor="obra" borderRight borderBottom={false}>
+                  <input id="obra" style={fichaInputStyle} value={cab.obra} onChange={e => setCab(p => ({ ...p, obra: e.target.value }))} />
+                </CelulaFicha>
+                <CelulaFicha label="A/T (Att.)" htmlFor="att" borderRight borderBottom={false}>
+                  <input id="att" style={fichaInputStyle} value={cab.att} onChange={e => setCab(p => ({ ...p, att: e.target.value }))} />
+                </CelulaFicha>
+                <CelulaFicha label="Endereço" htmlFor="end" borderBottom={false}>
+                  <input id="end" style={fichaInputStyle} value={cab.endereco} onChange={e => setCab(p => ({ ...p, endereco: e.target.value }))} />
+                </CelulaFicha>
+              </div>
+            </PainelPlanilha>
 
             {/* Opções do relatório */}
-            <section style={{ background: '#fff', borderRadius: 10, border: `1px solid ${BORDER}`, padding: '20px 24px' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Opções do Relatório</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <PainelPlanilha titulo="Opções do Relatório">
+              <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Motivação */}
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: TEXT }}>
-                    <input type="checkbox" checked={usaMotivacao} onChange={e => setUsaMotivacao(e.target.checked)} />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: usaMotivacao ? PRIMARY : SUBTEXT }}>
+                    <input type="checkbox" checked={usaMotivacao} onChange={e => setUsaMotivacao(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
                     Incluir motivação / contexto do ensaio
                   </label>
                   {usaMotivacao && <textarea rows={3} style={{ ...inputStyle, marginTop: 8, resize: 'vertical' }} value={motivacao} onChange={e => setMotivacao(e.target.value)} placeholder="Descreva a motivação do ensaio..." />}
                 </div>
                 {/* Foto geral */}
-                <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: TEXT }}>
-                    <input type="checkbox" checked={usaFotoGeral} onChange={e => setUsaFotoGeral(e.target.checked)} />
+                <div style={{ paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: usaFotoGeral ? PRIMARY : SUBTEXT }}>
+                    <input type="checkbox" checked={usaFotoGeral} onChange={e => setUsaFotoGeral(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
                     Incluir foto geral da estrutura
                   </label>
                   {usaFotoGeral && (
@@ -939,9 +960,9 @@ export default function PacometriaPage() {
                   )}
                 </div>
                 {/* Croqui geral */}
-                <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: TEXT }}>
-                    <input type="checkbox" checked={usaCroquiGeral} onChange={e => setUsaCroquiGeral(e.target.checked)} />
+                <div style={{ paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: usaCroquiGeral ? PRIMARY : SUBTEXT }}>
+                    <input type="checkbox" checked={usaCroquiGeral} onChange={e => setUsaCroquiGeral(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
                     Incluir croqui geral de localização dos elementos
                   </label>
                   {usaCroquiGeral && (
@@ -951,21 +972,21 @@ export default function PacometriaPage() {
                   )}
                 </div>
               </div>
-            </section>
+            </PainelPlanilha>
 
             {/* Responsável */}
-            <section style={{ background: '#fff', borderRadius: 10, border: `1px solid ${BORDER}`, padding: '20px 24px' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Responsável Técnico</h3>
-              <div style={{ padding: '12px 14px', background: '#F0F4FF', borderRadius: 8, border: `1px solid #BFCBF0`, marginBottom: 14 }}>
+            <PainelPlanilha titulo="Responsável Técnico">
+              <div style={{ padding: '14px' }}>
+              <div style={{ padding: '12px 14px', background: '#F1F5F9', borderRadius: 8, border: '1px solid #CBD5E1', marginBottom: 12 }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: PRIMARY }}>{userName || '—'}</p>
                 <p style={{ margin: '3px 0 0', fontSize: 11, color: SUBTEXT }}>CREA: {userCrea || 'não informado'} · {userCargo || ''}</p>
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: outroResp ? 14 : 0 }}>
-                <input type="checkbox" checked={outroResp} onChange={e => setOutroResp(e.target.checked)} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT, marginBottom: outroResp ? 12 : 0 }}>
+                <input type="checkbox" checked={outroResp} onChange={e => setOutroResp(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
                 Usar outro responsável técnico
               </label>
               {outroResp && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', padding: 14, borderRadius: 8, background: '#F8FAFC', border: '1px solid #CBD5E1' }}>
                   <Campo label="Nome completo" htmlFor="or-nome"><input id="or-nome" style={inputStyle} value={outroRespNome} onChange={e => setOutroRespNome(e.target.value)} /></Campo>
                   <Campo label="CREA" htmlFor="or-crea"><input id="or-crea" style={inputStyle} value={outroRespCrea} onChange={e => setOutroRespCrea(e.target.value)} /></Campo>
                   <div style={{ gridColumn: '1/-1' }}>
@@ -981,88 +1002,86 @@ export default function PacometriaPage() {
                   </div>
                 </div>
               )}
-            </section>
+              </div>
+            </PainelPlanilha>
 
             {/* Notas */}
-            <section style={{ background: '#fff', borderRadius: 10, border: `1px solid ${BORDER}`, padding: '20px 24px' }}>
-              <h3 style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Notas do Relatório</h3>
-              <textarea rows={3} style={{ ...inputStyle, resize: 'vertical' }} value={cab.notas} onChange={e => setCab(p => ({ ...p, notas: e.target.value }))} placeholder="Observações gerais, condições de ensaio..." />
-            </section>
+            <PainelPlanilha titulo="Notas do Relatório">
+              <CelulaFicha label="Observações gerais" borderBottom={false}>
+                <textarea rows={3} style={{ ...fichaInputStyle, height: 'auto', minHeight: 64, resize: 'vertical', lineHeight: 1.5, padding: '4px 0' }} value={cab.notas} onChange={e => setCab(p => ({ ...p, notas: e.target.value }))} placeholder="Observações gerais, condições de ensaio..." />
+              </CelulaFicha>
+            </PainelPlanilha>
           </div>
         )}
 
         {/* ── ABA 2: DADOS DE CAMPO ── */}
         {aba === 'campo' && (
           <div>
-            {/* Botão nova amostra */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: TEXT }}>Amostras de Pacometria</h2>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXT }}>{amostras.length} amostra{amostras.length !== 1 ? 's' : ''} registrada{amostras.length !== 1 ? 's' : ''}</p>
-              </div>
-              <button onClick={() => { setAmostraEditando(null); setModalAberto(true); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: PRIMARY, color: '#fff', border: 'none' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Nova Amostra
-              </button>
-            </div>
-
-            {amostras.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '60px 0', color: SUBTEXT }}>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={BORDER} strokeWidth="1.5" style={{ marginBottom: 12 }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhuma amostra registrada</p>
-                <p style={{ margin: '4px 0 0', fontSize: 12 }}>Clique em "Nova Amostra" para começar</p>
-              </div>
-            )}
-
             {/* Tabela — desktop */}
-            {amostras.length > 0 && (
-              <div className="amostras-table-section">
-                <div style={{ background: '#fff', borderRadius: 10, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+            <div className="amostras-table-section">
+              <PainelPlanilha
+                titulo="Resultado do Ensaio — Amostras de Pacometria"
+                direita={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 600, color: '#BFDBFE' }}>{amostras.length} amostra{amostras.length !== 1 ? 's' : ''}</span>
+                    <button onClick={() => { setAmostraEditando(null); setModalAberto(true); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: GOLD, color: '#fff', border: 'none' }}>
+                      + Nova Amostra
+                    </button>
+                  </div>
+                }
+              >
+                {amostras.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '48px 0', color: SUBTEXT }}>
+                    <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhuma amostra registrada</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 12 }}>Clique em &ldquo;+ Nova Amostra&rdquo; para começar</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ background: EXCEL_BLUE }}>
-                        {['Item', 'Elemento', 'Tipo / Opção', 'Médio', 'Mínimo', 'Máximo', 'Desv. Padrão', 'CV (%)', 'Moda', 'Foto', 'Ações'].map(h => (
-                          <th key={h} style={{ padding: '11px 14px', fontSize: 11, fontWeight: 700, color: '#fff', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                      <tr style={tabelaHeaderStyle}>
+                        {['Item', 'Elemento', 'Tipo / Opção', 'Médio', 'Mínimo', 'Máximo', 'Desv. Padrão', 'CV (%)', 'Moda', 'Foto', 'Ações'].map((h, hi) => (
+                          <th key={h} style={{ ...tabelaThTextStyle, padding: '8px 10px', textAlign: hi === 1 || hi === 2 ? 'left' : 'center', borderLeft: hi > 0 ? '1px solid #E2E8F0' : undefined, whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {amostras.map((a, i) => (
-                        <tr key={a.id} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? '#fff' : '#FAFBFD' }}>
-                          <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 700, color: SUBTEXT, width: 48 }}>{a.item}</td>
-                          <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 700, color: TEXT }}>{a.elemento}</td>
-                          <td style={{ padding: '10px 14px', fontSize: 12, color: SUBTEXT }}>
+                        <tr key={a.id} style={{ borderTop: '1px solid #E2E8F0', background: i % 2 === 1 ? '#F8FAFC' : '#fff' }}>
+                          <td style={{ padding: '9px 10px', fontSize: 12.5, fontWeight: 800, color: '#475569', textAlign: 'center', width: 44 }}>{a.item}</td>
+                          <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 700, color: TEXT, borderLeft: '1px solid #E2E8F0' }}>{a.elemento}</td>
+                          <td style={{ padding: '9px 10px', fontSize: 12, color: SUBTEXT, borderLeft: '1px solid #E2E8F0' }}>
                             <span style={{ fontWeight: 600, color: TEXT }}>{a.tipo.charAt(0).toUpperCase() + a.tipo.slice(1)}</span>
                             <span style={{ marginLeft: 6, fontSize: 11, background: '#EEF2FF', color: PRIMARY, borderRadius: 4, padding: '2px 6px', fontWeight: 700 }}>Opção {a.opcao}</span>
                           </td>
-                          <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 700, color: a.cobMedio !== null ? TEXT : SUBTEXT }}>
+                          <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 700, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobMedio !== null ? TEXT : SUBTEXT }}>
                             {a.cobMedio !== null ? `${a.cobMedio.toFixed(1)} mm` : '—'}
                           </td>
-                          <td style={{ padding: '10px 14px' }}>
+                          <td style={{ padding: '9px 10px', textAlign: 'center', borderLeft: '1px solid #E2E8F0' }}>
                             {a.cobMinimo !== null ? (
-                              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 99, background: a.cobMinimo < 20 ? '#FFF0EE' : '#E8F5EE', color: a.cobMinimo < 20 ? DANGER : SUCCESS, border: `1px solid ${a.cobMinimo < 20 ? '#FADADD' : '#B8DFC8'}` }}>
+                              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: a.cobMinimo < 20 ? '#FEF2F2' : '#DCFCE7', color: a.cobMinimo < 20 ? '#B91C1C' : '#166534' }}>
                                 {a.cobMinimo.toFixed(0)} mm
                               </span>
                             ) : <span style={{ color: SUBTEXT }}>—</span>}
                           </td>
-                          <td style={{ padding: '10px 14px', fontSize: 13, color: a.cobMaximo !== null ? TEXT : SUBTEXT }}>
+                          <td style={{ padding: '9px 10px', fontSize: 12.5, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobMaximo !== null ? TEXT : SUBTEXT }}>
                             {a.cobMaximo !== null ? `${a.cobMaximo.toFixed(0)} mm` : '—'}
                           </td>
-                          <td style={{ padding: '10px 14px', fontSize: 13, color: a.cobDesvio !== null ? TEXT : SUBTEXT }}>
+                          <td style={{ padding: '9px 10px', fontSize: 12.5, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobDesvio !== null ? TEXT : SUBTEXT }}>
                             {a.cobDesvio !== null ? `${a.cobDesvio.toFixed(1)} mm` : '—'}
                           </td>
-                          <td style={{ padding: '10px 14px', fontSize: 13, color: a.cobCV !== null ? (a.cobCV > 20 ? DANGER : a.cobCV > 10 ? '#B45309' : SUCCESS) : SUBTEXT }}>
+                          <td style={{ padding: '9px 10px', fontSize: 12.5, fontWeight: 700, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobCV !== null ? (a.cobCV > 20 ? DANGER : a.cobCV > 10 ? '#B45309' : SUCCESS) : SUBTEXT }}>
                             {a.cobCV !== null ? `${a.cobCV.toFixed(1)}%` : '—'}
                           </td>
-                          <td style={{ padding: '10px 14px', fontSize: 13, color: a.cobModa !== null ? TEXT : SUBTEXT }}>
+                          <td style={{ padding: '9px 10px', fontSize: 12.5, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobModa !== null ? TEXT : SUBTEXT }}>
                             {a.cobModa !== null ? `${a.cobModa} mm` : '—'}
                           </td>
                           {/* Célula foto */}
-                          <td style={{ padding: '10px 14px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <td style={{ padding: '8px 10px', borderLeft: '1px solid #E2E8F0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                               {a.fotoPreview ? (
                                 <>
-                                  <img src={a.fotoPreview} alt="foto" style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', border: `1px solid ${BORDER}` }} />
+                                  <img src={a.fotoPreview} alt="foto" style={{ width: 34, height: 34, borderRadius: 4, objectFit: 'cover', border: `1px solid ${BORDER}` }} />
                                   <button onClick={() => removerFoto(a.id)} aria-label="Remover foto" style={{ width: 22, height: 22, borderRadius: 4, border: 'none', background: '#FFF0EE', color: DANGER, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                   </button>
@@ -1070,7 +1089,7 @@ export default function PacometriaPage() {
                               ) : (
                                 <>
                                   <input ref={el => { fotoRefs.current[a.id] = el; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFoto(a.id, e.target.files[0]); }} />
-                                  <button onClick={() => fotoRefs.current[a.id]?.click()} aria-label="Anexar foto" style={{ width: 32, height: 32, borderRadius: 6, border: `1px dashed ${BORDER}`, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUBTEXT }}>
+                                  <button onClick={() => fotoRefs.current[a.id]?.click()} aria-label="Anexar foto" style={{ width: 30, height: 30, borderRadius: 6, border: `1px dashed ${BORDER}`, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUBTEXT }}>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                                   </button>
                                 </>
@@ -1078,12 +1097,12 @@ export default function PacometriaPage() {
                             </div>
                           </td>
                           {/* Ações */}
-                          <td style={{ padding: '10px 14px' }}>
-                            <div style={{ display: 'flex', gap: 5 }}>
-                              <button onClick={() => editarAmostra(a)} aria-label="Editar amostra" style={{ width: 30, height: 30, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <td style={{ padding: '8px 10px', borderLeft: '1px solid #E2E8F0' }}>
+                            <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+                              <button onClick={() => editarAmostra(a)} aria-label="Editar amostra" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                               </button>
-                              <button onClick={() => apagarAmostra(a.id)} aria-label="Apagar amostra" style={{ width: 30, height: 30, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <button onClick={() => apagarAmostra(a.id)} aria-label="Apagar amostra" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                               </button>
                             </div>
@@ -1092,15 +1111,25 @@ export default function PacometriaPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            )}
+                  </div>
+                )}
+              </PainelPlanilha>
+            </div>
 
             {/* Cards — mobile */}
-            {amostras.length > 0 && (
-              <div className="amostras-cards-section" style={{ flexDirection: 'column', gap: 10 }}>
-                {amostras.map(a => (
-                  <div key={a.id} style={{ background: '#fff', borderRadius: 10, border: `1px solid ${BORDER}`, padding: '14px 16px' }}>
+            <div className="amostras-cards-section" style={{ flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: SUBTEXT }}>{amostras.length} amostra{amostras.length !== 1 ? 's' : ''}</span>
+                <button onClick={() => { setAmostraEditando(null); setModalAberto(true); }} style={{ padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: PRIMARY, color: '#fff', border: 'none' }}>
+                  + Nova Amostra
+                </button>
+              </div>
+              {amostras.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: SUBTEXT, background: '#fff', border: '1px solid #94A3B8', borderRadius: 8 }}>
+                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhuma amostra registrada</p>
+                </div>
+              ) : amostras.map(a => (
+                <div key={a.id} style={{ background: '#fff', borderRadius: 8, border: '1px solid #94A3B8', padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 11, fontWeight: 800, color: SUBTEXT }}>#{a.item}</span>
@@ -1140,9 +1169,8 @@ export default function PacometriaPage() {
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+              ))}
+            </div>
 
             {/* Botão gerar DOCX */}
             {amostras.length > 0 && (

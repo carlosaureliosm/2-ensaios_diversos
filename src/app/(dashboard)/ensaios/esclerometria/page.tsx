@@ -4,6 +4,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header';
+import {
+  PainelPlanilha,
+  CelulaFicha,
+  PlanilhaStyles,
+  fichaInputStyle,
+  tabelaHeaderStyle,
+  tabelaThTextStyle,
+} from '@/components/PlanilhaUI';
 import { useUserStore } from '@/store/userStore';
 import { calcularAmostra, type Posicao, type AmostraRow } from '@/lib/esclerometria/calcularAmostra';
 // PDF via jsPDF mantido comentado — reservado para implementação futura com Gotenberg
@@ -558,6 +566,7 @@ export default function EsclerometriaPage() {
         }
       `}</style>
 
+      <PlanilhaStyles />
       <Header paginaAtiva="ensaios" />
 
       {showImportar && (
@@ -733,81 +742,95 @@ export default function EsclerometriaPage() {
 
         {/* ABA 1 */}
         {aba === 'cabecalho' && (
-          <div style={{ paddingTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <section className="section-pad" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Dados da Obra e Cliente</h3>
-              <div className="grid-rlt" style={{ display: 'grid', gridTemplateColumns: '140px 150px 1fr', gap: '12px 16px', marginBottom: 12 }}>
-                <Campo label="Nº do RLT"><input style={inputStyle} inputMode="numeric" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} /></Campo>
-                <Campo label="Data de Emissão"><input style={inputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} /></Campo>
-                <Campo label="Cliente"><input style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.cliente} onChange={e => setCab(c => ({ ...c, cliente: e.target.value.toUpperCase() }))} placeholder="NOME DO CLIENTE" /></Campo>
+          <div style={{ paddingTop: 18 }}>
+            <PainelPlanilha titulo="Dados da Obra e Cliente">
+              <div className="planilha-grid-rlt">
+                <CelulaFicha label="Nº do RLT" borderRight>
+                  <input style={fichaInputStyle} inputMode="numeric" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} />
+                </CelulaFicha>
+                <CelulaFicha label="Data de Emissão" borderRight>
+                  <input style={fichaInputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} />
+                </CelulaFicha>
+                <CelulaFicha label="Cliente">
+                  <input style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.cliente} onChange={e => setCab(c => ({ ...c, cliente: e.target.value.toUpperCase() }))} placeholder="NOME DO CLIENTE" />
+                </CelulaFicha>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px', marginBottom: 12 }}>
-                <Campo label="Obra"><input style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.obra} onChange={e => setCab(c => ({ ...c, obra: e.target.value.toUpperCase() }))} placeholder="DESCRIÇÃO DA OBRA" /></Campo>
-                <Campo label="A/C (Att.)"><input style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.att} onChange={e => setCab(c => ({ ...c, att: e.target.value.toUpperCase() }))} placeholder="A/C DE…" /></Campo>
+              <div className="planilha-grid-2">
+                <CelulaFicha label="Obra" borderRight>
+                  <input style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.obra} onChange={e => setCab(c => ({ ...c, obra: e.target.value.toUpperCase() }))} placeholder="DESCRIÇÃO DA OBRA" />
+                </CelulaFicha>
+                <CelulaFicha label="A/C (Att.)">
+                  <input style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.att} onChange={e => setCab(c => ({ ...c, att: e.target.value.toUpperCase() }))} placeholder="A/C DE…" />
+                </CelulaFicha>
               </div>
-              <Campo label="Endereço"><input style={{ ...inputStyle, textTransform: 'uppercase' }} value={cab.endereco} onChange={e => setCab(c => ({ ...c, endereco: e.target.value.toUpperCase() }))} placeholder="ENDEREÇO COMPLETO DA OBRA" /></Campo>
-              <Campo label="Coordenadas GPS (opcional — prioridade sobre endereço no mapa)">
-                <input
-                  style={inputStyle}
-                  value={coordenadas}
-                  onChange={e => setCoordenadas(e.target.value)}
-                  placeholder="Ex: -8.0522,-34.9286"
-                />
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: SUBTEXT }}>Se preenchido, o pino do mapa será posicionado nas coordenadas informadas.</p>
-              </Campo>
-            </section>
+              <div className="planilha-grid-2">
+                <CelulaFicha label="Endereço" borderRight borderBottom={false}>
+                  <input style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.endereco} onChange={e => setCab(c => ({ ...c, endereco: e.target.value.toUpperCase() }))} placeholder="ENDEREÇO COMPLETO DA OBRA" />
+                </CelulaFicha>
+                <CelulaFicha label="Coordenadas GPS (opcional — prioridade no mapa)" borderBottom={false}>
+                  <input
+                    style={fichaInputStyle}
+                    value={coordenadas}
+                    onChange={e => setCoordenadas(e.target.value)}
+                    placeholder="Ex: -8.0522,-34.9286"
+                  />
+                </CelulaFicha>
+              </div>
+            </PainelPlanilha>
 
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Verificação do Aparelho — 10 Golpes na Bigorna</h3>
-                {bigornaPronta
-                  ? <span style={{ fontSize: 11, fontWeight: 700, color: SUCCESS, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>Completo — Dados de Campo liberados</span>
-                  : <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT }}>Preencha os 10 golpes para liberar a aba Dados de Campo</span>}
+            <PainelPlanilha
+              titulo="Verificação do Aparelho — 10 Golpes na Bigorna"
+              direita={
+                bigornaPronta
+                  ? <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 800, background: '#DCFCE7', color: '#166534' }}>✓ Completo — Dados de Campo liberados</span>
+                  : <span style={{ fontSize: 10.5, fontWeight: 600, color: '#BFDBFE' }}>Preencha os 10 golpes para liberar Dados de Campo</span>
+              }
+            >
+              <div style={{ padding: '12px 14px' }}>
+                <p style={{ margin: '0 0 12px', fontSize: 12, color: SUBTEXT }}>Índice de referência: <strong>IE = 80</strong>. O coeficiente de correção é calculado automaticamente.</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {cab.bigorna.map((v, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}°</span>
+                      <input type="text" inputMode="decimal" value={v} onChange={e => setBigorna(i, onlyDecimal(e.target.value))}
+                        onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i + 1] as HTMLElement)?.focus(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i - 1] as HTMLElement)?.focus(); } else if (e.key === 'Enter') { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i + 1] as HTMLElement)?.focus(); } }}
+                        style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? '#EFF6FF' : '#fff', outline: 'none', transition: 'all 0.1s' }}
+                        className="num-in bigorna-input" />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: SUBTEXT }}>Índice de referência: <strong>IE = 80</strong>. O coeficiente de correção é calculado automaticamente.</p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                {cab.bigorna.map((v, i) => (
-                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}°</span>
-                    <input type="text" inputMode="decimal" value={v} onChange={e => setBigorna(i, onlyDecimal(e.target.value))}
-                      onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i + 1] as HTMLElement)?.focus(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i - 1] as HTMLElement)?.focus(); } else if (e.key === 'Enter') { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i + 1] as HTMLElement)?.focus(); } }}
-                      style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? '#F0F4FC' : '#fff', outline: 'none', transition: 'all 0.1s' }}
-                      className="num-in bigorna-input" />
-                  </div>
-                ))}
-              </div>
-              <div className="bigorna-stats" style={{ display: 'flex', gap: 0, background: '#F0F4FC', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+              <div className="bigorna-stats" style={{ display: 'flex', background: '#F1F5F9', borderTop: '1px solid #94A3B8' }}>
                 {[{ label: 'Média dos Golpes', value: mediaBigorna > 0 ? mediaBigorna.toFixed(2) : '—', highlight: false }, { label: 'Coef. de Correção (80 / Média)', value: coefBigorna !== 1.0 ? coefBigorna.toFixed(6) : coefBigorna.toFixed(4), highlight: coefBigorna !== 1.0 }, { label: 'IE de Referência', value: '80,00', highlight: false }].map((item, i) => (
-                  <div key={i} style={{ flex: 1, padding: '14px 20px', borderLeft: i > 0 ? `1px solid ${BORDER}` : 'none' }}>
-                    <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{item.label}</p>
-                    <p style={{ margin: '4px 0 0', fontSize: 20, fontWeight: 800, color: item.highlight ? GOLD : PRIMARY }}>{item.value}</p>
+                  <div key={i} style={{ flex: 1, padding: '10px 14px', borderLeft: i > 0 ? '1px solid #CBD5E1' : 'none', textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{item.label}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 800, color: item.highlight ? GOLD : PRIMARY }}>{item.value}</p>
                   </div>
                 ))}
               </div>
-            </section>
+            </PainelPlanilha>
 
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Responsável Técnico</h3>
-
+            <PainelPlanilha titulo="Responsável Técnico">
+              <div style={{ padding: '14px' }}>
               {/* Bloco padrão — dados do perfil */}
               <div style={{
                 display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
-                padding: '14px 16px', borderRadius: 10,
-                background: outroResp ? '#F8F9FA' : '#F0F4FC',
-                border: `1.5px solid ${outroResp ? BORDER : PRIMARY + '44'}`,
-                marginBottom: 14, opacity: outroResp ? 0.5 : 1,
+                padding: '12px 14px', borderRadius: 8,
+                background: outroResp ? '#F8FAFC' : '#F1F5F9',
+                border: `1px solid ${outroResp ? '#E2E8F0' : '#CBD5E1'}`,
+                marginBottom: 12, opacity: outroResp ? 0.5 : 1,
                 transition: 'all 0.2s',
               }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Engenheiro Responsável TECOMAT</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: TEXT }}>{userName || <span style={{ color: SUBTEXT }}>—</span>}</p>
+                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Engenheiro Responsável TECOMAT</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: TEXT }}>{userName || <span style={{ color: SUBTEXT }}>—</span>}</p>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>CREA</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: userCrea ? TEXT : SUBTEXT }}>{userCrea || 'Não cadastrado'}</p>
+                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>CREA</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: userCrea ? TEXT : SUBTEXT }}>{userCrea || 'Não cadastrado'}</p>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Assinatura</p>
+                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Assinatura</p>
                   {userAssinatura
                     ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -819,7 +842,7 @@ export default function EsclerometriaPage() {
               </div>
 
               {/* Checkbox outro responsável */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: outroResp ? 14 : 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: outroResp ? 12 : 0 }}>
                 <input
                   type="checkbox"
                   checked={outroResp}
@@ -829,7 +852,7 @@ export default function EsclerometriaPage() {
                   }}
                   style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: 13, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT }}>
                   Outro responsável para este relatório
                 </span>
               </label>
@@ -837,13 +860,13 @@ export default function EsclerometriaPage() {
               {/* Campos expandidos quando "outro responsável" marcado */}
               {outroResp && (
                 <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 14,
-                  padding: '16px', borderRadius: 10,
-                  background: '#F0F4FC',
-                  border: `1.5px solid ${PRIMARY}44`,
+                  display: 'flex', flexDirection: 'column', gap: 12,
+                  padding: '14px', borderRadius: 8,
+                  background: '#F8FAFC',
+                  border: '1px solid #CBD5E1',
                   animation: 'fadeIn 0.15s ease',
                 }}>
-                  <div className="grid-outro-resp" style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 14 }}>
+                  <div className="grid-outro-resp" style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 12 }}>
                     <Campo label="Engenheiro Responsável TECOMAT">
                       <input
                         style={inputStyle}
@@ -903,16 +926,16 @@ export default function EsclerometriaPage() {
                   </Campo>
                 </div>
               )}
-            </section>
+              </div>
+            </PainelPlanilha>
 
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 14px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Conteúdo Opcional do Relatório</h3>
-
+            <PainelPlanilha titulo="Conteúdo Opcional do Relatório">
+              <div style={{ padding: '14px' }}>
               {/* Motivação */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarMotivacao ? 12 : 0 }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarMotivacao ? 10 : 0 }}>
                   <input type="checkbox" checked={usarMotivacao} onChange={e => { setUsarMotivacao(e.target.checked); if (!e.target.checked) setMotivacao(''); }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: usarMotivacao ? PRIMARY : SUBTEXT }}>Incluir motivação do ensaio</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: usarMotivacao ? PRIMARY : SUBTEXT }}>Incluir motivação do ensaio</span>
                 </label>
                 {usarMotivacao && (
                   <div style={{ animation: 'fadeIn 0.15s ease' }}>
@@ -928,10 +951,10 @@ export default function EsclerometriaPage() {
               </div>
 
               {/* Foto geral */}
-              <div style={{ marginBottom: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarFotoGeral ? 12 : 0 }}>
+              <div style={{ marginBottom: 14, paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarFotoGeral ? 10 : 0 }}>
                   <input type="checkbox" checked={usarFotoGeral} onChange={e => { setUsarFotoGeral(e.target.checked); if (!e.target.checked) { setFotoGeralFile(null); setFotoGeralPreview(null); if (fotoGeralRef.current) fotoGeralRef.current.value = ''; } }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: usarFotoGeral ? PRIMARY : SUBTEXT }}>Incluir foto geral da estrutura (Figura 2)</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: usarFotoGeral ? PRIMARY : SUBTEXT }}>Incluir foto geral da estrutura (Figura 2)</span>
                 </label>
                 {usarFotoGeral && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', animation: 'fadeIn 0.15s ease' }}>
@@ -951,10 +974,10 @@ export default function EsclerometriaPage() {
               </div>
 
               {/* Croqui */}
-              <div style={{ paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarCroqui ? 12 : 0 }}>
+              <div style={{ paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: usarCroqui ? 10 : 0 }}>
                   <input type="checkbox" checked={usarCroqui} onChange={e => { setUsarCroqui(e.target.checked); if (!e.target.checked) { setCroquiImagens([]); if (croquiRef.current) croquiRef.current.value = ''; } }} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: usarCroqui ? PRIMARY : SUBTEXT }}>Incluir croqui com indicação dos elementos (Figura 3)</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: usarCroqui ? PRIMARY : SUBTEXT }}>Incluir croqui com indicação dos elementos (Figura 3)</span>
                 </label>
                 {usarCroqui && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, animation: 'fadeIn 0.15s ease' }}>
@@ -980,7 +1003,7 @@ export default function EsclerometriaPage() {
                       </button>
                     </div>
                     {croquiImagens.map((img, i) => (
-                      <div key={img.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: 10, background: '#FAFBFD', border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+                      <div key={img.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8 }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={img.preview} alt={`Prévia croqui ${i + 1}`} style={{ maxHeight: 60, maxWidth: 120, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 4, background: '#fff' }} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 200 }}>
@@ -999,15 +1022,17 @@ export default function EsclerometriaPage() {
                   </div>
                 )}
               </div>
-            </section>
+              </div>
+            </PainelPlanilha>
 
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Notas / Observações</h3>
-              <textarea value={cab.notas} onChange={e => setCab(c => ({ ...c, notas: e.target.value }))} rows={3} placeholder="Observações gerais sobre o ensaio…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
-            </section>
+            <PainelPlanilha titulo="Notas / Observações">
+              <CelulaFicha label="Observações gerais" borderBottom={false}>
+                <textarea value={cab.notas} onChange={e => setCab(c => ({ ...c, notas: e.target.value }))} rows={3} placeholder="Observações gerais sobre o ensaio…" style={{ ...fichaInputStyle, height: 'auto', minHeight: 64, resize: 'vertical', lineHeight: 1.5, padding: '4px 0' }} />
+              </CelulaFicha>
+            </PainelPlanilha>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => bigornaPronta ? setAba('campo') : undefined} disabled={!bigornaPronta} className="btn-pri" title={!bigornaPronta ? 'Preencha os 10 golpes da bigorna primeiro' : undefined} style={{ padding: '11px 28px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: bigornaPronta ? 'pointer' : 'not-allowed', fontFamily: 'inherit', backgroundColor: bigornaPronta ? PRIMARY : '#C0C8D8', color: '#fff', border: 'none', boxShadow: bigornaPronta ? '0 2px 8px rgba(30,50,100,0.2)' : 'none', transition: 'all 0.15s' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <button onClick={() => bigornaPronta ? setAba('campo') : undefined} disabled={!bigornaPronta} className="btn-pri" title={!bigornaPronta ? 'Preencha os 10 golpes da bigorna primeiro' : undefined} style={{ padding: '11px 22px', borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: bigornaPronta ? 'pointer' : 'not-allowed', fontFamily: 'inherit', backgroundColor: bigornaPronta ? PRIMARY : '#C0C8D8', color: '#fff', border: 'none', transition: 'all 0.15s' }}>
                 {bigornaPronta ? 'Avançar para Dados de Campo →' : '🔒 Preencha a bigorna para avançar'}
               </button>
             </div>
@@ -1016,26 +1041,29 @@ export default function EsclerometriaPage() {
 
         {/* ABA 2 */}
         {aba === 'campo' && (
-          <div style={{ paddingTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <section style={{ background: '#fff', border: `1px solid ${editandoId ? GOLD : BORDER}`, borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, color: editandoId ? '#8B6914' : PRIMARY, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{editandoId ? '✎  Editando Amostra' : '+  Inserir Nova Amostra'}</h3>
-                {grupos.filter(g => g.pontos.length > 0).length > 0 && !editandoId && (
-                  <button onClick={() => setShowImportar(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: GREEN_LIGHT, color: GREEN, border: `1.5px solid ${GREEN_BORDER}` }}>
+          <div style={{ paddingTop: 18 }}>
+            <PainelPlanilha
+              titulo={editandoId ? '✎ Editando Amostra' : '+ Inserir Nova Amostra'}
+              corBarra={editandoId ? '#8B6914' : PRIMARY}
+              direita={
+                grupos.filter(g => g.pontos.length > 0).length > 0 && !editandoId ? (
+                  <button onClick={() => setShowImportar(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#DCFCE7', color: '#166534', border: 'none' }}>
                     Importar do Modo Obra ({grupos.reduce((s, g) => s + g.pontos.length, 0)})
                   </button>
-                )}
-              </div>
-              <div className="grid-imposto-id" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, marginBottom: 16 }}>
+                ) : undefined
+              }
+            >
+              <div style={{ padding: '14px' }}>
+              <div className="grid-imposto-id" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 14, marginBottom: 14 }}>
                 <Campo label="Identificação da amostra (ex: P1 - Pilar Térreo)"><input style={inputStyle} value={nomeAmostra} onChange={e => setNomeAmostra(e.target.value)} placeholder="Ex: V1 - Viga Piso 2, P3 - Pilar Térreo…" onKeyDown={e => e.key === 'Enter' && impactoRefs.current[0]?.focus()} /></Campo>
                 <Campo label="Posição do Esclerômetro">
                   <div style={{ display: 'flex', gap: 6 }}>
-                    {POSICOES.map(p => <button key={p} onClick={() => setPosicao(p)} style={{ flex: 1, padding: '8px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: posicao === p ? PRIMARY : '#F0F2F8', color: posicao === p ? '#fff' : SUBTEXT, border: `2px solid ${posicao === p ? PRIMARY : 'transparent'}` }}>{p}</button>)}
+                    {POSICOES.map(p => <button key={p} onClick={() => setPosicao(p)} style={{ flex: 1, padding: '8px 4px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', backgroundColor: posicao === p ? PRIMARY : '#F1F5F9', color: posicao === p ? '#fff' : SUBTEXT, border: `1.5px solid ${posicao === p ? PRIMARY : '#E2E8F0'}` }}>{p}</button>)}
                   </div>
                 </Campo>
               </div>
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Impactos (máx. 16) — filtro automático ±10% da média bruta — mínimo 5 válidos</p>
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Impactos (máx. 16) — filtro automático ±10% da média bruta — mínimo 5 válidos</p>
                 <div className="impactos-wrap" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {impactos.map((v, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
@@ -1047,36 +1075,40 @@ export default function EsclerometriaPage() {
                           if (val.length === 2) { const nx = impactoRefs.current[i + 1]; if (nx) nx.focus(); }
                         }}
                         onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const nx = impactoRefs.current[i + 1]; if (nx) nx.focus(); else processarAmostra(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = impactoRefs.current[i - 1]; if (pv) pv.focus(); } else if (e.key === 'Enter') { e.preventDefault(); const nx = impactoRefs.current[i + 1]; if (nx) nx.focus(); else processarAmostra(); } }}
-                        style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? '#F0F4FC' : '#fff', outline: 'none', transition: 'all 0.1s' }}
+                        style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? '#EFF6FF' : '#fff', outline: 'none', transition: 'all 0.1s' }}
                         onFocus={e => { e.target.style.borderColor = PRIMARY; e.target.style.background = '#E8EFFE'; }}
-                        onBlur={e => { e.target.style.borderColor = v ? PRIMARY + '55' : BORDER; e.target.style.background = v ? '#F0F4FC' : '#fff'; }}
+                        onBlur={e => { e.target.style.borderColor = v ? PRIMARY + '55' : BORDER; e.target.style.background = v ? '#EFF6FF' : '#fff'; }}
                       />
                     </div>
                   ))}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={processarAmostra} disabled={!nomeAmostra.trim()} className="btn-pri" style={{ padding: '10px 22px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: nomeAmostra.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', backgroundColor: editandoId ? GOLD : PRIMARY, color: editandoId ? PRIMARY : '#fff', border: 'none', opacity: nomeAmostra.trim() ? 1 : 0.5 }}>{editandoId ? '✓ Salvar Alterações' : '+ Calcular e Adicionar'}</button>
-                {editandoId && <button onClick={cancelarEdicao} style={{ padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>Cancelar</button>}
-                <button onClick={() => { setNomeAmostra(''); setImpactos(Array(16).fill('')); setPosicao('0°'); }} style={{ padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: SUBTEXT, border: 'none' }}>Limpar Campos</button>
+                <button onClick={processarAmostra} disabled={!nomeAmostra.trim()} className="btn-pri" style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: nomeAmostra.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', backgroundColor: editandoId ? GOLD : PRIMARY, color: editandoId ? PRIMARY : '#fff', border: 'none', opacity: nomeAmostra.trim() ? 1 : 0.5 }}>{editandoId ? '✓ Salvar Alterações' : '+ Calcular e Adicionar'}</button>
+                {editandoId && <button onClick={cancelarEdicao} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F1F5F9', color: SUBTEXT, border: '1px solid #E2E8F0' }}>Cancelar</button>}
+                <button onClick={() => { setNomeAmostra(''); setImpactos(Array(16).fill('')); setPosicao('0°'); }} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F1F5F9', color: SUBTEXT, border: '1px solid #E2E8F0' }}>Limpar Campos</button>
               </div>
-            </section>
+              </div>
+            </PainelPlanilha>
 
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(30,50,100,0.06)' }}>
+            <PainelPlanilha
+              titulo="Resultado do Ensaio"
+              direita={<span style={{ fontSize: 10.5, fontWeight: 600, color: '#BFDBFE' }}>{amostras.length} amostra{amostras.length !== 1 ? 's' : ''}</span>}
+              marginBottom={0}
+            >
               <div className="table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-              <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 60px 72px', padding: '11px 16px', background: EXCEL_BLUE, minWidth: 820 }}>
-                {['#','ELEMENTO','POSIÇÃO','LIM. INF.','LIM. SUP.','I.E. MÉDIO','STATUS','I.E. EFETIVO','RESIST. (MPa)','DISP.','FOTO','AÇÕES'].map(h => <span key={h} style={{ fontSize: 9.5, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>{h}</span>)}
+              <div style={{ ...tabelaHeaderStyle, display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 60px 72px', padding: '9px 14px', minWidth: 820 }}>
+                {['#','ELEMENTO','POSIÇÃO','LIM. INF.','LIM. SUP.','I.E. MÉDIO','STATUS','I.E. EFETIVO','RESIST. (MPa)','DISP.','FOTO','AÇÕES'].map(h => <span key={h} style={tabelaThTextStyle}>{h}</span>)}
               </div>
               {amostras.length === 0 ? (
-                <div style={{ padding: '48px 0', textAlign: 'center', color: SUBTEXT }}>
-                  <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.2 }}>⬡</div>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhuma amostra inserida</p>
+                <div style={{ padding: '44px 0', textAlign: 'center', color: SUBTEXT }}>
+                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhuma amostra inserida</p>
                   <p style={{ margin: '4px 0 0', fontSize: 12 }}>Preencha o formulário acima para adicionar a primeira amostra</p>
                 </div>
               ) : amostras.map((a, idx) => {
                 const valida = a.status === 'Amostra Válida', editing = editandoId === a.id;
                 return (
-                  <div key={a.id} className="row-h" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 60px 72px', padding: '11px 16px', borderBottom: idx < amostras.length - 1 ? `1px solid ${BORDER}` : 'none', alignItems: 'center', background: editing ? '#FFFBEC' : idx % 2 === 1 ? '#F8F9FC' : '#fff', opacity: valida ? 1 : 0.72, transition: 'background 0.1s', minWidth: 820 }}>
+                  <div key={a.id} className="row-h" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 96px 62px 62px 62px 110px 76px 110px 64px 60px 72px', padding: '9px 14px', borderBottom: idx < amostras.length - 1 ? '1px solid #E2E8F0' : 'none', alignItems: 'center', background: editing ? '#FFFBEC' : idx % 2 === 1 ? '#F8FAFC' : '#fff', opacity: valida ? 1 : 0.72, transition: 'background 0.1s', minWidth: 820 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: SUBTEXT, textAlign: 'center' }}>{a.item}</span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: TEXT, paddingRight: 8 }}>{a.amostra}</span>
                     <span style={{ fontSize: 12, color: SUBTEXT, textAlign: 'center' }}>{a.posicao}</span>
@@ -1120,38 +1152,36 @@ export default function EsclerometriaPage() {
               })}
 
               </div>{/* /table-wrapper */}
-            </section>
+            </PainelPlanilha>
           </div>
         )}
 
         {/* ABA 3 */}
         {aba === 'obra' && (
-          <div style={{ paddingTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', background: GREEN_LIGHT, border: `1.5px solid ${GREEN_BORDER}`, borderRadius: 10 }}>
+          <div style={{ paddingTop: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px', background: GREEN_LIGHT, border: `1px solid ${GREEN_BORDER}`, borderRadius: 8, marginBottom: 14 }}>
               <div>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: GREEN }}>Modo Obra — Registro rápido em campo</p>
-                <p style={{ margin: '3px 0 0', fontSize: 12, color: '#4A7A54', lineHeight: 1.5 }}>Crie grupos de ensaio (por obra/visita) e adicione pontos. Na aba <strong>Dados de Campo</strong>, importe um grupo inteiro com o coeficiente de bigorna aplicado automaticamente.</p>
+                <p style={{ margin: 0, fontSize: 12.5, fontWeight: 800, color: GREEN }}>Modo Obra — Registro rápido em campo</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#4A7A54', lineHeight: 1.5 }}>Crie grupos de ensaio (por obra/visita) e adicione pontos. Na aba <strong>Dados de Campo</strong>, importe um grupo inteiro com o coeficiente de bigorna aplicado automaticamente.</p>
               </div>
             </div>
 
-            <section style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '18px 24px', boxShadow: '0 1px 4px rgba(30,50,100,0.04)' }}>
-              <h3 style={{ margin: '0 0 14px', fontSize: 12, fontWeight: 800, color: GREEN, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Novo Grupo de Ensaio</h3>
-              <div style={{ display: 'flex', gap: 10 }}>
+            <PainelPlanilha titulo="Novo Grupo de Ensaio" corBarra={GREEN}>
+              <div style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
                 <input style={{ ...inputStyle, flex: 1 }} value={novoGrupoNome} onChange={e => setNovoGrupoNome(e.target.value)} placeholder="Ex: Edifício Central — Visita 07/05" onKeyDown={e => e.key === 'Enter' && criarGrupo()} />
-                <button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: novoGrupoNome.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: GREEN, color: '#fff', border: 'none', opacity: novoGrupoNome.trim() ? 1 : 0.5, whiteSpace: 'nowrap' }}>+ Criar Grupo</button>
+                <button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} style={{ padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: novoGrupoNome.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: GREEN, color: '#fff', border: 'none', opacity: novoGrupoNome.trim() ? 1 : 0.5, whiteSpace: 'nowrap' }}>+ Criar Grupo</button>
               </div>
-            </section>
+            </PainelPlanilha>
 
             {grupos.length === 0 ? (
-              <div style={{ padding: '40px 0', textAlign: 'center', color: SUBTEXT, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12 }}>
-                <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.15 }}>📋</div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Nenhum grupo criado</p>
+              <div style={{ padding: '36px 0', textAlign: 'center', color: SUBTEXT, background: '#fff', border: '1px solid #94A3B8', borderRadius: 8 }}>
+                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhum grupo criado</p>
                 <p style={{ margin: '4px 0 0', fontSize: 12 }}>Crie um grupo acima para começar a registrar pontos</p>
               </div>
             ) : grupos.map(g => {
               const ativo = grupoAtivoId === g.id;
               return (
-                <section key={g.id} style={{ background: '#fff', border: `1.5px solid ${ativo ? GREEN : BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: ativo ? `0 0 0 3px ${GREEN}22` : '0 1px 4px rgba(30,50,100,0.04)', transition: 'border-color 0.15s' }}>
+                <section key={g.id} style={{ background: '#fff', border: `1px solid ${ativo ? GREEN : '#94A3B8'}`, borderRadius: 8, overflow: 'hidden', marginBottom: 14, transition: 'border-color 0.15s' }}>
                   {/* Cabeçalho grupo */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: ativo ? '#F0FFF4' : '#F8F9FA', borderBottom: `1px solid ${BORDER}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => setGrupoAtivoId(ativo ? null : g.id)}>
