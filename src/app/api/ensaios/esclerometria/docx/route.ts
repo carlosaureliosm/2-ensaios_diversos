@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
       media:        body.mediaBigorna > 0 ? body.mediaBigorna.toFixed(2) : '—',
       coef:         body.coefBigorna !== 1 ? body.coefBigorna.toFixed(3) : '1,000',
       amostras:     body.amostras,
-      notas:        body.notas || '',
+      notas:        (body.notas || '').trim(),
       resp_nome:    body.respNome || '—',
       resp_crea:    body.respCrea || '—',
       resp_assinatura: assinaturaBuffer ? 'ASSINATURA_PLACEHOLDER' : '',
