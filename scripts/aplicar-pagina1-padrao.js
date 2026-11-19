@@ -9,8 +9,8 @@
 //   3. Faixa cinza com o título do ensaio
 //
 // Substitui a antiga capa (imagem de fundo + "RELATÓRIO TÉCNICO") e o SUMÁRIO.
-// Todo o conteúdo que vinha depois do sumário (a partir do parágrafo [[segunda_data]],
-// seguido de INTRODUÇÃO, METODOLOGIA, ...) é mantido como está.
+// Todo o conteúdo que vinha depois do sumário (a partir do título INTRODUÇÃO,
+// seguido de METODOLOGIA, ...) é mantido como está; a linha [[segunda_data]] ("Recife, dd de ...") é removida.
 //
 // O script é idempotente: pode ser rodado de novo depois de editar normas/layout.
 //   node scripts/aplicar-pagina1-padrao.js
@@ -167,8 +167,10 @@ for (const { arquivo, normas } of MODELOS) {
   let xml = zip.file('word/document.xml').asText();
 
   const bodyIni = xml.indexOf('<w:body>') + '<w:body>'.length;
-  const marcador = xml.indexOf('[[segunda_data]]');
-  if (marcador < 0) throw new Error(`${arquivo}: parágrafo [[segunda_data]] não encontrado`);
+  // Corta até o início do título "INTRODUÇÃO" — a linha "Recife, dd de mês de aaaa"
+  // ([[segunda_data]]) também sai, já que a data de emissão está na tabela da página 1.
+  const marcador = xml.indexOf('INTRODUÇÃO</w:t>');
+  if (marcador < 0) throw new Error(`${arquivo}: título INTRODUÇÃO não encontrado`);
   const corte = xml.lastIndexOf('<w:p ', marcador);
 
   xml = xml.slice(0, bodyIni) + montarPagina1(normas) + xml.slice(corte);
