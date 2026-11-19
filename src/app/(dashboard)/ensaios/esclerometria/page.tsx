@@ -238,6 +238,7 @@ export default function EsclerometriaPage() {
   const [obraSalvoMsg,  setObraSalvoMsg]  = useState('');
   const [showImportar,  setShowImportar]  = useState(false);
 
+  const bigornaRefs     = useRef<(HTMLInputElement | null)[]>([]);
   const impactoRefs     = useRef<(HTMLInputElement | null)[]>([]);
   const pontImpactoRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -792,8 +793,19 @@ export default function EsclerometriaPage() {
                   {cab.bigorna.map((v, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}°</span>
-                      <input type="text" inputMode="decimal" value={v} onChange={e => setBigorna(i, onlyDecimal(e.target.value))}
-                        onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i + 1] as HTMLElement)?.focus(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i - 1] as HTMLElement)?.focus(); } else if (e.key === 'Enter') { e.preventDefault(); (document.querySelectorAll('.bigorna-input')[i + 1] as HTMLElement)?.focus(); } }}
+                      <input
+                        ref={el => { bigornaRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={2}
+                        value={v}
+                        onChange={e => {
+                          const val = onlyNumbers(e.target.value).slice(0, 2);
+                          setBigorna(i, val);
+                          if (val.length === 2) { const nx = bigornaRefs.current[i + 1]; if (nx) nx.focus(); }
+                        }}
+                        onKeyDown={e => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); bigornaRefs.current[i + 1]?.focus(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); bigornaRefs.current[i - 1]?.focus(); } else if (e.key === 'Enter') { e.preventDefault(); bigornaRefs.current[i + 1]?.focus(); } }}
                         style={{ width: 52, textAlign: 'center', padding: '7px 4px', border: `1.5px solid ${v ? PRIMARY + '55' : BORDER}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', color: TEXT, background: v ? '#EFF6FF' : '#fff', outline: 'none', transition: 'all 0.1s' }}
                         className="num-in bigorna-input" />
                     </div>
