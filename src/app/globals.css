@@ -24,3 +24,24 @@
     color: var(--color-on-background);
   }
 }
+
+/* Evita auto-zoom ao focar campos de entrada em celulares (iOS e Android) */
+@media (max-width: 768px) {
+  html,
+  body {
+    overflow-x: clip;
+    touch-action: pan-y;
+    overscroll-behavior-x: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  input:not([type="color"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+    max-width: 100%;
+    box-sizing: border-box;
+    touch-action: manipulation;
+  }
+}
