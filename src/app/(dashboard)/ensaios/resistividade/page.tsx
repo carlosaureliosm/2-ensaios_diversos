@@ -13,6 +13,7 @@ import {
   tabelaHeaderStyle,
   tabelaThTextStyle,
 } from '@/components/PlanilhaUI';
+import { ResponsavelTecnicoPanel } from '@/components/ResponsavelTecnicoPanel';
 
 // ── Constantes visuais ──────────────────────────────────────────
 const PRIMARY     = '#1E3264';
@@ -227,7 +228,6 @@ export default function ResistividadePage() {
   const [outroRespCrea, setOutroRespCrea]   = useState('');
   const [outroRespFile, setOutroRespFile]   = useState<File | null>(null);
   const [outroRespPreview, setOutroRespPreview] = useState<string | null>(null);
-  const outroAssinaturaRef = useRef<HTMLInputElement>(null);
 
   // Coordenadas GPS
   const [gps, setGps] = useState('');
@@ -749,84 +749,35 @@ export default function ResistividadePage() {
             </PainelPlanilha>
 
             {/* Responsável técnico */}
-            <PainelPlanilha titulo="Responsável Técnico">
-              <div style={{ padding: '14px' }}>
-              {/* Bloco padrão — dados do perfil */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
-                padding: '12px 14px', borderRadius: 8,
-                background: outroResp ? '#F8FAFC' : '#F1F5F9',
-                border: `1px solid ${outroResp ? '#E2E8F0' : '#CBD5E1'}`,
-                marginBottom: 12, opacity: outroResp ? 0.5 : 1,
-                transition: 'all 0.2s',
-              }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Engenheiro Responsável TECOMAT</p>
-                  <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: TEXT }}>{userName || <span style={{ color: SUBTEXT }}>—</span>}</p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>CREA</p>
-                  <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: userCrea ? TEXT : SUBTEXT }}>{userCrea || 'Não cadastrado'}</p>
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Assinatura</p>
-                  {userAssinatura
-                    ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={userAssinatura} alt="Assinatura" style={{ maxHeight: 40, maxWidth: 200, objectFit: 'contain', marginTop: 6, display: 'block' }} />
-                    )
-                    : <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXT }}>Não cadastrada — <a href="/usuarios" style={{ color: PRIMARY, textDecoration: 'underline' }}>cadastrar no perfil</a></p>
-                  }
-                </div>
-              </div>
-
-              {/* Checkbox outro responsável */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: outroResp ? 12 : 0 }}>
-                <input
-                  type="checkbox"
-                  checked={outroResp}
-                  onChange={e => {
-                    setOutroResp(e.target.checked);
-                    if (!e.target.checked) { setOutroRespNome(''); setOutroRespCrea(''); setOutroRespFile(null); setOutroRespPreview(null); }
-                  }}
-                  style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT }}>
-                  Outro responsável para este relatório
-                </span>
-              </label>
-
-              {/* Campos expandidos quando "outro responsável" marcado */}
-              {outroResp && (
-                <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 12,
-                  padding: '14px', borderRadius: 8,
-                  background: '#F8FAFC',
-                  border: '1px solid #CBD5E1',
-                  animation: 'fadeIn 0.15s ease',
-                }}>
-                  <div className="grid-outro-resp" style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '12px 16px' }}>
-                    <Campo label="Nome completo" htmlFor="outro-nome"><input id="outro-nome" style={inputStyle} value={outroRespNome} onChange={e => setOutroRespNome(e.target.value)} placeholder="Nome do engenheiro" /></Campo>
-                    <Campo label="CREA" htmlFor="outro-crea"><input id="outro-crea" style={inputStyle} value={outroRespCrea} onChange={e => setOutroRespCrea(e.target.value)} placeholder="Nº CREA" /></Campo>
-                  </div>
-                  <Campo label="Imagem da Assinatura">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <input ref={outroAssinaturaRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; setOutroRespFile(f); setOutroRespPreview(URL.createObjectURL(f)); }} />
-                      <button onClick={() => outroAssinaturaRef.current?.click()} style={{ padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#EEF1F8', color: PRIMARY, border: `1px solid ${BORDER}` }}>{outroRespPreview ? '↻ Trocar imagem' : '📁 Selecionar assinatura'}</button>
-                      {outroRespPreview && (
-                        <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={outroRespPreview} alt="Prévia assinatura" style={{ maxHeight: 40, maxWidth: 160, objectFit: 'contain', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 4, background: '#fff' }} />
-                          <button onClick={() => { setOutroRespFile(null); setOutroRespPreview(null); if (outroAssinaturaRef.current) outroAssinaturaRef.current.value = ''; }} style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#FFF0EE', color: DANGER, border: `1px solid #FADADD` }}>Remover</button>
-                        </>
-                      )}
-                    </div>
-                    <p style={{ margin: '6px 0 0', fontSize: 11, color: SUBTEXT }}>PNG com fundo transparente recomendado · não será salva no perfil</p>
-                  </Campo>
-                </div>
-              )}
-              </div>
-            </PainelPlanilha>
+            <ResponsavelTecnicoPanel
+              idPrefix="res"
+              userName={userName}
+              userCrea={userCrea}
+              userAssinatura={userAssinatura}
+              outroResp={outroResp}
+              onOutroRespChange={ativo => {
+                setOutroResp(ativo);
+                if (!ativo) {
+                  setOutroRespNome('');
+                  setOutroRespCrea('');
+                  setOutroRespFile(null);
+                  setOutroRespPreview(null);
+                }
+              }}
+              outroRespNome={outroRespNome}
+              onOutroRespNomeChange={setOutroRespNome}
+              outroRespCrea={outroRespCrea}
+              onOutroRespCreaChange={setOutroRespCrea}
+              outroRespPreview={outroRespPreview}
+              onOutroRespFileSelect={f => {
+                setOutroRespFile(f);
+                setOutroRespPreview(URL.createObjectURL(f));
+              }}
+              onOutroRespFileRemove={() => {
+                setOutroRespFile(null);
+                setOutroRespPreview(null);
+              }}
+            />
 
             {/* Opções do Relatório */}
             <PainelPlanilha titulo="Opções do Relatório">

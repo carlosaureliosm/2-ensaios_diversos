@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header';
+import { PlanilhaStyles } from '@/components/PlanilhaUI';
+import { ResponsavelTecnicoPanel } from '@/components/ResponsavelTecnicoPanel';
 import {
   MODELOS_SISTEMA_CAMADAS,
   ID_MODELO_PERSONALIZADO,
@@ -1783,6 +1785,11 @@ export default function AderenciaPage() {
   const [salvoMsg, setSalvoMsg] = useState('');
   const [cabecalho, setCabecalho] = useState<AderenciaCabecalho>(CABECALHO_VAZIO);
   const [gerandoDocx, setGerandoDocx] = useState(false);
+  const [outroResp, setOutroResp] = useState(false);
+  const [outroRespNome, setOutroRespNome] = useState('');
+  const [outroRespCrea, setOutroRespCrea] = useState('');
+  const [outroRespFile, setOutroRespFile] = useState<File | null>(null);
+  const [outroRespPreview, setOutroRespPreview] = useState<string | null>(null);
   const { userCrea, userAssinatura, userName, loaded, fetchUser } = useUserStore();
 
   useEffect(() => {
@@ -1919,10 +1926,30 @@ export default function AderenciaPage() {
     setCabecalho(prev => ({ ...prev, [campo]: valor }));
   }
 
+  const lerOutroRespBase64 = (): Promise<string> =>
+    new Promise((resolve) => {
+      if (!outroRespFile || !(outroRespFile instanceof Blob)) { resolve(''); return; }
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(outroRespFile);
+    });
+
   async function gerarRelatorio() {
     if (!cabecalho.rltNumero.trim()) { alert('Informe o Nº do relatório (RLT) antes de gerar.'); setEtapa('config'); return; }
+    if (outroResp && !outroRespNome.trim()) { alert('Informe o nome do engenheiro responsável.'); setEtapa('config'); return; }
     setGerandoDocx(true);
     try {
+      let respAssinaturaBase64 = '';
+      let respAssinaturaContentType = 'image/png';
+      if (outroResp && outroRespFile) {
+        respAssinaturaBase64 = await lerOutroRespBase64();
+        respAssinaturaContentType = outroRespFile.type || 'image/png';
+      }
+      const respNomeFinal = outroResp ? outroRespNome : userName;
+      const respCreaFinal = outroResp ? outroRespCrea : userCrea;
+      const respAssinaturaUrl = (!outroResp && userAssinatura) ? userAssinatura : '';
+
       // O esquema e o gráfico (SVGs) são rasterizados em PNG aqui no navegador, pois o DOCX não embute SVG de forma confiável.
       const situacoesPayload = await Promise.all(
         situacoes.map(async (s, idx) => {
@@ -1957,9 +1984,11 @@ export default function AderenciaPage() {
         body: JSON.stringify({
           cabecalho,
           situacoes: situacoesLeves,
-          respNome: userName,
-          respCrea: userCrea,
-          respAssinaturaUrl: userAssinatura || '',
+          respNome: respNomeFinal,
+          respCrea: respCreaFinal,
+          respAssinaturaUrl,
+          respAssinaturaBase64,
+          respAssinaturaContentType,
         }),
       });
       if (!res.ok) {
@@ -1984,6 +2013,7 @@ export default function AderenciaPage() {
 
   return (
     <div style={{ backgroundColor: BG, minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif", width: '100%', maxWidth: '100vw', overflowX: 'clip' }}>
+      <PlanilhaStyles />
       <style>{`
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
@@ -2196,6 +2226,36 @@ export default function AderenciaPage() {
                 </div>
               </div>
             </PainelPlanilha>
+
+            <ResponsavelTecnicoPanel
+              idPrefix="ad"
+              userName={userName}
+              userCrea={userCrea}
+              userAssinatura={userAssinatura}
+              outroResp={outroResp}
+              onOutroRespChange={ativo => {
+                setOutroResp(ativo);
+                if (!ativo) {
+                  setOutroRespNome('');
+                  setOutroRespCrea('');
+                  setOutroRespFile(null);
+                  setOutroRespPreview(null);
+                }
+              }}
+              outroRespNome={outroRespNome}
+              onOutroRespNomeChange={setOutroRespNome}
+              outroRespCrea={outroRespCrea}
+              onOutroRespCreaChange={setOutroRespCrea}
+              outroRespPreview={outroRespPreview}
+              onOutroRespFileSelect={f => {
+                setOutroRespFile(f);
+                setOutroRespPreview(URL.createObjectURL(f));
+              }}
+              onOutroRespFileRemove={() => {
+                setOutroRespFile(null);
+                setOutroRespPreview(null);
+              }}
+            />
 
             <PainelPlanilha titulo="Número de situações">
               <div style={{ padding: '10px 14px', background: '#fff' }}>

@@ -13,6 +13,7 @@ import {
   tabelaHeaderStyle,
   tabelaThTextStyle,
 } from '@/components/PlanilhaUI';
+import { ResponsavelTecnicoPanel } from '@/components/ResponsavelTecnicoPanel';
 
 // ── Constantes visuais ──────────────────────────────────────────
 const PRIMARY     = '#1E3264';
@@ -690,7 +691,6 @@ export default function PacometriaPage() {
   const [outroRespCrea, setOutroRespCrea] = useState('');
   const [outroRespFile, setOutroRespFile] = useState<File | null>(null);
   const [outroRespPreview, setOutroRespPreview] = useState<string | null>(null);
-  const outroAssinaturaRef = useRef<HTMLInputElement>(null);
 
   // Opções relatório
   const [usaMotivacao, setUsaMotivacao]   = useState(false);
@@ -975,35 +975,36 @@ export default function PacometriaPage() {
             </PainelPlanilha>
 
             {/* Responsável */}
-            <PainelPlanilha titulo="Responsável Técnico">
-              <div style={{ padding: '14px' }}>
-              <div style={{ padding: '12px 14px', background: '#F1F5F9', borderRadius: 8, border: '1px solid #CBD5E1', marginBottom: 12 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: PRIMARY }}>{userName || '—'}</p>
-                <p style={{ margin: '3px 0 0', fontSize: 11, color: SUBTEXT }}>CREA: {userCrea || 'não informado'} · {userCargo || ''}</p>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: outroResp ? PRIMARY : SUBTEXT, marginBottom: outroResp ? 12 : 0 }}>
-                <input type="checkbox" checked={outroResp} onChange={e => setOutroResp(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
-                Usar outro responsável técnico
-              </label>
-              {outroResp && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', padding: 14, borderRadius: 8, background: '#F8FAFC', border: '1px solid #CBD5E1' }}>
-                  <Campo label="Nome completo" htmlFor="or-nome"><input id="or-nome" style={inputStyle} value={outroRespNome} onChange={e => setOutroRespNome(e.target.value)} /></Campo>
-                  <Campo label="CREA" htmlFor="or-crea"><input id="or-crea" style={inputStyle} value={outroRespCrea} onChange={e => setOutroRespCrea(e.target.value)} /></Campo>
-                  <div style={{ gridColumn: '1/-1' }}>
-                    <Campo label="Assinatura (imagem)">
-                      <input ref={outroAssinaturaRef} type="file" accept="image/*" style={{ fontSize: 12 }} onChange={e => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        setOutroRespFile(f);
-                        setOutroRespPreview(URL.createObjectURL(f));
-                      }} />
-                      {outroRespPreview && <img src={outroRespPreview} alt="Assinatura" style={{ marginTop: 8, height: 40, objectFit: 'contain' }} />}
-                    </Campo>
-                  </div>
-                </div>
-              )}
-              </div>
-            </PainelPlanilha>
+            <ResponsavelTecnicoPanel
+              idPrefix="pac"
+              userName={userName}
+              userCrea={userCrea}
+              userCargo={userCargo}
+              userAssinatura={userAssinatura}
+              outroResp={outroResp}
+              onOutroRespChange={ativo => {
+                setOutroResp(ativo);
+                if (!ativo) {
+                  setOutroRespNome('');
+                  setOutroRespCrea('');
+                  setOutroRespFile(null);
+                  setOutroRespPreview(null);
+                }
+              }}
+              outroRespNome={outroRespNome}
+              onOutroRespNomeChange={setOutroRespNome}
+              outroRespCrea={outroRespCrea}
+              onOutroRespCreaChange={setOutroRespCrea}
+              outroRespPreview={outroRespPreview}
+              onOutroRespFileSelect={f => {
+                setOutroRespFile(f);
+                setOutroRespPreview(URL.createObjectURL(f));
+              }}
+              onOutroRespFileRemove={() => {
+                setOutroRespFile(null);
+                setOutroRespPreview(null);
+              }}
+            />
 
             {/* Notas */}
             <PainelPlanilha titulo="Notas do Relatório">

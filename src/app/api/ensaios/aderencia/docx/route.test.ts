@@ -103,10 +103,19 @@ describe('geração DOCX de aderência (ponta a ponta)', () => {
     expect(xml).toContain('SITUAÇÃO II')
     expect(xml).toContain('SITUAÇÃO III')
 
-    // imagens: 3 esquemas + (4+12)*2 fotos = 35 drawings
-    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(35)
+    // imagens: 3 esquemas + (4+12)*2 fotos + 1 assinatura fixa (João) = 36 drawings
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(36)
     const media = Object.keys(zip.files).filter(f => f.startsWith('word/media/aderencia_img_'))
     expect(media.length).toBe(35)
+
+    // assinatura dupla: João Ribeiro de Carvalho (fixo) + Engenheiro do ensaio
+    expect(xml).toContain('João Ribeiro de Carvalho')
+    expect(xml).toContain('CREA Nº49780 – PE')
+    expect(xml).toContain('Eng. Fulano')
+    expect(xml).toContain('CREA Nº 12345')
+    expect(zip.file('word/media/image6.jpeg')).toBeTruthy()
+    expect(zip.file('word/_rels/document.xml.rels')!.asText()).toContain('Id="rId13"')
+    expect(zip.file('word/_rels/document.xml.rels')!.asText()).toContain('Target="media/image6.jpeg"')
 
     // escape de XML preservado
     expect(xml).toContain('Cliente &amp; Cia')
@@ -143,7 +152,7 @@ describe('geração DOCX de aderência (ponta a ponta)', () => {
     const ok = await chamar(corpo('user-1/a.jpg'))
     expect(ok.status).toBe(200)
     const xml = new PizZip(Buffer.from(await ok.arrayBuffer())).file('word/document.xml')!.asText()
-    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(3) // esquema + 2 fotos
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(4) // esquema + 2 fotos + assinatura fixa (João)
 
     const negado = await chamar(corpo('outro-usuario/a.jpg'))
     expect(negado.status).toBe(500)
@@ -266,8 +275,8 @@ describe('geração DOCX de aderência (ponta a ponta)', () => {
     expect(idxCap6).toBeGreaterThan(idxCap5)
     expect(idxNotas).toBeGreaterThan(idxCap6)
 
-    // 2 esquemas + 4*2 fotos da s1 + 2 gráficos = 12 drawings
-    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(12)
+    // 2 esquemas + 4*2 fotos da s1 + 2 gráficos + 1 assinatura fixa (João) = 13 drawings
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(13)
 
     // XML bem-formado
     const pilha: string[] = []
@@ -277,5 +286,41 @@ describe('geração DOCX de aderência (ponta a ponta)', () => {
       else pilha.push(m[2])
     }
     expect(pilha).toEqual([])
+  })
+
+  it('inclui assinatura dupla com imagem fixa de João e assinatura dinâmica do engenheiro', async () => {
+    const body = {
+      cabecalho: {
+        rltNumero: '88', cliente: 'Cliente', obra: 'Obra', construtora: 'Construtora',
+        endereco: 'Rua D, 4', dataEmissao: '2026-11-19',
+        normas: { nbr13528_1: true, nbr13528_1_parte2: false, nbr13528_1_parte3: false, nbr13749: false, nbr13753: false, nbr13754: false, nbr13755: false },
+      },
+      situacoes: [situacao(1, 'piso-contrapiso', 2, false)],
+      respNome: 'Eng. Maria Silva',
+      respCrea: '54321-PE',
+      respAssinaturaBase64: PNG_1X1,
+      respAssinaturaContentType: 'image/png',
+    }
+
+    const res = await POST(new NextRequest('http://localhost/api/ensaios/aderencia/docx', { method: 'POST', body: JSON.stringify(body) }))
+    expect(res.status).toBe(200)
+    const zip = new PizZip(Buffer.from(await res.arrayBuffer()))
+    const xml = zip.file('word/document.xml')!.asText()
+    const rels = zip.file('word/_rels/document.xml.rels')!.asText()
+
+    expect(xml).not.toMatch(/\[\[|\]\]/)
+    expect(xml).not.toMatch(/_PH_|PLACEHOLDER/)
+    expect(xml).toContain('João Ribeiro de Carvalho')
+    expect(xml).toContain('CREA Nº49780 – PE')
+    expect(xml).toContain('Eng. Maria Silva')
+    expect(xml).toContain('CREA Nº 54321-PE')
+    expect(xml).toContain('r:embed="rId13"')
+    expect(xml).toContain('r:embed="rId901"')
+    expect(rels).toContain('media/image6.jpeg')
+    expect(rels).toContain('media/assinatura_resp.png')
+    expect(zip.file('word/media/image6.jpeg')).toBeTruthy()
+    expect(zip.file('word/media/assinatura_resp.png')).toBeTruthy()
+    // 1 esquema + 1 assinatura fixa (João) + 1 assinatura dinâmica = 3 drawings
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(3)
   })
 })

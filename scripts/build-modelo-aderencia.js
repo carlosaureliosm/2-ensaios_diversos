@@ -742,30 +742,58 @@ parts.push(para(run('[[/situacoes]]', { size: 2 }), { spacingBefore: 0, spacingA
 parts.push(para(run('[[/temGraficos]]', { size: 2 }), { spacingBefore: 0, spacingAfter: 0, line: 20 }));
 
 // ══════════════════════════════════════════════════════════════
-// 5. RODAPÉ FINAL — QUADRO NOTAS + ASSINATURA (LADO A LADO, IGUAL À PLANILHA)
+// 5. RODAPÉ FINAL — QUADRO NOTAS + ASSINATURA DUPLA (JOÃO + ENGENHEIRO DO ENSAIO)
 // ══════════════════════════════════════════════════════════════
+const joaoAssinaturaDrawing =
+  '<w:r><w:rPr><w:noProof/></w:rPr><w:drawing>' +
+  '<wp:inline distT="0" distB="0" distL="0" distR="0">' +
+  '<wp:extent cx="1362075" cy="619125"/>' +
+  '<wp:effectExtent l="0" t="0" r="9525" b="9525"/>' +
+  '<wp:docPr id="612" name="AssinaturaJoao"/>' +
+  '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+  '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' +
+  '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+  '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+  '<pic:nvPicPr><pic:cNvPr id="612" name="AssinaturaJoao"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr>' +
+  '<pic:blipFill><a:blip r:embed="rId13"/><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>' +
+  '<pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="1362075" cy="619125"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></pic:spPr>' +
+  '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>';
+
 parts.push(para('', { spacingBefore: 40, spacingAfter: 20, line: 80 }));
-parts.push(tbl([3150, 1850], [
+parts.push(tbl([2500, 2500], [
   trow([
-    tc(3150, [
-      para(run('NOTAS:', { bold: true, size: 15 }), { jc: 'left', spacingAfter: 20 }),
-      para(run('1. Este relatório tem resultados restritos, aplicam-se apenas aos corpos de prova ensaiados.', { size: 14 }), { jc: 'left', indentLeft: 60, spacingAfter: 15 }),
-      para(run('2. Este relatório só deverá ser reproduzido por completo, e mediante expressa autorização do laboratório.', { size: 14 }), { jc: 'left', indentLeft: 60, spacingAfter: 15 }),
-      para(run('3. Este relatório atende aos requisitos de acreditação da Cgcre (Coordenação Geral de Acreditação do Inmetro), que avaliou a competência do laboratório.', { size: 14 }), { jc: 'left', indentLeft: 60 }),
+    tc(5000, [
+      para(run('NOTAS:', { bold: true, size: 15 }), { jc: 'left', spacingAfter: 20, keepNext: true }),
+      para(run('1. Este relatório tem resultados restritos, aplicam-se apenas aos corpos de prova ensaiados.', { size: 14 }), { jc: 'left', indentLeft: 60, spacingAfter: 15, keepNext: true }),
+      para(run('2. Este relatório só deverá ser reproduzido por completo, e mediante expressa autorização do laboratório.', { size: 14 }), { jc: 'left', indentLeft: 60, spacingAfter: 15, keepNext: true }),
+      para(run('3. Este relatório atende aos requisitos de acreditação da Cgcre (Coordenação Geral de Acreditação do Inmetro), que avaliou a competência do laboratório.', { size: 14 }), { jc: 'left', indentLeft: 60, keepNext: true }),
     ], {
-      align: 'left', vAlign: 'top',
-      borders: { top: B_MED, bottom: B_MED, left: B_NONE, right: B_MED },
+      align: 'left', vAlign: 'top', gridSpan: 2,
+      borders: { top: B_MED, bottom: B_THIN, left: B_MED, right: B_MED },
     }),
-    tc(1850, [
-      para(run('[[resp_assinatura]]', { size: 14 }), { jc: 'center', spacingBefore: 20 }),
+  ], { cantSplit: true }),
+  trow([
+    tc(2500, [
+      para(joaoAssinaturaDrawing, { jc: 'center', spacingBefore: 20, spacingAfter: 10 }),
       para(run('___________________________________', { size: 14 }), { jc: 'center' }),
-      para(run('[[resp_nome]]', { bold: true, size: 15 }), { jc: 'center' }),
-      para(run('CREA: [[resp_crea]]', { size: 14 }), { jc: 'center' }),
+      para(run('João Ribeiro de Carvalho', { bold: true, italic: true, size: 15 }), { jc: 'center' }),
+      para(run('Engenheiro Civil', { size: 14 }), { jc: 'center' }),
+      para(run('CREA Nº49780 – PE', { size: 14 }), { jc: 'center' }),
     ], {
       align: 'center', vAlign: 'bottom',
-      borders: { top: B_MED, bottom: B_MED, left: B_MED, right: B_NONE },
+      borders: { top: B_THIN, bottom: B_MED, left: B_MED, right: B_THIN },
     }),
-  ]),
+    tc(2500, [
+      para(run('[[resp_assinatura]]', { size: 14 }), { jc: 'center', spacingBefore: 20, spacingAfter: 10 }),
+      para(run('___________________________________', { size: 14 }), { jc: 'center' }),
+      para(run('[[resp_nome]]', { bold: true, italic: true, size: 15 }), { jc: 'center' }),
+      para(run('Engenheiro Civil', { size: 14 }), { jc: 'center' }),
+      para(run('CREA Nº [[resp_crea]]', { size: 14 }), { jc: 'center' }),
+    ], {
+      align: 'center', vAlign: 'bottom',
+      borders: { top: B_THIN, bottom: B_MED, left: B_THIN, right: B_MED },
+    }),
+  ], { cantSplit: true }),
 ], { borders: 'none', cellMarginTop: 30, cellMarginBottom: 30, cellMarginLeft: 60, cellMarginRight: 60 }));
 
 // ── sectPr final (margens ajustadas para aproveitamento de página idêntico à planilha) ──────
@@ -829,10 +857,14 @@ zip.file('word/document.xml', documentXml);
 zip.file('word/header1.xml', headerXml);
 zip.file('word/footer1.xml', footerXml);
 
-const UNUSED_MEDIA = ['image1.jpeg', 'image2.png', 'image3.png', 'image4.png', 'image5.png', 'image6.jpeg'];
+// Mantém image6.jpeg (rId13 = assinatura fixa de João Ribeiro de Carvalho) e remove apenas mídias antigas não usadas
+const UNUSED_MEDIA = ['image1.jpeg', 'image2.png', 'image3.png', 'image4.png', 'image5.png'];
 UNUSED_MEDIA.forEach(m => zip.remove(`word/media/${m}`));
 let relsXml = zip.file('word/_rels/document.xml.rels').asText();
-relsXml = relsXml.replace(/<Relationship[^>]*Target="media\/(image1\.jpeg|image2\.png|image3\.png|image4\.png|image5\.png|image6\.jpeg)"[^>]*\/>/g, '');
+relsXml = relsXml.replace(/<Relationship[^>]*Target="media\/(image1\.jpeg|image2\.png|image3\.png|image4\.png|image5\.png)"[^>]*\/>/g, '');
+if (!relsXml.includes('Id="rId13"') || !zip.file('word/media/image6.jpeg')) {
+  throw new Error('Assinatura fixa (rId13 -> word/media/image6.jpeg) não encontrada no modelo base.');
+}
 zip.file('word/_rels/document.xml.rels', relsXml);
 
 const out = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
