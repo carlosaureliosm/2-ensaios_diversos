@@ -1586,35 +1586,27 @@ function SituacaoForm({
 
         {/* 6. Gráfico de Resultado (por situação — vai após o anexo de fotos no relatório) */}
         <div style={{ borderTop: '1.5px solid #94A3B8', background: '#fff' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '8px 14px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-            <div>
-              <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Gráfico de Resultado
-              </span>
-              <span style={{ marginLeft: 8, fontSize: 11, color: SUBTEXT }}>
-                Incluído no relatório após o anexo de fotos
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 240px', maxWidth: 380 }}>
-              <label
-                htmlFor={`titulo-grafico-${situacao.numero}`}
-                style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', whiteSpace: 'nowrap' }}
-              >
-                Título:
-              </label>
-              <input
-                id={`titulo-grafico-${situacao.numero}`}
-                style={{ ...inputStyle, height: 28, fontSize: 12 }}
-                value={situacao.tituloGrafico ?? ''}
-                placeholder={tituloPadraoGrafico(situacao)}
-                onChange={e => atualizar('tituloGrafico', e.target.value)}
-              />
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 14px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Gráfico de Resultado
+            </span>
+            <span style={{ fontSize: 11, color: SUBTEXT }}>
+              Incluído no relatório após o anexo de fotos
+            </span>
           </div>
-          <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'center', background: '#fff' }}>
+          <CelulaFicha label="Título do gráfico (opcional)">
+            <input
+              id={`titulo-grafico-${situacao.numero}`}
+              style={fichaInputStyle}
+              value={situacao.tituloGrafico ?? ''}
+              placeholder={tituloPadraoGrafico(situacao)}
+              onChange={e => atualizar('tituloGrafico', e.target.value)}
+            />
+          </CelulaFicha>
+          <div style={{ padding: mobile ? '10px 8px' : '14px 16px', display: 'flex', justifyContent: 'center', background: '#fff' }}>
             <div
-              style={{ width: '100%', maxWidth: 720, lineHeight: 0 }}
-              dangerouslySetInnerHTML={{ __html: svgGraficoResultado(situacao, { criterioRa: criterioEfetivo }) }}
+              style={{ width: '100%', maxWidth: mobile ? 420 : 720, lineHeight: 0 }}
+              dangerouslySetInnerHTML={{ __html: svgGraficoResultado(situacao, { criterioRa: criterioEfetivo, compacto: mobile }) }}
             />
           </div>
         </div>

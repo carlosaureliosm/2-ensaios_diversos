@@ -21,6 +21,8 @@ export interface LinhaReferenciaGrafico {
 export interface OpcoesGraficoResultado {
   criterioRa?: CriterioRa;
   normas?: AderenciaNormas;
+  /** Layout mais alto e compacto (width 360) para leitura confortável em telas de celular. */
+  compacto?: boolean;
 }
 
 export interface EscalaEixoX {
@@ -161,19 +163,26 @@ export function svgGraficoResultado(
   const maxRef = linhasRef.reduce((acc, l) => (l.valor > acc ? l.valor : acc), 0);
   const escala = calcularEscalaEixoX(Math.max(maxBarra, maxRef));
 
-  const MAX_LABEL_CHARS = 28;
+  const compacto = !!opcoes?.compacto;
+  const MAX_LABEL_CHARS = compacto ? 14 : 28;
   const labelsExibidos = itens.map(it => truncarLabel(it.label, MAX_LABEL_CHARS));
   const maiorLabelLen = labelsExibidos.reduce((acc, l) => Math.max(acc, l.length), 6);
 
-  const W = 720;
-  const padTop = 62;
-  const padBottom = 56;
-  const padRight = 28;
-  // ~6.6px por caractere em Calibri 11px + 48px para o título vertical do eixo Y e respiro
-  const padLeft = Math.min(230, Math.max(115, Math.round(maiorLabelLen * 6.6 + 48)));
+  const W = compacto ? 360 : 720;
+  const padTop = compacto ? 56 : 62;
+  const padBottom = compacto ? 48 : 56;
+  const padRight = compacto ? 16 : 28;
+  // Espaço para o rótulo vertical do eixo Y + nomes das amostras
+  const padLeft = compacto
+    ? Math.min(130, Math.max(76, Math.round(maiorLabelLen * 6.4 + 34)))
+    : Math.min(230, Math.max(115, Math.round(maiorLabelLen * 6.6 + 48)));
 
-  const rowHeight = itens.length > 12 ? 24 : 28;
-  const barHeight = itens.length > 12 ? 10 : 12;
+  const rowHeight = compacto
+    ? (itens.length > 10 ? 28 : 34)
+    : (itens.length > 12 ? 24 : 28);
+  const barHeight = compacto
+    ? (itens.length > 10 ? 12 : 15)
+    : (itens.length > 12 ? 10 : 12);
   const numRows = Math.max(1, itens.length);
   const plotH = numRows * rowHeight;
   const plotW = W - padLeft - padRight;
@@ -185,13 +194,21 @@ export function svgGraficoResultado(
   const corBarra = '#5B9BD5';
   const corLimite = '#C00000';
 
+  const fsTitulo = compacto ? 13.5 : 16;
+  const fsLabel = compacto ? 10.5 : 11;
+  const fsTick = compacto ? 10 : 11;
+  const fsEixoY = compacto ? 9.5 : 10.5;
+  const fsEixoX = compacto ? 10.5 : 11;
+  const textoEixoY = compacto && plotH < 170 ? 'AMOSTRAS' : 'IDENTIFICAÇÃO DAS AMOSTRAS';
+  const xEixoY = compacto ? 14 : 18;
+
   const linhasGrade = escala.ticks
     .map(t => {
       const x = padLeft + (t / escala.max) * plotW;
       const xStr = x.toFixed(2);
       return (
         `<line x1="${xStr}" y1="${padTop}" x2="${xStr}" y2="${padTop + plotH}" stroke="${corGrade}" stroke-width="1"/>` +
-        `<text x="${xStr}" y="${padTop + plotH + 18}" text-anchor="middle" font-family="${font}" font-size="11" fill="${corTexto}">${formatarTickBR(t)}</text>`
+        `<text x="${xStr}" y="${padTop + plotH + (compacto ? 16 : 18)}" text-anchor="middle" font-family="${font}" font-size="${fsTick}" fill="${corTexto}">${formatarTickBR(t)}</text>`
       );
     })
     .join('');
@@ -201,7 +218,7 @@ export function svgGraficoResultado(
       const cy = padTop + idx * rowHeight + rowHeight / 2;
       const barY = (cy - barHeight / 2).toFixed(2);
       const barW = it.valor > 0 ? Math.max(1, (it.valor / escala.max) * plotW) : 0;
-      const labelXml = `<text x="${padLeft - 10}" y="${(cy + 4).toFixed(2)}" text-anchor="end" font-family="${font}" font-size="11" fill="${corTexto}">${escXml(labelsExibidos[idx])}</text>`;
+      const labelXml = `<text x="${padLeft - (compacto ? 7 : 10)}" y="${(cy + 3.5).toFixed(2)}" text-anchor="end" font-family="${font}" font-size="${fsLabel}" fill="${corTexto}">${escXml(labelsExibidos[idx])}</text>`;
       const barXml = barW > 0
         ? `<rect x="${padLeft}" y="${barY}" width="${barW.toFixed(2)}" height="${barHeight}" fill="${corBarra}"/>`
         : '';
@@ -230,12 +247,12 @@ export function svgGraficoResultado(
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block">` +
     `<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="#FFFFFF" stroke="${corGrade}" stroke-width="1"/>` +
-    `<text x="${(W / 2).toFixed(2)}" y="28" text-anchor="middle" font-family="${font}" font-size="16" font-weight="400" fill="${corTexto}">${escXml(titulo)}</text>` +
-    `<text x="18" y="${yCentroPlot}" transform="rotate(-90 18 ${yCentroPlot})" text-anchor="middle" font-family="${font}" font-size="10.5" fill="${corTexto}">IDENTIFICAÇÃO DAS AMOSTRAS</text>` +
+    `<text x="${(W / 2).toFixed(2)}" y="${compacto ? 24 : 28}" text-anchor="middle" font-family="${font}" font-size="${fsTitulo}" font-weight="400" fill="${corTexto}">${escXml(titulo)}</text>` +
+    `<text x="${xEixoY}" y="${yCentroPlot}" transform="rotate(-90 ${xEixoY} ${yCentroPlot})" text-anchor="middle" font-family="${font}" font-size="${fsEixoY}" fill="${corTexto}">${textoEixoY}</text>` +
     linhasGrade +
     barrasELabels +
     limitesXml +
-    `<text x="${xCentroPlot}" y="${padTop + plotH + 40}" text-anchor="middle" font-family="${font}" font-size="11" fill="${corTexto}">TENSÃO [MPa]</text>` +
+    `<text x="${xCentroPlot}" y="${padTop + plotH + (compacto ? 36 : 40)}" text-anchor="middle" font-family="${font}" font-size="${fsEixoX}" fill="${corTexto}">TENSÃO [MPa]</text>` +
     `</svg>`
   );
 }

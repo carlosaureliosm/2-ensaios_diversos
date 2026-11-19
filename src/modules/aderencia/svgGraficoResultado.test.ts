@@ -137,4 +137,23 @@ describe('svgGraficoResultado', () => {
     expect(svgExplicito).toContain('Limite 0,20 MPa');
     expect(svgExplicito).not.toContain('Aprov. 0,50 MPa');
   });
+
+  it('gera layout compacto (width 360) com proporção legível para mobile', () => {
+    const cps = [1, 2, 3].map(n => {
+      const cp = criarCorpoDeProva(n, ['Vazios']);
+      cp.localizacao = `p${n}`;
+      cp.tensaoRa = 0.3;
+      return cp;
+    });
+
+    const svgMobile = svgGraficoResultado(
+      { numero: 1, tipoRevestimento: 'DESCIDA 1', modeloCamadasId: 'parede-reboco', corposDeProva: cps },
+      { criterioRa: '0.30', compacto: true },
+    );
+
+    expect(svgMobile).toContain('width="360"');
+    expect(svgMobile).toContain('viewBox="0 0 360 ');
+    expect(svgMobile).toContain('>AMOSTRAS<');
+    expect(svgMobile).toContain('Limite 0,30 MPa');
+  });
 });
