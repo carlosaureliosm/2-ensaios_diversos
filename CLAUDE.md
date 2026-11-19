@@ -284,3 +284,8 @@ A 1ª página e a identidade visual do relatório de **aderência** são o model
 - Rotas `api/ensaios/esclerometria/docx` e `api/ensaios/resistividade/docx`: enviam `[[data_emissao]]` (`body.data`) e `notas: (body.notas || '').trim()`; a rota de resistividade também envia `nome_ensaio: 'RESISTIVIDADE ELÉTRICA DO CONCRETO'` e fallback `'—'` nos campos de cabeçalho.
 - As assinaturas fixas (`rId13`/`rId11 -> word/media/image6.jpeg`) foram preservadas, e o `build-modelo-aderencia.js` (que clona o `modelo_esclerometria.docx`) continua funcionando.
 - **Módulos futuros** (pacometria, carbonatação, ultrassom, potencial de corrosão): começar o DOCX já com esse padrão (header, margens, página 1 e quadro final de notas/assinaturas).
+- Commits desta entrega na `main`: `75cd930` (página 1 padrão sem capa/sumário), `223f44d` (remoção da linha `[[segunda_data]]`) e `1f472f5` (header/margens alinhados à aderência, NBR 7584:2026 no DOCX de esclerometria, Tabela 1 de resistividade sem quebra de página e quadro final de notas/assinaturas). Obs.: na tela/PDF client-side de `esclerometria/page.tsx` ainda consta `NBR 7584:2012`, caso se deseje atualizar lá também depois.
+
+## Pendências gerais / QA pós-módulos (registrado em 2026-11-19)
+
+- **Teste completo do site de ponta a ponta:** quando todos os módulos estiverem finalizados (incluindo pacometria, carbonatação, potencial de corrosão e ultrassom), executar uma bateria de testes ponta a ponta cobrindo todo o site — login, permissões, gestão de usuários/assinatura, fluxo completo de preenchimento/autosave e geração/abertura real dos relatórios DOCX em todos os ensaios.
