@@ -1788,6 +1788,8 @@ export default function AderenciaPage() {
         .aderencia-normas-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-rows: repeat(4, auto);
+          grid-auto-flow: column;
           gap: 6px 16px;
         }
         .aderencia-tripla-row {
@@ -1822,6 +1824,10 @@ export default function AderenciaPage() {
           }
           .aderencia-tripla-row, .aderencia-cab-grid, .aderencia-normas-grid {
             grid-template-columns: 1fr !important;
+          }
+          .aderencia-normas-grid {
+            grid-template-rows: none !important;
+            grid-auto-flow: row !important;
           }
           .aderencia-esquema-row, .aderencia-esquema-sit {
             grid-template-columns: 1fr !important;
