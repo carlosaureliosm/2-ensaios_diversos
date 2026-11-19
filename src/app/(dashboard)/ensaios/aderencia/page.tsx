@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header';
-import { PlanilhaStyles } from '@/components/PlanilhaUI';
+import { PlanilhaStyles, EnsaioCabecalho, EnsaioTabs } from '@/components/PlanilhaUI';
 import { ResponsavelTecnicoPanel } from '@/components/ResponsavelTecnicoPanel';
 import {
   MODELOS_SISTEMA_CAMADAS,
@@ -1473,7 +1473,7 @@ function SituacaoForm({
               </div>
             </div>
 
-            <button type="button" onClick={() => setCpAtual(Math.min(situacao.corposDeProva.length - 1, cpIdx + 1))} disabled={cpIdx >= situacao.corposDeProva.length - 1} style={{ marginTop: 14, width: '100%', padding: '11px 0', borderRadius: 8, border: 'none', background: GOLD, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: cpIdx >= situacao.corposDeProva.length - 1 ? 0.4 : 1 }}>Próximo CP ›</button>
+            <button type="button" className="btn-gold" onClick={() => setCpAtual(Math.min(situacao.corposDeProva.length - 1, cpIdx + 1))} disabled={cpIdx >= situacao.corposDeProva.length - 1} style={{ marginTop: 14, width: '100%', padding: '11px 0', borderRadius: 8, border: 'none', background: GOLD, color: PRIMARY, fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: cpIdx >= situacao.corposDeProva.length - 1 ? 0.4 : 1 }}>Próximo CP ›</button>
           </div>
           );
         })() : (
@@ -1884,6 +1884,24 @@ export default function AderenciaPage() {
     setColunasManuaisPorSituacao(prev => prev.map((v, i) => (i === indice ? nextColunasManuais : v)));
   }
 
+  function limparTudo() {
+    if (!confirm('Apagar TODOS os dados e começar do zero?')) return;
+    setEtapa('config');
+    setNumSituacoes(1);
+    setModeloPorSituacao([MODELOS_SISTEMA_CAMADAS[0].id]);
+    setModelosPersonalizados([null]);
+    setColunasManuaisPorSituacao([false]);
+    setSituacoes([]);
+    setSituacaoAtual(0);
+    setCabecalho(CABECALHO_VAZIO);
+    setOutroResp(false);
+    setOutroRespNome('');
+    setOutroRespCrea('');
+    setOutroRespFile(null);
+    setOutroRespPreview(null);
+    localStorage.removeItem(LS_KEY);
+  }
+
   function confirmarConfiguracao() {
     setSituacoes(prev =>
       modeloPorSituacao.map((modeloId, i) => {
@@ -2183,24 +2201,55 @@ export default function AderenciaPage() {
       `}</style>
       <Header paginaAtiva="ensaios" />
 
-      <main className="aderencia-main" style={{ maxWidth: etapa === 'situacoes' ? 1040 : 860, margin: '0 auto', padding: '24px 20px 60px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, marginBottom: 20 }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Resistência de Aderência à Tração</h1>
-            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: SUBTEXT }}>
-              {etapa === 'config' ? 'Configuração inicial do relatório' : `Situação ${numeroRomano(situacaoAtual + 1)} de ${numeroRomano(situacoes.length)}`}
-            </p>
-          </div>
-          {salvoMsg && (
-            <span style={{ fontSize: 12, color: SUCCESS, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, paddingTop: 3 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
-              {salvoMsg}
-            </span>
-          )}
-        </div>
+      <main className="aderencia-main" style={{ maxWidth: 1060, margin: '0 auto', padding: '24px 20px 60px' }}>
+        <EnsaioCabecalho
+          breadcrumb="Resistência de Aderência à Tração"
+          titulo="Resistência de Aderência à Tração"
+          subtitulo={
+            etapa === 'config'
+              ? 'NBR 13528 — Configuração inicial do relatório'
+              : `NBR 13528 — Situação ${numeroRomano(situacaoAtual + 1)} de ${numeroRomano(situacoes.length)}`
+          }
+          salvoMsg={salvoMsg}
+          onLimparTudo={limparTudo}
+          onGerarRelatorio={gerarRelatorio}
+          gerandoDocx={gerandoDocx}
+          podeGerar={situacoes.length > 0}
+        />
+
+        <EnsaioTabs
+          abaAtiva={etapa}
+          onChange={(id) => {
+            if (id === 'situacoes') confirmarConfiguracao();
+            else setEtapa('config');
+          }}
+          marginBottom={18}
+          tabs={[
+            {
+              id: 'config',
+              labelFull: '1. Configuração Inicial',
+              labelShort: 'Configuração',
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              ),
+            },
+            {
+              id: 'situacoes',
+              labelFull: `2. Situações (${numSituacoes})`,
+              labelShort: `Situações (${numSituacoes})`,
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+              ),
+            },
+          ]}
+        />
 
         {etapa === 'config' && (
-          <>
+          <div style={{ maxWidth: 860, margin: '0 auto' }}>
             <PainelPlanilha titulo="Cabeçalho do relatório">
               <div className="aderencia-cab-grid">
                 <CelulaFicha label="Nº RLT" borderRight><input id="ad-rlt" inputMode="numeric" pattern="[0-9]*" style={fichaInputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', somenteDigitos(e.target.value))} placeholder="EX: 045" /></CelulaFicha>
@@ -2324,12 +2373,13 @@ export default function AderenciaPage() {
               <button
                 type="button"
                 onClick={confirmarConfiguracao}
+                className="btn-pri"
                 style={{ padding: '11px 22px', borderRadius: 8, border: 'none', background: PRIMARY, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Continuar →
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {etapa === 'situacoes' && situacoes.length > 0 && (
@@ -2392,7 +2442,8 @@ export default function AderenciaPage() {
                   type="button"
                   onClick={gerarRelatorio}
                   disabled={gerandoDocx}
-                  style={{ padding: '11px 20px', borderRadius: 8, border: 'none', background: gerandoDocx ? BORDER : GOLD, color: gerandoDocx ? SUBTEXT : '#fff', fontSize: 13, fontWeight: 700, cursor: gerandoDocx ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
+                  className="btn-gold"
+                  style={{ padding: '11px 20px', borderRadius: 8, border: 'none', background: gerandoDocx ? BORDER : GOLD, color: gerandoDocx ? SUBTEXT : PRIMARY, fontSize: 13, fontWeight: 700, cursor: gerandoDocx ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
                 >
                   {gerandoDocx ? 'Gerando…' : 'Gerar relatório (.docx)'}
                 </button>

@@ -9,6 +9,8 @@ import {
   PainelPlanilha,
   CelulaFicha,
   PlanilhaStyles,
+  EnsaioCabecalho,
+  EnsaioTabs,
   fichaInputStyle,
   tabelaHeaderStyle,
   tabelaThTextStyle,
@@ -743,6 +745,18 @@ export default function PacometriaPage() {
     router.push('/login');
   };
 
+  const limparTudo = () => {
+    if (!confirm('Apagar TODOS os dados e começar do zero?')) return;
+    setCab({ rlt: '', data: '', cliente: '', obra: '', att: '', endereco: '', notas: '' });
+    setAmostras([]);
+    setOutroResp(false); setOutroRespNome(''); setOutroRespCrea('');
+    setOutroRespFile(null); setOutroRespPreview(null);
+    setUsaMotivacao(false); setMotivacao('');
+    setUsaFotoGeral(false); setFotoGeralFile(null);
+    setUsaCroquiGeral(false); setCroquiFile(null);
+    localStorage.removeItem(LS_KEY);
+  };
+
   const initials = (() => {
     if (!userName) return userEmail.slice(0, 2).toUpperCase();
     const p = userName.trim().split(/\s+/);
@@ -860,52 +874,68 @@ export default function PacometriaPage() {
         @media(max-width:600px){
           .header-user-name,.header-cargo,.header-divider{display:none!important}
           .signout-text{display:none!important}
-          .tabs-row button{flex:1;font-size:11px!important;padding:10px 4px!important}
-          .tab-label-full{display:none}
-          .tab-label-short{display:inline}
-          .main-pacometria{padding:16px!important}
+          .main-pacometria{padding:16px 14px!important}
           .amostras-table-section{display:none!important}
           .amostras-cards-section{display:flex!important}
         }
         @media(min-width:601px){
-          .tab-label-short{display:none}
-          .tab-label-full{display:inline}
           .amostras-cards-section{display:none!important}
         }
-        .tab-btn{padding:12px 20px;border:none;border-bottom:2px solid transparent;background:transparent;font-family:inherit;font-size:13px;font-weight:600;color:${SUBTEXT};cursor:pointer;transition:all .15s}
-        .tab-ativo{color:${PRIMARY}!important;border-bottom-color:${PRIMARY}!important}
-        .tab-icon{display:none}
-        @media(max-width:600px){.tab-icon{display:block;margin-bottom:2px}}
       `}</style>
 
       <PlanilhaStyles />
       <Header displayName={userName} initials={initials} cargo={userCargo} onSignOut={handleSignOut} />
 
       <main className="main-pacometria" style={{ maxWidth: 1060, margin: '0 auto', padding: '24px 20px' }}>
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <a href="/dashboard" style={{ fontSize: 12, color: SUBTEXT, textDecoration: 'none' }}>Ensaios</a>
-            <span style={{ fontSize: 12, color: SUBTEXT }}>›</span>
-            <span style={{ fontSize: 12, color: PRIMARY, fontWeight: 700 }}>Pacometria</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 12 }}>
-              <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: TEXT }}>Pacometria</h1>
-              <p style={{ margin: '4px 0 0', fontSize: 12.5, color: SUBTEXT }}>Localização de armaduras e cobrimento do concreto</p>
-            </div>
-            {salvoMsg && <span style={{ fontSize: 12, color: SUCCESS, fontWeight: 600 }}>✓ {salvoMsg}</span>}
-          </div>
-        </div>
+        <EnsaioCabecalho
+          breadcrumb="Pacometria"
+          titulo="Pacometria"
+          subtitulo="Localização de armaduras e cobrimento do concreto"
+          salvoMsg={salvoMsg}
+          onLimparTudo={limparTudo}
+          onGerarRelatorio={gerarDocx}
+          gerandoDocx={gerandoDocx}
+          podeGerar={amostras.length > 0}
+        />
 
-        {/* Tabs */}
-        <div className="tabs-row" style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, marginBottom: 18 }}>
-          {([['cabecalho', 'Cabeçalho e Aparelho', 'Cab.'], ['campo', 'Dados de Campo', 'Dados'], ['obra', 'Modo Obra', 'Obra']] as const).map(([id, full, short]) => (
-            <button key={id} className={`tab-btn${aba === id ? ' tab-ativo' : ''}`} onClick={() => setAba(id)} style={{ borderBottom: aba === id ? `3px solid ${GOLD}` : '3px solid transparent', marginBottom: -2 }}>
-              <span className="tab-label-full">{`${id === 'cabecalho' ? '1.' : id === 'campo' ? '2.' : '3.'} ${full}`}</span>
-              <span className="tab-label-short">{short}</span>
-            </button>
-          ))}
-        </div>
+        <EnsaioTabs
+          abaAtiva={aba}
+          onChange={setAba}
+          marginBottom={18}
+          tabs={[
+            {
+              id: 'cabecalho',
+              labelFull: '1. Cabeçalho e Aparelho',
+              labelShort: 'Cabeçalho',
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              ),
+            },
+            {
+              id: 'campo',
+              labelFull: `2. Dados de Campo${amostras.length > 0 ? ` (${amostras.length})` : ''}`,
+              labelShort: 'Dados',
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+              ),
+            },
+            {
+              id: 'obra',
+              variante: 'obra',
+              labelFull: '3. Modo Obra',
+              labelShort: 'Obra',
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 20h20" /><path d="M6 20v-4a6 6 0 0 1 12 0v4" /><path d="M12 4v4" /><path d="M4 12a8 8 0 0 1 16 0" />
+                </svg>
+              ),
+            },
+          ]}
+        />
 
         {/* ── ABA 1: CABEÇALHO ── */}
         {aba === 'cabecalho' && (
@@ -1172,19 +1202,6 @@ export default function PacometriaPage() {
                   </div>
               ))}
             </div>
-
-            {/* Botão gerar DOCX */}
-            {amostras.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
-                <button onClick={gerarDocx} disabled={gerandoDocx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 28px', borderRadius: 9, fontSize: 14, fontWeight: 800, cursor: gerandoDocx ? 'not-allowed' : 'pointer', fontFamily: 'inherit', background: gerandoDocx ? SUBTEXT : PRIMARY, color: '#fff', border: 'none', boxShadow: '0 2px 10px rgba(30,50,100,0.2)' }}>
-                  {gerandoDocx ? (
-                    <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Gerando...</>
-                  ) : (
-                    <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>Gerar DOCX Oficial</>
-                  )}
-                </button>
-              </div>
-            )}
           </div>
         )}
 
