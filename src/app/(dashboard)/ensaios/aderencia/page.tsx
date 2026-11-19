@@ -1,7 +1,7 @@
 'use client';
 // src/app/(dashboard)/ensaios/aderencia/page.tsx
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header';
@@ -147,11 +147,13 @@ const fichaInputStyle: React.CSSProperties = {
  * para não "engolir" a vírgula digitada (ex: "0,") enquanto o valor externo ainda é um number — só
  * resincroniza do valor externo quando ele muda por outro motivo (reset de linha, autosave, etc.).
  */
-function NumeroInput({ value, onChange, style, placeholder, maxDecimais = 2, maxInteiros, maxValor }: {
+function NumeroInput({ value, onChange, style, placeholder, maxDecimais = 2, maxInteiros, maxValor, onKeyDown, dataCell }: {
   value: number | null; onChange: (v: number | null) => void; style?: React.CSSProperties; placeholder?: string;
   /** Casas após a vírgula (padrão 2; 0 = só inteiros). */ maxDecimais?: number;
   /** Máximo de dígitos antes da vírgula (sem limite se omitido). */ maxInteiros?: number;
   /** Valor máximo; acima disso o campo é limitado a ele (ex: 100 para porcentagem). */ maxValor?: number;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  dataCell?: string;
 }) {
   const paraTexto = (v: number | null) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
   const [texto, setTexto] = useState(paraTexto(value));
@@ -184,6 +186,8 @@ function NumeroInput({ value, onChange, style, placeholder, maxDecimais = 2, max
       value={texto}
       placeholder={placeholder}
       onChange={handleChange}
+      onKeyDown={onKeyDown}
+      data-cell={dataCell}
     />
   );
 }
@@ -1081,6 +1085,23 @@ function SituacaoForm({
   normas: AderenciaNormas;
   onChange: (next: SituacaoAderencia) => void;
 }) {
+  const tabelaRef = useRef<HTMLTableElement>(null);
+
+  function aoPressionarEnterTabela(e: React.KeyboardEvent<HTMLInputElement>, destino: string) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const el = tabelaRef.current?.querySelector<HTMLInputElement>(`input[data-cell="${destino}"]`);
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  }
+
+  const [numCPsTexto, setNumCPsTexto] = useState(String(situacao.numCPs));
+  useEffect(() => {
+    setNumCPsTexto(String(situacao.numCPs));
+  }, [situacao.numero, situacao.numCPs]);
+
   function atualizar<K extends keyof SituacaoAderencia>(campo: K, valor: SituacaoAderencia[K]) {
     onChange({ ...situacao, [campo]: valor });
   }
@@ -1089,6 +1110,25 @@ function SituacaoForm({
     const numCPs = Math.max(1, n || 1);
     const corposDeProva = redimensionarCorposDeProva(situacao.corposDeProva, numCPs, modelo.colunasFormaRuptura);
     onChange({ ...situacao, numCPs, corposDeProva });
+  }
+
+  function handleNumCPsChange(valor: string) {
+    const digitos = somenteDigitos(valor);
+    setNumCPsTexto(digitos);
+    if (digitos !== '') {
+      const n = Number(digitos);
+      if (n >= 1) alterarNumCPs(n);
+    }
+  }
+
+  function handleNumCPsBlur() {
+    const n = Number(numCPsTexto);
+    if (!numCPsTexto || Number.isNaN(n) || n < 1) {
+      setNumCPsTexto('1');
+      if (situacao.numCPs !== 1) alterarNumCPs(1);
+    } else {
+      setNumCPsTexto(String(n));
+    }
   }
 
   function atualizarCP(indice: number, next: CorpoDeProva) {
@@ -1178,7 +1218,14 @@ function SituacaoForm({
           </CelulaFicha>
 
           <CelulaFicha label="Nº de corpos de prova" borderRight>
-            <input type="text" inputMode="numeric" style={fichaInputStyle} value={situacao.numCPs} onChange={e => alterarNumCPs(Number(somenteDigitos(e.target.value)))} />
+            <input
+              type="text"
+              inputMode="numeric"
+              style={fichaInputStyle}
+              value={numCPsTexto}
+              onChange={e => handleNumCPsChange(e.target.value)}
+              onBlur={handleNumCPsBlur}
+            />
           </CelulaFicha>
           <CelulaFicha label="Data de aplicação">
             <input style={fichaInputStyle} inputMode="numeric" maxLength={10} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
@@ -1375,7 +1422,7 @@ function SituacaoForm({
           );
         })() : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
+          <table ref={tabelaRef} style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: 34 }} />
               <col style={{ width: 48 }} />
@@ -1427,10 +1474,32 @@ function SituacaoForm({
                 return (
                   <tr key={i} style={{ background: rowBg, borderTop: '1px solid #E2E8F0' }}>
                     <Td style={{ textAlign: 'center' }}><span style={{ fontWeight: 800, fontSize: 12, color: '#475569' }}>{cp.numero}</span></Td>
-                    <Td editable borderLeft="1px solid #E2E8F0"><input style={gridInputStyle} value={cp.bloco} onChange={e => atualizarCP(i, { ...cp, bloco: e.target.value })} /></Td>
-                    <Td editable borderLeft="1px solid #E2E8F0"><input style={gridInputStyle} value={cp.junta} onChange={e => atualizarCP(i, { ...cp, junta: e.target.value })} /></Td>
                     <Td editable borderLeft="1px solid #E2E8F0">
-                      <NumeroInput style={gridInputStyle} value={cp.cargaKgf ?? null} onChange={v => atualizarCP(i, { ...cp, cargaKgf: v })} />
+                      <input
+                        style={gridInputStyle}
+                        data-cell={`bloco-${i}`}
+                        value={cp.bloco}
+                        onChange={e => atualizarCP(i, { ...cp, bloco: e.target.value })}
+                        onKeyDown={e => aoPressionarEnterTabela(e, `bloco-${i + 1}`)}
+                      />
+                    </Td>
+                    <Td editable borderLeft="1px solid #E2E8F0">
+                      <input
+                        style={gridInputStyle}
+                        data-cell={`junta-${i}`}
+                        value={cp.junta}
+                        onChange={e => atualizarCP(i, { ...cp, junta: e.target.value })}
+                        onKeyDown={e => aoPressionarEnterTabela(e, `junta-${i + 1}`)}
+                      />
+                    </Td>
+                    <Td editable borderLeft="1px solid #E2E8F0">
+                      <NumeroInput
+                        style={gridInputStyle}
+                        dataCell={`carga-${i}`}
+                        value={cp.cargaKgf ?? null}
+                        onChange={v => atualizarCP(i, { ...cp, cargaKgf: v })}
+                        onKeyDown={e => aoPressionarEnterTabela(e, `carga-${i + 1}`)}
+                      />
                     </Td>
                     <Td borderLeft="1px solid #E2E8F0" style={{ textAlign: 'center', background: raBaixo ? '#FEF2F2' : raAtencao ? '#FFFBEB' : undefined }}>
                       <span style={{ fontWeight: 700, fontSize: 12, color: raBaixo ? '#B91C1C' : raAtencao ? '#B45309' : TEXT }}>
@@ -1438,19 +1507,28 @@ function SituacaoForm({
                       </span>
                     </Td>
                     <Td editable borderLeft="1px solid #E2E8F0">
-                      <NumeroInput style={gridInputStyle} value={cp.profRuptura} onChange={v => atualizarCP(i, { ...cp, profRuptura: v })} />
+                      <NumeroInput
+                        style={gridInputStyle}
+                        dataCell={`prof-${i}`}
+                        value={cp.profRuptura}
+                        onChange={v => atualizarCP(i, { ...cp, profRuptura: v })}
+                        onKeyDown={e => aoPressionarEnterTabela(e, `prof-${i + 1}`)}
+                      />
                     </Td>
                     {modelo.colunasFormaRuptura.map((col, idx) => {
                       const val = cp.formaRuptura[col] ?? 0;
+                      const proxRup = idx + 1 < modelo.colunasFormaRuptura.length ? `rup-${i}-${idx + 1}` : `rup-${i + 1}-0`;
                       return (
                         <Td key={col} editable borderLeft={idx === 0 ? '1.5px solid #94A3B8' : '1px solid #E2E8F0'}>
                           <NumeroInput
                             style={{ ...gridInputStyle, fontWeight: val > 0 ? 800 : 400, color: val > 0 ? PRIMARY : '#CBD5E1' }}
+                            dataCell={`rup-${i}-${idx}`}
                             maxDecimais={0}
                             maxInteiros={3}
                             maxValor={100}
                             value={val}
                             onChange={v => atualizarCP(i, { ...cp, formaRuptura: { ...cp.formaRuptura, [col]: v ?? 0 } })}
+                            onKeyDown={e => aoPressionarEnterTabela(e, proxRup)}
                           />
                         </Td>
                       );
@@ -1465,7 +1543,13 @@ function SituacaoForm({
                       </span>
                     </Td>
                     <Td editable borderLeft="1.5px solid #94A3B8">
-                      <input style={{ ...gridInputStyle, textAlign: 'left', padding: '0 8px' }} value={cp.localizacao} onChange={e => atualizarCP(i, { ...cp, localizacao: e.target.value })} />
+                      <input
+                        style={{ ...gridInputStyle, textAlign: 'left', padding: '0 8px' }}
+                        data-cell={`loc-${i}`}
+                        value={cp.localizacao}
+                        onChange={e => atualizarCP(i, { ...cp, localizacao: e.target.value })}
+                        onKeyDown={e => aoPressionarEnterTabela(e, `loc-${i + 1}`)}
+                      />
                     </Td>
                     <Td borderLeft="1px solid #E2E8F0" style={{ padding: '3px 4px' }}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
