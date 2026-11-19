@@ -1017,10 +1017,12 @@ function removerFotoStorage(path: string) {
   fetch(`/api/ensaios/aderencia/foto?path=${encodeURIComponent(path)}`, { method: 'DELETE' }).catch(() => {});
 }
 
-function FotoSlot({ foto, onEscolher, onRemover, label, tamanho = 36 }: { foto: FotoAnexo | null; onEscolher: (file: File) => void; onRemover: () => void; label: string; tamanho?: number }) {
+function FotoSlot({ foto, onEscolher, onRemover, label, tamanho = 36, largura, altura }: { foto: FotoAnexo | null; onEscolher: (file: File) => void; onRemover: () => void; label: string; tamanho?: number; largura?: number | string; altura?: number }) {
   const id = `foto-${label}-${Math.random().toString(36).slice(2)}`;
+  const w = largura ?? tamanho;
+  const h = altura ?? tamanho;
   return (
-    <div style={{ position: 'relative', width: tamanho, height: tamanho, flexShrink: 0 }}>
+    <div style={{ position: 'relative', width: w, height: h, flexShrink: 0 }}>
       <input
         id={id}
         type="file"
@@ -1034,7 +1036,7 @@ function FotoSlot({ foto, onEscolher, onRemover, label, tamanho = 36 }: { foto: 
           <button type="button" onClick={onRemover} title="Remover foto" style={{ position: 'absolute', top: -5, right: -5, width: 15, height: 15, borderRadius: '50%', background: DANGER, color: '#fff', border: '1.5px solid #fff', fontSize: 9, lineHeight: '11px', cursor: 'pointer', padding: 0 }}>×</button>
         </div>
       ) : (
-        <label htmlFor={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', borderRadius: 6, border: `1.5px dashed ${BORDER}`, cursor: 'pointer', color: SUBTEXT, fontSize: 9, fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>
+        <label htmlFor={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', borderRadius: 8, border: `1.5px dashed ${BORDER}`, background: '#F8FAFC', cursor: 'pointer', color: SUBTEXT, fontSize: largura ? 12 : 9, fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>
           + {label}
         </label>
       )}
@@ -1137,39 +1139,33 @@ function SituacaoForm({
     <div style={{ minWidth: 0, maxWidth: '100%' }}>
       {/* 1. Ficha técnica da situação — mesmo padrão de grade contínua da tabela */}
       <div style={{ border: '1px solid #94A3B8', borderRadius: 8, overflow: 'hidden', background: '#fff', marginBottom: 14 }}>
-        <div style={{ background: PRIMARY, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div className="aderencia-sit-header" style={{ background: PRIMARY, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             DADOS DA SITUAÇÃO
           </span>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, color: '#BFDBFE' }}>
-            Critério Ra:
+          <div className="aderencia-sit-controls">
+            <label htmlFor="ad-criterio-ra" className="aderencia-sit-ctrl-label">Critério Ra:</label>
             <select
+              id="ad-criterio-ra"
+              className="aderencia-sit-select"
               value={criterioEfetivo}
               onChange={e => atualizar('criterioRa', e.target.value as CriterioRa)}
-              style={{
-                background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: 5, padding: '2px 6px', fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
-              }}
             >
               <option value="0.20" style={{ color: TEXT, background: '#fff' }}>≥ 0,20 MPa (Tabela 01)</option>
               <option value="0.30" style={{ color: TEXT, background: '#fff' }}>≥ 0,30 MPa (Tabela 01)</option>
               <option value="nbr13755" style={{ color: TEXT, background: '#fff' }}>NBR 13755 (0,30 / 0,50 MPa)</option>
             </select>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, color: '#BFDBFE' }}>
-            Placa:
+            <label htmlFor="ad-formato-placa" className="aderencia-sit-ctrl-label">Placa:</label>
             <select
+              id="ad-formato-placa"
+              className="aderencia-sit-select"
               value={situacao.formatoPlaca ?? 'circular'}
               onChange={e => alterarFormatoPlaca(e.target.value as 'circular' | 'quadrada')}
-              style={{
-                background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: 5, padding: '2px 6px', fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
-              }}
             >
               <option value="circular" style={{ color: TEXT, background: '#fff' }}>Circular Ø 5 cm</option>
               <option value="quadrada" style={{ color: TEXT, background: '#fff' }}>Quadrada 10×10 cm</option>
             </select>
-          </label>
+          </div>
         </div>
 
         {/* 5 pares de 2 colunas */}
@@ -1263,51 +1259,121 @@ function SituacaoForm({
           </div>
         </div>
 
-        {mobile && cpSel ? (
-          <div style={{ padding: '10px 12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        {mobile && cpSel ? (() => {
+          const raBaixoSel = cpSel.tensaoRa !== null && cpSel.tensaoRa < limitesRa.minimo;
+          const raAtencaoSel = cpSel.tensaoRa !== null && limitesRa.recomendado !== null && cpSel.tensaoRa >= limitesRa.minimo && cpSel.tensaoRa < limitesRa.recomendado;
+          const somaRupSel = modelo.colunasFormaRuptura.reduce((acc, col) => acc + (cpSel.formaRuptura[col] ?? 0), 0);
+          const totalCols = modelo.colunasFormaRuptura.length;
+          return (
+          <div style={{ padding: '14px' }}>
+            {/* Navegação entre CPs */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <button type="button" onClick={() => setCpAtual(Math.max(0, cpIdx - 1))} disabled={cpIdx === 0} style={{ ...navCpBtn, opacity: cpIdx === 0 ? 0.4 : 1 }}>‹</button>
               <b style={{ fontSize: 15, color: PRIMARY }}>CP {cpSel.numero} de {situacao.corposDeProva.length}</b>
               <button type="button" onClick={() => setCpAtual(Math.min(situacao.corposDeProva.length - 1, cpIdx + 1))} disabled={cpIdx >= situacao.corposDeProva.length - 1} style={{ ...navCpBtn, opacity: cpIdx >= situacao.corposDeProva.length - 1 ? 0.4 : 1 }}>›</button>
             </div>
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #E2E8F0' }}>
               {situacao.corposDeProva.map((cp, j) => (
-                <button key={j} type="button" onClick={() => setCpAtual(j)} style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: j === cpIdx ? PRIMARY : cpPreenchido(cp) ? '#bfe3c6' : '#e5e9f0', color: j === cpIdx ? '#fff' : TEXT }}>{cp.numero}</button>
+                <button key={j} type="button" onClick={() => setCpAtual(j)} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', background: j === cpIdx ? PRIMARY : cpPreenchido(cp) ? '#bfe3c6' : '#e5e9f0', color: j === cpIdx ? '#fff' : TEXT }}>{cp.numero}</button>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <Campo label="Bloco"><input style={inputStyle} value={cpSel.bloco} onChange={e => atualizarCP(cpIdx, { ...cpSel, bloco: e.target.value })} /></Campo>
-              <Campo label="Junta"><input style={inputStyle} value={cpSel.junta} onChange={e => atualizarCP(cpIdx, { ...cpSel, junta: e.target.value })} /></Campo>
-              <Campo label="Carga (kgf)"><NumeroInput style={inputStyle} value={cpSel.cargaKgf ?? null} onChange={v => atualizarCP(cpIdx, { ...cpSel, cargaKgf: v })} /></Campo>
-              <Campo label="Tensão Ra (MPa)"><div style={{ ...inputStyle, display: 'flex', alignItems: 'center', background: '#F1F5F9', fontWeight: 700 }}>{cpSel.tensaoRa === null ? '—' : cpSel.tensaoRa.toFixed(2).replace('.', ',')}</div></Campo>
-              <Campo label="Prof. ruptura (mm)"><NumeroInput style={inputStyle} value={cpSel.profRuptura} onChange={v => atualizarCP(cpIdx, { ...cpSel, profRuptura: v })} /></Campo>
+
+            {/* Bloco 1: Identificação e medições do CP (grade simétrica) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <Campo label="Bloco">
+                <input style={{ ...inputStyle, textAlign: 'center' }} value={cpSel.bloco} onChange={e => atualizarCP(cpIdx, { ...cpSel, bloco: e.target.value })} />
+              </Campo>
+              <Campo label="Junta">
+                <input style={{ ...inputStyle, textAlign: 'center' }} value={cpSel.junta} onChange={e => atualizarCP(cpIdx, { ...cpSel, junta: e.target.value })} />
+              </Campo>
             </div>
-            <p style={{ margin: '12px 0 6px', fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase' }}>Forma de ruptura (%)</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-              {modelo.colunasFormaRuptura.map(col => (
-                <Campo key={col} label={col}>
-                  <NumeroInput
-                    style={inputStyle}
-                    maxDecimais={0}
-                    maxInteiros={3}
-                    maxValor={100}
-                    value={cpSel.formaRuptura[col] ?? 0}
-                    onChange={v => atualizarCP(cpIdx, { ...cpSel, formaRuptura: { ...cpSel.formaRuptura, [col]: v ?? 0 } })}
-                  />
-                </Campo>
-              ))}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 10 }}>
+              <Campo label="Carga (kgf)">
+                <NumeroInput style={{ ...inputStyle, textAlign: 'center' }} value={cpSel.cargaKgf ?? null} onChange={v => atualizarCP(cpIdx, { ...cpSel, cargaKgf: v })} />
+              </Campo>
+              <Campo label="Ra (MPa)">
+                <div style={{
+                  ...inputStyle,
+                  minHeight: 36,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: raBaixoSel ? '#FEF2F2' : raAtencaoSel ? '#FFFBEB' : '#F1F5F9',
+                  borderColor: raBaixoSel ? '#FECACA' : raAtencaoSel ? '#FDE68A' : BORDER,
+                  color: raBaixoSel ? '#B91C1C' : raAtencaoSel ? '#B45309' : PRIMARY,
+                  fontWeight: 800,
+                }}>
+                  {cpSel.tensaoRa === null ? '—' : cpSel.tensaoRa.toFixed(2).replace('.', ',')}
+                </div>
+              </Campo>
+              <Campo label="Prof. (mm)">
+                <NumeroInput style={{ ...inputStyle, textAlign: 'center' }} value={cpSel.profRuptura} onChange={v => atualizarCP(cpIdx, { ...cpSel, profRuptura: v })} />
+              </Campo>
             </div>
-            <div style={{ marginTop: 12 }}>
-              <Campo label="Localização (ponto da amostra)"><input style={inputStyle} value={cpSel.localizacao} onChange={e => atualizarCP(cpIdx, { ...cpSel, localizacao: e.target.value })} /></Campo>
+
+            <div style={{ marginBottom: 14 }}>
+              <Campo label="Localização (ponto da amostra)">
+                <input style={inputStyle} value={cpSel.localizacao} onChange={e => atualizarCP(cpIdx, { ...cpSel, localizacao: e.target.value })} />
+              </Campo>
             </div>
-            <p style={{ margin: '12px 0 6px', fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase' }}>Fotos</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <FotoSlot tamanho={64} foto={cpSel.fotos[0]} label="1" onEscolher={f => escolherFoto(cpIdx, 0, f)} onRemover={() => removerFoto(cpIdx, 0)} />
-              <FotoSlot tamanho={64} foto={cpSel.fotos[1]} label="2" onEscolher={f => escolherFoto(cpIdx, 1, f)} onRemover={() => removerFoto(cpIdx, 1)} />
+
+            {/* Bloco 2: Forma de ruptura (%) */}
+            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 12, marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Forma de ruptura (%)
+                </span>
+                <span style={{
+                  padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 800,
+                  background: somaRupSel === 100 ? '#DCFCE7' : somaRupSel > 0 ? '#FEF3C7' : '#F1F5F9',
+                  color: somaRupSel === 100 ? '#166534' : somaRupSel > 0 ? '#B45309' : '#64748B',
+                }}>
+                  Soma: {somaRupSel}%
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, alignItems: 'end' }}>
+                {modelo.colunasFormaRuptura.map((col, idx) => {
+                  const val = cpSel.formaRuptura[col] ?? 0;
+                  const ehUltimoImpar = totalCols % 2 === 1 && idx === totalCols - 1;
+                  return (
+                    <div key={col} style={{ gridColumn: ehUltimoImpar ? '1 / -1' : undefined, minWidth: 0 }}>
+                      <Campo label={col}>
+                        <NumeroInput
+                          style={{
+                            ...inputStyle,
+                            textAlign: 'center',
+                            fontWeight: val > 0 ? 800 : 500,
+                            color: val > 0 ? PRIMARY : TEXT,
+                            background: val > 0 ? '#EFF6FF' : '#fff',
+                            borderColor: val > 0 ? '#93C5FD' : BORDER,
+                          }}
+                          maxDecimais={0}
+                          maxInteiros={3}
+                          maxValor={100}
+                          value={val}
+                          onChange={v => atualizarCP(cpIdx, { ...cpSel, formaRuptura: { ...cpSel.formaRuptura, [col]: v ?? 0 } })}
+                        />
+                      </Campo>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Bloco 3: Fotos do CP (2 colunas simétricas) */}
+            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 12 }}>
+              <p style={{ margin: '0 0 8px', fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fotos</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <FotoSlot largura="100%" altura={76} foto={cpSel.fotos[0]} label="Foto 1" onEscolher={f => escolherFoto(cpIdx, 0, f)} onRemover={() => removerFoto(cpIdx, 0)} />
+                <FotoSlot largura="100%" altura={76} foto={cpSel.fotos[1]} label="Foto 2" onEscolher={f => escolherFoto(cpIdx, 1, f)} onRemover={() => removerFoto(cpIdx, 1)} />
+              </div>
+            </div>
+
             <button type="button" onClick={() => setCpAtual(Math.min(situacao.corposDeProva.length - 1, cpIdx + 1))} disabled={cpIdx >= situacao.corposDeProva.length - 1} style={{ marginTop: 14, width: '100%', padding: '11px 0', borderRadius: 8, border: 'none', background: GOLD, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: cpIdx >= situacao.corposDeProva.length - 1 ? 0.4 : 1 }}>Próximo CP ›</button>
           </div>
-        ) : (
+          );
+        })() : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
             <colgroup>
@@ -1418,7 +1484,6 @@ function SituacaoForm({
         {/* 5. Rodapé em faixa única: estatísticas + Umidade/Espessura */}
         <div className="aderencia-rodape-unico" style={{ borderTop: '1px solid #94A3B8', background: '#F1F5F9' }}>
           <Estatistica label="Ra médio" valor={stats.raMedia} unidade="MPa" />
-          <Estatistica label="Prof. média" valor={stats.profRupturaMedia} unidade="mm" borderLeft />
           <Estatistica label="DP (MPa)" valor={stats.dp} unidade="" borderLeft />
           <Estatistica label="CV (%)" valor={stats.cv} unidade="%" borderLeft />
           <div style={{ padding: '8px 10px', borderLeft: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -1494,13 +1559,17 @@ function CelulaFicha({ label, children, borderRight = false, borderBottom = true
     <div
       className={`aderencia-grid-cell${borderRight ? ' ficha-celula' : ''}`}
       style={{
-        padding: '6px 10px 4px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        padding: '7px 12px 5px',
+        minWidth: 0,
         borderRight: borderRight ? '1px solid #E2E8F0' : undefined,
         borderBottom: borderBottom ? '1px solid #E2E8F0' : undefined,
         transition: 'background 0.1s',
       }}
     >
-      <p style={{ margin: '0 0 2px', fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <p style={{ margin: 0, fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.25 }}>
         {label}
       </p>
       {children}
@@ -1753,25 +1822,32 @@ export default function AderenciaPage() {
         input[type="number"] {
           -moz-appearance: textfield;
         }
-        .aderencia-ficha-grid {
-          display: grid;
-          grid-template-columns: 1.35fr 1fr;
-        }
         .ficha-celula {
-          padding: 8px 12px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: #fff;
           min-width: 0;
         }
-        .ficha-label {
-          font-size: 11px;
-          font-weight: 800;
-          color: ${PRIMARY};
+        .aderencia-sit-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px 10px;
+          flex-wrap: wrap;
+        }
+        .aderencia-sit-ctrl-label {
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #BFDBFE;
           white-space: nowrap;
-          letter-spacing: 0.02em;
-          flex-shrink: 0;
+        }
+        .aderencia-sit-select {
+          background: rgba(255,255,255,0.14);
+          color: #fff;
+          border: 1px solid rgba(255,255,255,0.3);
+          border-radius: 6px;
+          padding: 4px 8px;
+          font-size: 11px;
+          font-weight: 700;
+          font-family: inherit;
+          cursor: pointer;
+          outline: none;
         }
         .aderencia-ficha-grid {
           display: grid;
@@ -1810,11 +1886,39 @@ export default function AderenciaPage() {
         }
         .aderencia-rodape-unico {
           display: grid;
-          grid-template-columns: repeat(6, minmax(0, 1fr));
+          grid-template-columns: repeat(5, minmax(0, 1fr));
         }
         @media (max-width: 720px) {
+          .aderencia-sit-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+          }
+          .aderencia-sit-controls {
+            display: grid !important;
+            grid-template-columns: max-content minmax(0, 1fr) !important;
+            align-items: center !important;
+            gap: 8px 10px !important;
+            width: 100%;
+          }
+          .aderencia-sit-select {
+            width: 100% !important;
+            padding: 6px 10px !important;
+          }
           .aderencia-rodape-unico {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .aderencia-rodape-unico > :nth-child(3) {
+            border-left: none !important;
+          }
+          .aderencia-rodape-unico > :nth-child(3),
+          .aderencia-rodape-unico > :nth-child(4) {
+            border-top: 1px solid #CBD5E1;
+          }
+          .aderencia-rodape-unico > :last-child {
+            grid-column: 1 / -1;
+            border-left: none !important;
+            border-top: 1px solid #CBD5E1;
           }
           .aderencia-ficha-grid {
             grid-template-columns: 1fr !important;
