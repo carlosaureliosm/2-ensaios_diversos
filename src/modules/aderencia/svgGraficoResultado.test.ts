@@ -4,10 +4,22 @@ import { describe, it, expect } from 'vitest';
 import {
   calcularEscalaEixoX,
   extrairItensGrafico,
+  obterLinhasReferenciaGrafico,
   svgGraficoResultado,
   tituloPadraoGrafico,
 } from './svgGraficoResultado';
 import { criarCorpoDeProva } from './calculos';
+import type { AderenciaNormas } from './types';
+
+const NORMAS_VAZIAS: AderenciaNormas = {
+  nbr13528_1: false,
+  nbr13528_1_parte2: false,
+  nbr13528_1_parte3: false,
+  nbr13749: false,
+  nbr13753: false,
+  nbr13754: false,
+  nbr13755: false,
+};
 
 describe('svgGraficoResultado', () => {
   it('mantém escala 0,00 a 0,50 (passo 0,10) para valores até 0,50 MPa', () => {
@@ -69,6 +81,7 @@ describe('svgGraficoResultado', () => {
       numero: 1,
       tipoRevestimento: 'Emboço',
       tituloGrafico: 'Amostras do Emboço - Descida 1',
+      modeloCamadasId: 'parede-reboco',
       corposDeProva: [cp1, cp2],
     });
 
@@ -82,5 +95,46 @@ describe('svgGraficoResultado', () => {
     expect(svg).toContain('0,50');
     // Apenas cp1 tem valor > 0 → 1 barra azul
     expect((svg.match(/fill="#5B9BD5"/g) ?? []).length).toBe(1);
+    // Linha de limite padrão 0,30 MPa em vermelho
+    expect(svg).toContain('stroke="#C00000"');
+    expect(svg).toContain('Limite 0,30 MPa');
+  });
+
+  it('varia a linha de limite vermelha conforme a norma/critério da situação', () => {
+    const cp = criarCorpoDeProva(1, ['Vazios']);
+    cp.localizacao = 'A1';
+    cp.tensaoRa = 0.25;
+
+    // NBR 13749 (parede interna com reboco) → limite 0,20 MPa
+    const refs13749 = obterLinhasReferenciaGrafico(
+      { modeloCamadasId: 'parede-reboco', tipoRevestimento: 'Parede interna' },
+      { normas: { ...NORMAS_VAZIAS, nbr13749: true } },
+    );
+    expect(refs13749).toEqual([{ valor: 0.2, label: 'Limite 0,20 MPa', tracejado: false }]);
+
+    const svg020 = svgGraficoResultado(
+      { numero: 1, tipoRevestimento: 'Parede interna', modeloCamadasId: 'parede-reboco', corposDeProva: [cp] },
+      { normas: { ...NORMAS_VAZIAS, nbr13749: true } },
+    );
+    expect(svg020).toContain('Limite 0,20 MPa');
+    expect((svg020.match(/stroke="#C00000"/g) ?? []).length).toBe(1);
+
+    // NBR 13755 (fachada/cerâmica externa) → 2 linhas vermelhas: 0,30 MPa e 0,50 MPa
+    const svg13755 = svgGraficoResultado(
+      { numero: 1, tipoRevestimento: 'Fachada externa', modeloCamadasId: 'parede-ceramica', corposDeProva: [cp] },
+      { normas: { ...NORMAS_VAZIAS, nbr13755: true } },
+    );
+    expect(svg13755).toContain('Mín. 0,30 MPa');
+    expect(svg13755).toContain('Aprov. 0,50 MPa');
+    expect((svg13755.match(/stroke="#C00000"/g) ?? []).length).toBe(2);
+    expect(svg13755).toContain('stroke-dasharray="5,3"');
+
+    // Critério explícito na situação sobrepõe a sugestão das normas
+    const svgExplicito = svgGraficoResultado(
+      { numero: 1, tipoRevestimento: 'Fachada externa', modeloCamadasId: 'parede-ceramica', criterioRa: '0.20', corposDeProva: [cp] },
+      { normas: { ...NORMAS_VAZIAS, nbr13755: true } },
+    );
+    expect(svgExplicito).toContain('Limite 0,20 MPa');
+    expect(svgExplicito).not.toContain('Aprov. 0,50 MPa');
   });
 });

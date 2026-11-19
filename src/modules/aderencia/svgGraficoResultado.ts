@@ -4,12 +4,23 @@
 // por identificação de amostra), usado tanto na pré-visualização da tela quanto na rasterização
 // em PNG (via svgParaPng) para inserção no laudo DOCX após o anexo de fotos.
 
-import type { SituacaoAderencia } from './types';
-import { numeroRomano } from './utils';
+import type { AderenciaNormas, CriterioRa, SituacaoAderencia } from './types';
+import { numeroRomano, obterLimitesCriterioRa, sugerirCriterioRa } from './utils';
 
 export interface ItemGraficoResultado {
   label: string;
   valor: number;
+}
+
+export interface LinhaReferenciaGrafico {
+  valor: number;
+  label: string;
+  tracejado: boolean;
+}
+
+export interface OpcoesGraficoResultado {
+  criterioRa?: CriterioRa;
+  normas?: AderenciaNormas;
 }
 
 export interface EscalaEixoX {
@@ -105,29 +116,60 @@ function truncarLabel(texto: string, maxChars: number): string {
   return texto.slice(0, maxChars - 1).trimEnd() + '…';
 }
 
+/** Resolve as linhas verticais de referência normativa (em MPa) para a situação. */
+export function obterLinhasReferenciaGrafico(
+  situacao: Pick<SituacaoAderencia, 'criterioRa' | 'modeloCamadasId' | 'tipoRevestimento'>,
+  opcoes?: OpcoesGraficoResultado,
+): LinhaReferenciaGrafico[] {
+  const criterio: CriterioRa =
+    opcoes?.criterioRa ??
+    situacao.criterioRa ??
+    (opcoes?.normas
+      ? sugerirCriterioRa(opcoes.normas, situacao.modeloCamadasId ?? '', situacao.tipoRevestimento)
+      : '0.30');
+
+  const limites = obterLimitesCriterioRa(criterio);
+  if (limites.recomendado !== null) {
+    return [
+      { valor: limites.minimo, label: `Mín. ${formatarTickBR(limites.minimo)} MPa`, tracejado: false },
+      { valor: limites.recomendado, label: `Aprov. ${formatarTickBR(limites.recomendado)} MPa`, tracejado: true },
+    ];
+  }
+  return [
+    { valor: limites.minimo, label: `Limite ${formatarTickBR(limites.minimo)} MPa`, tracejado: false },
+  ];
+}
+
 /**
  * Gera a string SVG do gráfico de barras horizontais de uma situação.
  * Layout fiel à referência: moldura cinza clara, título centralizado, eixo Y vertical
- * "IDENTIFICAÇÃO DAS AMOSTRAS", eixo X "TENSÃO [MPa]" com grade vertical e barras azuis (#5B9BD5).
+ * "IDENTIFICAÇÃO DAS AMOSTRAS", eixo X "TENSÃO [MPa]" com grade vertical, barras azuis (#5B9BD5)
+ * e linha(s) vertical(is) vermelha(s) de limite conforme a norma/critério da situação.
  */
 export function svgGraficoResultado(
-  situacao: Pick<SituacaoAderencia, 'numero' | 'tipoRevestimento' | 'tituloGrafico' | 'corposDeProva'>,
+  situacao: Pick<
+    SituacaoAderencia,
+    'numero' | 'tipoRevestimento' | 'tituloGrafico' | 'corposDeProva' | 'criterioRa' | 'modeloCamadasId'
+  >,
+  opcoes?: OpcoesGraficoResultado,
 ): string {
   const itens = extrairItensGrafico(situacao);
   const titulo = (situacao.tituloGrafico ?? '').trim() || tituloPadraoGrafico(situacao);
+  const linhasRef = obterLinhasReferenciaGrafico(situacao, opcoes);
 
-  const maxValor = itens.reduce((acc, it) => (it.valor > acc ? it.valor : acc), 0);
-  const escala = calcularEscalaEixoX(maxValor);
+  const maxBarra = itens.reduce((acc, it) => (it.valor > acc ? it.valor : acc), 0);
+  const maxRef = linhasRef.reduce((acc, l) => (l.valor > acc ? l.valor : acc), 0);
+  const escala = calcularEscalaEixoX(Math.max(maxBarra, maxRef));
 
   const MAX_LABEL_CHARS = 28;
   const labelsExibidos = itens.map(it => truncarLabel(it.label, MAX_LABEL_CHARS));
   const maiorLabelLen = labelsExibidos.reduce((acc, l) => Math.max(acc, l.length), 6);
 
   const W = 720;
-  const padTop = 52;
+  const padTop = 62;
   const padBottom = 56;
   const padRight = 28;
-  // ~6.6px por caractere em Calibri 11px + 42px para o título vertical do eixo Y e respiro
+  // ~6.6px por caractere em Calibri 11px + 48px para o título vertical do eixo Y e respiro
   const padLeft = Math.min(230, Math.max(115, Math.round(maiorLabelLen * 6.6 + 48)));
 
   const rowHeight = itens.length > 12 ? 24 : 28;
@@ -141,6 +183,7 @@ export function svgGraficoResultado(
   const corTexto = '#595959';
   const corGrade = '#D9D9D9';
   const corBarra = '#5B9BD5';
+  const corLimite = '#C00000';
 
   const linhasGrade = escala.ticks
     .map(t => {
@@ -166,16 +209,32 @@ export function svgGraficoResultado(
     })
     .join('');
 
+  const limitesXml = linhasRef
+    .map(ref => {
+      const x = padLeft + (ref.valor / escala.max) * plotW;
+      const xStr = x.toFixed(2);
+      const pertoDaBordaDir = x > padLeft + plotW - 44;
+      const anchor = pertoDaBordaDir ? 'end' : 'middle';
+      const labelX = pertoDaBordaDir ? (x - 4).toFixed(2) : xStr;
+      const dashAttr = ref.tracejado ? ' stroke-dasharray="5,3"' : '';
+      return (
+        `<line x1="${xStr}" y1="${padTop}" x2="${xStr}" y2="${padTop + plotH}" stroke="${corLimite}" stroke-width="1.8"${dashAttr}/>` +
+        `<text x="${labelX}" y="${padTop - 6}" text-anchor="${anchor}" font-family="${font}" font-size="9.5" font-weight="700" fill="${corLimite}">${escXml(ref.label)}</text>`
+      );
+    })
+    .join('');
+
   const yCentroPlot = (padTop + plotH / 2).toFixed(2);
   const xCentroPlot = (padLeft + plotW / 2).toFixed(2);
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block">` +
     `<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="#FFFFFF" stroke="${corGrade}" stroke-width="1"/>` +
-    `<text x="${(W / 2).toFixed(2)}" y="30" text-anchor="middle" font-family="${font}" font-size="16" font-weight="400" fill="${corTexto}">${escXml(titulo)}</text>` +
+    `<text x="${(W / 2).toFixed(2)}" y="28" text-anchor="middle" font-family="${font}" font-size="16" font-weight="400" fill="${corTexto}">${escXml(titulo)}</text>` +
     `<text x="18" y="${yCentroPlot}" transform="rotate(-90 18 ${yCentroPlot})" text-anchor="middle" font-family="${font}" font-size="10.5" fill="${corTexto}">IDENTIFICAÇÃO DAS AMOSTRAS</text>` +
     linhasGrade +
     barrasELabels +
+    limitesXml +
     `<text x="${xCentroPlot}" y="${padTop + plotH + 40}" text-anchor="middle" font-family="${font}" font-size="11" fill="${corTexto}">TENSÃO [MPa]</text>` +
     `</svg>`
   );

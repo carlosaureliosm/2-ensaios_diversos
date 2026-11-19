@@ -1614,7 +1614,7 @@ function SituacaoForm({
           <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'center', background: '#fff' }}>
             <div
               style={{ width: '100%', maxWidth: 720, lineHeight: 0 }}
-              dangerouslySetInnerHTML={{ __html: svgGraficoResultado(situacao) }}
+              dangerouslySetInnerHTML={{ __html: svgGraficoResultado(situacao, { criterioRa: criterioEfetivo }) }}
             />
           </div>
         </div>
@@ -1885,7 +1885,7 @@ export default function AderenciaPage() {
             modelo
               ? svgParaPng(svgEsquemaCamadas(modelo.camadas, modelo.disposicao, modelo.coresCamadas, modelo.profundidadeCorte))
               : Promise.resolve(null),
-            svgParaPng(svgGraficoResultado(s), 3),
+            svgParaPng(svgGraficoResultado(s, { normas: cabecalho.normas }), 3),
           ]);
           return {
             ...s,
