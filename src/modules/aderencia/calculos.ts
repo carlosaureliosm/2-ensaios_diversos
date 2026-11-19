@@ -4,15 +4,17 @@ import type { CorpoDeProva, FormatoPlaca } from './types'
 
 export const GRAVIDADE = 9.80665 // m/s²
 
-/** Área da placa em mm²: circular Ø 50 mm ou quadrada 100 x 100 mm. */
-export function areaPlacaMm2(formato: FormatoPlaca = 'circular'): number {
-  return formato === 'quadrada' ? 100 * 100 : Math.PI * 25 ** 2
+/** Área da placa em m²: circular Ø 0,05 m ou quadrada 0,10 x 0,10 m. */
+export function areaPlacaM2(formato: FormatoPlaca = 'circular'): number {
+  return formato === 'quadrada' ? 0.1 * 0.1 : Math.PI * 0.025 ** 2
 }
 
-/** Ra (MPa) = carga(kgf) × 9,80665 (N) ÷ área (mm²). N/mm² = MPa. */
+/** Ra (MPa) = carga(kgf) × 9,80665 (N) ÷ área (m²) ÷ 10⁶ (Pa → MPa). */
 export function calcularTensaoRa(cargaKgf: number | null | undefined, formato: FormatoPlaca = 'circular'): number | null {
   if (cargaKgf === null || cargaKgf === undefined || isNaN(cargaKgf)) return null
-  return (cargaKgf * GRAVIDADE) / areaPlacaMm2(formato)
+  const forcaN = cargaKgf * GRAVIDADE
+  const tensaoPa = forcaN / areaPlacaM2(formato)
+  return tensaoPa / 1e6
 }
 
 /** Recalcula `tensaoRa` dos CPs que têm carga informada (CPs sem carga mantêm o valor, p.ex. rascunhos antigos). */
