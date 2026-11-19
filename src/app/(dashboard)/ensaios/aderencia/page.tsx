@@ -23,6 +23,8 @@ import {
   resolverModeloSituacao,
   criarCorpoDeProva,
   redimensionarCorposDeProva,
+  calcularTensaoRa,
+  recalcularTensoes,
   calcularEstatisticasCPs,
   type ModeloSistemaCamadas,
   type SituacaoAderencia,
@@ -1088,8 +1090,16 @@ function SituacaoForm({
   }
 
   function atualizarCP(indice: number, next: CorpoDeProva) {
-    const corposDeProva = situacao.corposDeProva.map((cp, i) => (i === indice ? next : cp));
+    // Ra é calculado a partir da carga (kgf) e do formato da placa
+    const comRa = next.cargaKgf !== undefined && next.cargaKgf !== null
+      ? { ...next, tensaoRa: calcularTensaoRa(next.cargaKgf, situacao.formatoPlaca ?? 'circular') }
+      : next.cargaKgf === null && situacao.corposDeProva[indice].cargaKgf != null ? { ...next, tensaoRa: null } : next;
+    const corposDeProva = situacao.corposDeProva.map((cp, i) => (i === indice ? comRa : cp));
     onChange({ ...situacao, corposDeProva });
+  }
+
+  function alterarFormatoPlaca(formatoPlaca: 'circular' | 'quadrada') {
+    onChange({ ...situacao, formatoPlaca, corposDeProva: recalcularTensoes(situacao.corposDeProva, formatoPlaca) });
   }
 
   async function escolherFoto(indice: number, slot: 0 | 1, file: File) {
@@ -1144,6 +1154,20 @@ function SituacaoForm({
               <option value="0.20" style={{ color: TEXT, background: '#fff' }}>≥ 0,20 MPa (Tabela 01)</option>
               <option value="0.30" style={{ color: TEXT, background: '#fff' }}>≥ 0,30 MPa (Tabela 01)</option>
               <option value="nbr13755" style={{ color: TEXT, background: '#fff' }}>NBR 13755 (0,30 / 0,50 MPa)</option>
+            </select>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, color: '#BFDBFE' }}>
+            Placa:
+            <select
+              value={situacao.formatoPlaca ?? 'circular'}
+              onChange={e => alterarFormatoPlaca(e.target.value as 'circular' | 'quadrada')}
+              style={{
+                background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: 5, padding: '2px 6px', fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
+              }}
+            >
+              <option value="circular" style={{ color: TEXT, background: '#fff' }}>Circular Ø 5 cm</option>
+              <option value="quadrada" style={{ color: TEXT, background: '#fff' }}>Quadrada 10×10 cm</option>
             </select>
           </label>
         </div>
@@ -1254,7 +1278,8 @@ function SituacaoForm({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <Campo label="Bloco"><input style={inputStyle} value={cpSel.bloco} onChange={e => atualizarCP(cpIdx, { ...cpSel, bloco: e.target.value })} /></Campo>
               <Campo label="Junta"><input style={inputStyle} value={cpSel.junta} onChange={e => atualizarCP(cpIdx, { ...cpSel, junta: e.target.value })} /></Campo>
-              <Campo label="Tensão Ra (MPa)"><NumeroInput style={inputStyle} value={cpSel.tensaoRa} onChange={v => atualizarCP(cpIdx, { ...cpSel, tensaoRa: v })} /></Campo>
+              <Campo label="Carga (kgf)"><NumeroInput style={inputStyle} value={cpSel.cargaKgf ?? null} onChange={v => atualizarCP(cpIdx, { ...cpSel, cargaKgf: v })} /></Campo>
+              <Campo label="Tensão Ra (MPa)"><div style={{ ...inputStyle, display: 'flex', alignItems: 'center', background: '#F1F5F9', fontWeight: 700 }}>{cpSel.tensaoRa === null ? '—' : cpSel.tensaoRa.toFixed(2).replace('.', ',')}</div></Campo>
               <Campo label="Prof. ruptura (mm)"><NumeroInput style={inputStyle} value={cpSel.profRuptura} onChange={v => atualizarCP(cpIdx, { ...cpSel, profRuptura: v })} /></Campo>
             </div>
             <p style={{ margin: '12px 0 6px', fontSize: 10.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase' }}>Forma de ruptura (%)</p>
@@ -1291,6 +1316,7 @@ function SituacaoForm({
               <col style={{ width: 48 }} />
               <col style={{ width: 64 }} />
               <col style={{ width: 64 }} />
+              <col style={{ width: 64 }} />
               {modelo.colunasFormaRuptura.map(col => <col key={col} style={{ width: 38 }} />)}
               <col style={{ width: 48 }} />
               <col style={{ minWidth: 110 }} />
@@ -1301,6 +1327,7 @@ function SituacaoForm({
                 <Th rowSpan={2}>CP</Th>
                 <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Bloco</Th>
                 <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Junta</Th>
+                <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Carga<br /><span style={{ fontSize: 8, fontWeight: 700, color: SUBTEXT }}>(kgf)</span></Th>
                 <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Ra<br /><span style={{ fontSize: 8, fontWeight: 700, color: SUBTEXT }}>(MPa)</span></Th>
                 <Th rowSpan={2} borderLeft="1px solid #E2E8F0">Prof.<br /><span style={{ fontSize: 8, fontWeight: 700, color: SUBTEXT }}>(mm)</span></Th>
                 <th
@@ -1336,12 +1363,13 @@ function SituacaoForm({
                     <Td style={{ textAlign: 'center' }}><span style={{ fontWeight: 800, fontSize: 12, color: '#475569' }}>{cp.numero}</span></Td>
                     <Td editable borderLeft="1px solid #E2E8F0"><input style={gridInputStyle} value={cp.bloco} onChange={e => atualizarCP(i, { ...cp, bloco: e.target.value })} /></Td>
                     <Td editable borderLeft="1px solid #E2E8F0"><input style={gridInputStyle} value={cp.junta} onChange={e => atualizarCP(i, { ...cp, junta: e.target.value })} /></Td>
-                    <Td editable borderLeft="1px solid #E2E8F0" style={{ background: raBaixo ? '#FEF2F2' : raAtencao ? '#FFFBEB' : undefined }}>
-                      <NumeroInput
-                        style={{ ...gridInputStyle, fontWeight: 700, color: raBaixo ? '#B91C1C' : raAtencao ? '#B45309' : TEXT }}
-                        value={cp.tensaoRa}
-                        onChange={v => atualizarCP(i, { ...cp, tensaoRa: v })}
-                      />
+                    <Td editable borderLeft="1px solid #E2E8F0">
+                      <NumeroInput style={gridInputStyle} value={cp.cargaKgf ?? null} onChange={v => atualizarCP(i, { ...cp, cargaKgf: v })} />
+                    </Td>
+                    <Td borderLeft="1px solid #E2E8F0" style={{ textAlign: 'center', background: raBaixo ? '#FEF2F2' : raAtencao ? '#FFFBEB' : undefined }}>
+                      <span style={{ fontWeight: 700, fontSize: 12, color: raBaixo ? '#B91C1C' : raAtencao ? '#B45309' : TEXT }}>
+                        {cp.tensaoRa === null ? '—' : cp.tensaoRa.toFixed(2).replace('.', ',')}
+                      </span>
                     </Td>
                     <Td editable borderLeft="1px solid #E2E8F0">
                       <NumeroInput style={gridInputStyle} value={cp.profRuptura} onChange={v => atualizarCP(i, { ...cp, profRuptura: v })} />
@@ -1488,6 +1516,7 @@ function criarSituacaoVazia(numero: number, modeloId: string, modeloPersonalizad
     dimensoesCm: '',
     modeloCamadasId: modeloId,
     ...(modeloId === ID_MODELO_PERSONALIZADO ? { modeloPersonalizado: modelo } : {}),
+    formatoPlaca: 'circular',
     observacoesEsquema: '',
     corposDeProva: redimensionarCorposDeProva([], NUM_CPS_PADRAO, modelo.colunasFormaRuptura),
     umidadeMedia: null,

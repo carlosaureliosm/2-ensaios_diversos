@@ -34,6 +34,9 @@ export interface CorpoDeProva {
   numero: number
   bloco: string
   junta: string
+  /** Carga de ruptura lida no equipamento, em kgf (entrada do usuário). */
+  cargaKgf?: number | null
+  /** Tensão de aderência Ra em MPa — calculada a partir de `cargaKgf` e do formato da placa (ver calculos.ts). */
   tensaoRa: number | null // MPa
   profRuptura: number | null // mm
   /** chave = uma das colunas de ModeloSistemaCamadas.colunasFormaRuptura, valor em % */
@@ -42,6 +45,9 @@ export interface CorpoDeProva {
   /** memorial fotográfico: 2 fotos por corpo de prova, conforme layout do relatório */
   fotos: [FotoAnexo | null, FotoAnexo | null]
 }
+
+/** circular = Ø 5 cm; quadrada = 10 x 10 cm */
+export type FormatoPlaca = 'circular' | 'quadrada'
 
 export type CriterioRa = '0.20' | '0.30' | 'nbr13755'
 
@@ -66,6 +72,8 @@ export interface SituacaoAderencia {
   modeloPersonalizado?: ModeloSistemaCamadas
   /** Critério normativo para avaliação de Ra nesta situação (Tabela 01: 0,20/0,30 ou Tabela 02: NBR 13755). */
   criterioRa?: CriterioRa
+  /** Formato da placa de tração (padrão: circular). Define a área usada no cálculo de Ra. */
+  formatoPlaca?: FormatoPlaca
   observacoesEsquema: string
   corposDeProva: CorpoDeProva[]
   umidadeMedia: number | null // %

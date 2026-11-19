@@ -1,6 +1,24 @@
 // src/modules/aderencia/calculos.ts
 
-import type { CorpoDeProva } from './types'
+import type { CorpoDeProva, FormatoPlaca } from './types'
+
+export const GRAVIDADE = 9.80665 // m/s²
+
+/** Área da placa em mm²: circular Ø 50 mm ou quadrada 100 x 100 mm. */
+export function areaPlacaMm2(formato: FormatoPlaca = 'circular'): number {
+  return formato === 'quadrada' ? 100 * 100 : Math.PI * 25 ** 2
+}
+
+/** Ra (MPa) = carga(kgf) × 9,80665 (N) ÷ área (mm²). N/mm² = MPa. */
+export function calcularTensaoRa(cargaKgf: number | null | undefined, formato: FormatoPlaca = 'circular'): number | null {
+  if (cargaKgf === null || cargaKgf === undefined || isNaN(cargaKgf)) return null
+  return (cargaKgf * GRAVIDADE) / areaPlacaMm2(formato)
+}
+
+/** Recalcula `tensaoRa` dos CPs que têm carga informada (CPs sem carga mantêm o valor, p.ex. rascunhos antigos). */
+export function recalcularTensoes(cps: CorpoDeProva[], formato: FormatoPlaca = 'circular'): CorpoDeProva[] {
+  return cps.map(cp => (cp.cargaKgf === null || cp.cargaKgf === undefined ? cp : { ...cp, tensaoRa: calcularTensaoRa(cp.cargaKgf, formato) }))
+}
 
 /** Cria um corpo de prova vazio, com a coluna de forma de ruptura já inicializada para o modelo escolhido. */
 export function criarCorpoDeProva(numero: number, colunasFormaRuptura: string[]): CorpoDeProva {
@@ -10,6 +28,7 @@ export function criarCorpoDeProva(numero: number, colunasFormaRuptura: string[])
     numero,
     bloco: '',
     junta: '',
+    cargaKgf: null,
     tensaoRa: null,
     profRuptura: null,
     formaRuptura,
