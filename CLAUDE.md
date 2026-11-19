@@ -6,6 +6,12 @@ Sistema web para geração de laudos de ensaios de inspeção predial.
 
 Este projeto é trabalhado em mais de uma ferramenta (Claude Code e Antigravity). Os arquivos `CLAUDE.md` e `AGENTS.md` na raiz devem ter **conteúdo idêntico**. Sempre que algo for registrado (decisões, mudanças, progresso de etapas, bugs, convenções), registre **nos dois arquivos**, com o mesmo texto, na mesma alteração. Ao terminar, confirme que os dois continuam iguais.
 
+## Regra de commit e push automático (OBRIGATÓRIA)
+
+Sempre que uma mudança solicitada pelo usuário for aplicada ao código (e validada com 
+pm run test e 
+px next build), faça **commit e push automaticamente** para a main, sem esperar que o usuário solicite no chat. Inclua no commit apenas os arquivos pertencentes à tarefa (nunca arquivos não rastreados pré-existentes fora do escopo).
+
 ## Stack
 
 - Next.js 15 + TypeScript
