@@ -746,10 +746,10 @@ export default function EsclerometriaPage() {
             <PainelPlanilha titulo="Dados da Obra e Cliente">
               <div className="planilha-grid-rlt">
                 <CelulaFicha label="Nº do RLT" borderRight>
-                  <input style={fichaInputStyle} inputMode="numeric" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} />
+                  <input style={fichaInputStyle} inputMode="numeric" pattern="[0-9]*" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} />
                 </CelulaFicha>
                 <CelulaFicha label="Data de Emissão" borderRight>
-                  <input style={fichaInputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} />
+                  <input style={fichaInputStyle} inputMode="numeric" pattern="[0-9]*" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} />
                 </CelulaFicha>
                 <CelulaFicha label="Cliente">
                   <input style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.cliente} onChange={e => setCab(c => ({ ...c, cliente: e.target.value.toUpperCase() }))} placeholder="NOME DO CLIENTE" />
@@ -1068,7 +1068,7 @@ export default function EsclerometriaPage() {
                   {impactos.map((v, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
-                      <input ref={el => { impactoRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={2} value={v}
+                      <input ref={el => { impactoRefs.current[i] = el; }} type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={v}
                         onChange={e => {
                           const val = onlyNumbers(e.target.value).slice(0, 2);
                           const n = [...impactos]; n[i] = val; setImpactos(n);
@@ -1230,7 +1230,7 @@ export default function EsclerometriaPage() {
                           {pontImpactos.map((v, i) => (
                             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                               <span style={{ fontSize: 10, fontWeight: 700, color: SUBTEXT }}>{i + 1}</span>
-                              <input ref={el => { pontImpactoRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={2} value={v}
+                              <input ref={el => { pontImpactoRefs.current[i] = el; }} type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={v}
                                 onChange={e => {
                                   const val = onlyNumbers(e.target.value).slice(0, 2);
                                   const n = [...pontImpactos]; n[i] = val; setPontImpactos(n);

@@ -721,10 +721,10 @@ export default function ResistividadePage() {
             <PainelPlanilha titulo="Dados da Obra e Cliente">
               <div className="planilha-grid-rlt">
                 <CelulaFicha label="Nº do RLT" htmlFor="rlt-input" borderRight>
-                  <input id="rlt-input" style={fichaInputStyle} inputMode="numeric" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} />
+                  <input id="rlt-input" style={fichaInputStyle} inputMode="numeric" pattern="[0-9]*" value={cab.rlt} onChange={e => setCab(c => ({ ...c, rlt: onlyNumbers(e.target.value) }))} placeholder="Ex: 42" maxLength={6} />
                 </CelulaFicha>
                 <CelulaFicha label="Data de Emissão" htmlFor="data-input" borderRight>
-                  <input id="data-input" style={fichaInputStyle} inputMode="numeric" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} />
+                  <input id="data-input" style={fichaInputStyle} inputMode="numeric" pattern="[0-9]*" value={cab.data} onChange={e => setCab(c => ({ ...c, data: maskData(e.target.value) }))} placeholder="DD/MM/AAAA" maxLength={10} />
                 </CelulaFicha>
                 <CelulaFicha label="Cliente" htmlFor="cliente-input">
                   <input id="cliente-input" style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={cab.cliente} onChange={e => setCab(c => ({ ...c, cliente: e.target.value.toUpperCase() }))} placeholder="NOME DO CLIENTE" />

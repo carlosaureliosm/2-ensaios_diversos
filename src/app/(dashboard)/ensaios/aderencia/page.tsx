@@ -170,10 +170,16 @@ function NumeroInput({ value, onChange, style, placeholder, maxDecimais = 2, max
     let t = e.target.value.replace(maxDecimais > 0 ? /[^0-9,]/g : /[^0-9]/g, '');
     const partes = t.split(',');
     let inteiro = partes[0];
-    if (maxInteiros !== undefined) inteiro = inteiro.slice(0, maxInteiros);
-    t = inteiro;
-    if (maxDecimais > 0 && partes.length > 1) t += ',' + partes.slice(1).join('').slice(0, maxDecimais);
-    if (maxValor !== undefined && Number(t.replace(',', '.')) > maxValor) t = String(maxValor).replace('.', ',');
+    const valorBruto = Number(
+      (maxDecimais > 0 && partes.length > 1 ? `${inteiro}.${partes.slice(1).join('')}` : inteiro) || '0',
+    );
+    if (maxValor !== undefined && t !== '' && t !== ',' && valorBruto > maxValor) {
+      t = String(maxValor).replace('.', ',');
+    } else {
+      if (maxInteiros !== undefined) inteiro = inteiro.slice(0, maxInteiros);
+      t = inteiro;
+      if (maxDecimais > 0 && partes.length > 1) t += ',' + partes.slice(1).join('').slice(0, maxDecimais);
+    }
     setTexto(t);
     if (t === '' || t === ',') { onChange(null); return; }
     const num = Number(t.replace(',', '.'));
@@ -183,7 +189,8 @@ function NumeroInput({ value, onChange, style, placeholder, maxDecimais = 2, max
   return (
     <input
       type="text"
-      inputMode="decimal"
+      inputMode={maxDecimais === 0 ? 'numeric' : 'decimal'}
+      pattern={maxDecimais === 0 ? '[0-9]*' : undefined}
       style={style}
       value={texto}
       placeholder={placeholder}
@@ -1089,13 +1096,46 @@ function SituacaoForm({
 }) {
   const tabelaRef = useRef<HTMLTableElement>(null);
 
-  function aoPressionarEnterTabela(e: React.KeyboardEvent<HTMLInputElement>, destino: string) {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
+  function focarCelulaTabela(destino: string) {
     const el = tabelaRef.current?.querySelector<HTMLInputElement>(`input[data-cell="${destino}"]`);
     if (el) {
       el.focus();
       el.select();
+    }
+  }
+
+  function aoPressionarEnterTabela(e: React.KeyboardEvent<HTMLInputElement>, destino: string) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    focarCelulaTabela(destino);
+  }
+
+  function aoNavegarFormaRuptura(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    linha: number,
+    colIdx: number,
+    totalCols: number,
+  ) {
+    if (e.key === 'Enter' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const prox = colIdx + 1 < totalCols ? `rup-${linha}-${colIdx + 1}` : `rup-${linha + 1}-0`;
+      focarCelulaTabela(prox);
+      return;
+    }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const ant = colIdx > 0 ? `rup-${linha}-${colIdx - 1}` : `rup-${linha - 1}-${totalCols - 1}`;
+      focarCelulaTabela(ant);
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      focarCelulaTabela(`rup-${linha + 1}-${colIdx}`);
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      focarCelulaTabela(`rup-${linha - 1}-${colIdx}`);
     }
   }
 
@@ -1216,13 +1256,14 @@ function SituacaoForm({
             <input style={{ ...fichaInputStyle, textTransform: 'uppercase' }} value={situacao.tipoRevestimento} onChange={e => atualizar('tipoRevestimento', e.target.value.toUpperCase())} placeholder="EX: VERTICAL INTERNO" />
           </CelulaFicha>
           <CelulaFicha label="Data do ensaio">
-            <input style={fichaInputStyle} inputMode="numeric" maxLength={10} value={situacao.dataEnsaio} onChange={e => atualizar('dataEnsaio', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
+            <input style={fichaInputStyle} inputMode="numeric" pattern="[0-9]*" maxLength={10} value={situacao.dataEnsaio} onChange={e => atualizar('dataEnsaio', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
           </CelulaFicha>
 
           <CelulaFicha label="Nº de corpos de prova" borderRight>
             <input
               type="text"
               inputMode="numeric"
+              pattern="[0-9]*"
               style={fichaInputStyle}
               value={numCPsTexto}
               onChange={e => handleNumCPsChange(e.target.value)}
@@ -1230,14 +1271,14 @@ function SituacaoForm({
             />
           </CelulaFicha>
           <CelulaFicha label="Data de aplicação">
-            <input style={fichaInputStyle} inputMode="numeric" maxLength={10} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
+            <input style={fichaInputStyle} inputMode="numeric" pattern="[0-9]*" maxLength={10} value={situacao.dataAplicacao} onChange={e => atualizar('dataAplicacao', formatarDataDigitada(e.target.value))} placeholder="DD/MM/AAAA" />
           </CelulaFicha>
 
           <CelulaFicha label="Substrato" borderRight>
             <input style={fichaInputStyle} value={situacao.substrato} onChange={e => atualizar('substrato', e.target.value)} />
           </CelulaFicha>
           <CelulaFicha label="Idade de ruptura (dias)">
-            <input style={fichaInputStyle} inputMode="numeric" value={situacao.idadeRupturaDias} onChange={e => atualizar('idadeRupturaDias', somenteDigitos(e.target.value))} placeholder="EX: 28" />
+            <input style={fichaInputStyle} inputMode="numeric" pattern="[0-9]*" value={situacao.idadeRupturaDias} onChange={e => atualizar('idadeRupturaDias', somenteDigitos(e.target.value))} placeholder="EX: 28" />
           </CelulaFicha>
 
           <CelulaFicha label="Chapisco" borderRight>
@@ -1329,11 +1370,23 @@ function SituacaoForm({
 
             {/* Bloco 1: Identificação e medições do CP (grade simétrica) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <Campo label="Bloco">
-                <input style={{ ...inputStyle, textAlign: 'center' }} value={cpSel.bloco} onChange={e => atualizarCP(cpIdx, { ...cpSel, bloco: e.target.value })} />
+              <Campo label="Bloco (%)">
+                <NumeroInput
+                  style={{ ...inputStyle, textAlign: 'center' }}
+                  maxDecimais={0}
+                  maxValor={100}
+                  value={cpSel.bloco === '' ? null : (Number.isNaN(Number(cpSel.bloco)) ? null : Number(cpSel.bloco))}
+                  onChange={v => atualizarCP(cpIdx, { ...cpSel, bloco: v === null ? '' : String(v) })}
+                />
               </Campo>
-              <Campo label="Junta">
-                <input style={{ ...inputStyle, textAlign: 'center' }} value={cpSel.junta} onChange={e => atualizarCP(cpIdx, { ...cpSel, junta: e.target.value })} />
+              <Campo label="Junta (%)">
+                <NumeroInput
+                  style={{ ...inputStyle, textAlign: 'center' }}
+                  maxDecimais={0}
+                  maxValor={100}
+                  value={cpSel.junta === '' ? null : (Number.isNaN(Number(cpSel.junta)) ? null : Number(cpSel.junta))}
+                  onChange={v => atualizarCP(cpIdx, { ...cpSel, junta: v === null ? '' : String(v) })}
+                />
               </Campo>
             </div>
 
@@ -1398,9 +1451,8 @@ function SituacaoForm({
                             borderColor: val > 0 ? '#93C5FD' : BORDER,
                           }}
                           maxDecimais={0}
-                          maxInteiros={3}
                           maxValor={100}
-                          value={val}
+                          value={val > 0 ? val : null}
                           onChange={v => atualizarCP(cpIdx, { ...cpSel, formaRuptura: { ...cpSel.formaRuptura, [col]: v ?? 0 } })}
                         />
                       </Campo>
@@ -1477,20 +1529,24 @@ function SituacaoForm({
                   <tr key={i} style={{ background: rowBg, borderTop: '1px solid #E2E8F0' }}>
                     <Td style={{ textAlign: 'center' }}><span style={{ fontWeight: 800, fontSize: 12, color: '#475569' }}>{cp.numero}</span></Td>
                     <Td editable borderLeft="1px solid #E2E8F0">
-                      <input
+                      <NumeroInput
                         style={gridInputStyle}
-                        data-cell={`bloco-${i}`}
-                        value={cp.bloco}
-                        onChange={e => atualizarCP(i, { ...cp, bloco: e.target.value })}
+                        dataCell={`bloco-${i}`}
+                        maxDecimais={0}
+                        maxValor={100}
+                        value={cp.bloco === '' ? null : (Number.isNaN(Number(cp.bloco)) ? null : Number(cp.bloco))}
+                        onChange={v => atualizarCP(i, { ...cp, bloco: v === null ? '' : String(v) })}
                         onKeyDown={e => aoPressionarEnterTabela(e, `bloco-${i + 1}`)}
                       />
                     </Td>
                     <Td editable borderLeft="1px solid #E2E8F0">
-                      <input
+                      <NumeroInput
                         style={gridInputStyle}
-                        data-cell={`junta-${i}`}
-                        value={cp.junta}
-                        onChange={e => atualizarCP(i, { ...cp, junta: e.target.value })}
+                        dataCell={`junta-${i}`}
+                        maxDecimais={0}
+                        maxValor={100}
+                        value={cp.junta === '' ? null : (Number.isNaN(Number(cp.junta)) ? null : Number(cp.junta))}
+                        onChange={v => atualizarCP(i, { ...cp, junta: v === null ? '' : String(v) })}
                         onKeyDown={e => aoPressionarEnterTabela(e, `junta-${i + 1}`)}
                       />
                     </Td>
@@ -1519,18 +1575,16 @@ function SituacaoForm({
                     </Td>
                     {modelo.colunasFormaRuptura.map((col, idx) => {
                       const val = cp.formaRuptura[col] ?? 0;
-                      const proxRup = idx + 1 < modelo.colunasFormaRuptura.length ? `rup-${i}-${idx + 1}` : `rup-${i + 1}-0`;
                       return (
                         <Td key={col} editable borderLeft={idx === 0 ? '1.5px solid #94A3B8' : '1px solid #E2E8F0'}>
                           <NumeroInput
-                            style={{ ...gridInputStyle, fontWeight: val > 0 ? 800 : 400, color: val > 0 ? PRIMARY : '#CBD5E1' }}
+                            style={{ ...gridInputStyle, fontWeight: val > 0 ? 800 : 400, color: val > 0 ? PRIMARY : TEXT }}
                             dataCell={`rup-${i}-${idx}`}
                             maxDecimais={0}
-                            maxInteiros={3}
                             maxValor={100}
-                            value={val}
+                            value={val > 0 ? val : null}
                             onChange={v => atualizarCP(i, { ...cp, formaRuptura: { ...cp.formaRuptura, [col]: v ?? 0 } })}
-                            onKeyDown={e => aoPressionarEnterTabela(e, proxRup)}
+                            onKeyDown={e => aoNavegarFormaRuptura(e, i, idx, modelo.colunasFormaRuptura.length)}
                           />
                         </Td>
                       );
@@ -2119,7 +2173,7 @@ export default function AderenciaPage() {
           <>
             <PainelPlanilha titulo="Cabeçalho do relatório">
               <div className="aderencia-cab-grid">
-                <CelulaFicha label="Nº RLT" borderRight><input id="ad-rlt" inputMode="numeric" style={fichaInputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', somenteDigitos(e.target.value))} placeholder="EX: 045" /></CelulaFicha>
+                <CelulaFicha label="Nº RLT" borderRight><input id="ad-rlt" inputMode="numeric" pattern="[0-9]*" style={fichaInputStyle} value={cabecalho.rltNumero} onChange={e => atualizarCabecalho('rltNumero', somenteDigitos(e.target.value))} placeholder="EX: 045" /></CelulaFicha>
                 <CelulaFicha label="Cliente" borderRight><input id="ad-cliente" style={fichaInputStyle} value={cabecalho.cliente} onChange={e => atualizarCabecalho('cliente', e.target.value)} /></CelulaFicha>
                 <CelulaFicha label="Obra"><input id="ad-obra" style={fichaInputStyle} value={cabecalho.obra} onChange={e => atualizarCabecalho('obra', e.target.value)} /></CelulaFicha>
                 <CelulaFicha label="Construtora" borderRight><input id="ad-construtora" style={fichaInputStyle} value={cabecalho.construtora} onChange={e => atualizarCabecalho('construtora', e.target.value)} /></CelulaFicha>
@@ -2156,6 +2210,8 @@ export default function AderenciaPage() {
                   </button>
                   <input
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={numSituacoes}
                     min={MIN_SITUACOES}
                     max={MAX_SITUACOES}
