@@ -9,12 +9,13 @@ export function areaPlacaM2(formato: FormatoPlaca = 'circular'): number {
   return formato === 'quadrada' ? 0.1 * 0.1 : Math.PI * 0.025 ** 2
 }
 
-/** Ra (MPa) = carga(kgf) × 9,80665 (N) ÷ área (m²) ÷ 10⁶ (Pa → MPa). */
+/** Ra (MPa) = carga(kgf) × 9,80665 (N) ÷ área (m²) ÷ 10⁶ (Pa → MPa), arredondado em 2 casas. */
 export function calcularTensaoRa(cargaKgf: number | null | undefined, formato: FormatoPlaca = 'circular'): number | null {
   if (cargaKgf === null || cargaKgf === undefined || isNaN(cargaKgf)) return null
   const forcaN = cargaKgf * GRAVIDADE
   const tensaoPa = forcaN / areaPlacaM2(formato)
-  return tensaoPa / 1e6
+  // Arredonda em 2 casas (como exibido no relatório) para que a comparação com o limite use o valor mostrado.
+  return Math.round((tensaoPa / 1e6) * 100) / 100
 }
 
 /** Recalcula `tensaoRa` dos CPs que têm carga informada (CPs sem carga mantêm o valor, p.ex. rascunhos antigos). */
