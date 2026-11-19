@@ -15,18 +15,28 @@ const ICONES: Record<string, ReactNode> = {
     </g>
   ),
 
+  // Pacômetro encostado na parede emitindo ondas e identificando vergalhão de aço atrás
   pacometria: (
     <>
-      <path d="M12 2 V16 M19 2 V16" />
-      <path d="M12 5 L19 3 M12 9 L19 7 M12 13 L19 11" strokeWidth="1.2" opacity=".6" />
-      <path d="M29 2 V16 M36 2 V16" />
-      <path d="M29 5 L36 3 M29 9 L36 7 M29 13 L36 11" strokeWidth="1.2" opacity=".6" />
-      <path d="M3 18 H12 L14 16 L18 19 L22 16 L26 19 L30 16 L33 19 L36 17 H45" opacity=".6" />
-      <rect x="10" y="21" width="28" height="25" rx="4" fill="currentColor" fillOpacity=".15" />
-      <circle cx="24" cy="29" r="4" />
-      <path d="M17.5 29 A6.5 6.5 0 0 1 30.5 29 M17.5 29 A6.5 6.5 0 0 0 30.5 29" strokeDasharray="4 3" opacity=".7" />
-      <path d="M15 38 H33" strokeWidth="3" strokeDasharray="1.5 1.5" />
-      <path d="M24 40.5 V43" strokeWidth="2.5" />
+      {/* Aparelho pacômetro à esquerda */}
+      <rect x="3" y="13" width="14" height="22" rx="2.5" fill="currentColor" fillOpacity=".15" />
+      <rect x="6" y="16" width="8" height="7" rx="1" />
+      <path d="M8 20.5 L10 18.5 L12 20.5" strokeWidth="1.3" />
+      <circle cx="8" cy="27.5" r=".9" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="27.5" r=".9" fill="currentColor" stroke="none" />
+      <path d="M7.5 31.5 H12.5" strokeWidth="1.4" opacity=".7" />
+
+      {/* Ondas eletromagnéticas atravessando a parede até o aço */}
+      <path d="M19.5 20.5 A5 5 0 0 1 19.5 27.5" strokeWidth="1.6" />
+      <path d="M23.5 17.5 A9 9 0 0 1 23.5 30.5" strokeWidth="1.6" opacity=".8" />
+      <path d="M28 14.5 A13 13 0 0 1 28 33.5" strokeWidth="1.5" strokeDasharray="2.5 2" opacity=".65" />
+
+      {/* Parede em corte à direita */}
+      <rect x="23" y="5" width="21" height="38" rx="1.5" fill="currentColor" fillOpacity=".1" />
+
+      {/* Vergalhão (aço) atrás/dentro da parede */}
+      <rect x="35" y="8" width="5" height="32" rx="1" fill="currentColor" fillOpacity=".28" />
+      <path d="M35 12.5 L40 10.5 M35 17.5 L40 15.5 M35 22.5 L40 20.5 M35 27.5 L40 25.5 M35 32.5 L40 30.5 M35 37.5 L40 35.5" strokeWidth="1.2" opacity=".8" />
     </>
   ),
 
@@ -55,16 +65,27 @@ const ICONES: Record<string, ReactNode> = {
     </>
   ),
 
+  // Borrifador aspergindo líquido (fenolftaleína) em um pilar
   carbonatacao: (
     <>
-      <path d="M24 2 C24 2 19.5 7.5 19.5 10 A4.5 4.5 0 0 0 28.5 10 C28.5 7.5 24 2 24 2 Z" fill="currentColor" fillOpacity=".15" />
-      <rect x="6" y="15" width="36" height="22" rx="2" fill="currentColor" fillOpacity=".15" />
-      <path d="M6 24 H42" strokeDasharray="3 2.5" />
-      <path d="M8 18 H12 M18 21 H22 M30 18 H35 M38 21 H40" strokeWidth="1.2" opacity=".5" />
-      <circle cx="24" cy="31" r="3" fill="currentColor" />
-      <circle cx="12" cy="31" r="1.3" /><circle cx="36" cy="30" r="1.3" />
-      <rect x="6" y="40" width="36" height="6" rx="1" />
-      <path d="M12 40 V43 M18 40 V44 M24 40 V43 M30 40 V44 M36 40 V43" strokeWidth="1.2" />
+      {/* Frasco do borrifador */}
+      <path d="M7 42 H15 A2 2 0 0 0 17 40 V29 C17 25 14 23 13.5 20 H8.5 C8 23 5 25 5 29 V40 A2 2 0 0 0 7 42 Z" fill="currentColor" fillOpacity=".15" />
+      <path d="M5.5 34 H16.5" strokeWidth="1.3" opacity=".55" />
+      {/* Pescoço, cabeça e bico */}
+      <path d="M8.5 20 V16 H13.5 V20" />
+      <path d="M8 16 V12.5 A1.5 1.5 0 0 1 9.5 11 H17 L20 12.5 V14.5 L17 16 Z" fill="currentColor" fillOpacity=".15" />
+      {/* Gatilho */}
+      <path d="M15 16 L17.5 21" strokeWidth="1.8" />
+
+      {/* Jato / aspersão de líquido */}
+      <path d="M22.5 11.5 L26 9.5 M28.5 8 L29.8 7.3" strokeWidth="1.6" />
+      <path d="M23 13.5 L27 13.5 M29.5 13.5 L30.8 13.5" strokeWidth="1.6" />
+      <path d="M22.5 15.5 L26 17.5 M28.5 19 L29.8 19.7" strokeWidth="1.6" />
+
+      {/* Pilar com topo, base e zona reagida na face */}
+      <path d="M31 6 H45 M31 42 H45" />
+      <rect x="33" y="6" width="10" height="36" fill="currentColor" fillOpacity=".15" />
+      <path d="M33 10.5 C36.5 11.5 36.5 17.5 33 18.5 Z" fill="currentColor" fillOpacity=".35" strokeWidth="1.3" />
     </>
   ),
 
@@ -79,17 +100,25 @@ const ICONES: Record<string, ReactNode> = {
     </>
   ),
 
+  // Perfil de camadas com cortes laterais, placa metálica na superfície e haste de tração
   aderencia: (
     <>
-      <path d="M24 3 V13" />
-      <path d="M19 8 L24 3 L29 8" />
-      <rect x="17" y="14" width="14" height="6" rx="1" fill="currentColor" fillOpacity=".15" />
-      <path d="M24 20 V22" opacity=".6" />
-      <rect x="9" y="23" width="30" height="6" rx="1" fill="currentColor" fillOpacity=".15" />
-      <path d="M9 29 L7 31 L10 33 L8 35" strokeWidth="1.4" />
-      <path d="M39 29 L41 31 L38 33 L40 35" strokeWidth="1.4" />
-      <rect x="6" y="34" width="36" height="11" rx="1" />
-      <path d="M6 39.5 H42 M16 34 V39.5 M30 34 V39.5 M23 39.5 V45" strokeWidth="1.2" opacity=".6" />
+      {/* Haste e pino de tração (similar ao esquema do módulo aderência) */}
+      <path d="M24 7.5 V13" strokeWidth="2.2" />
+      <circle cx="24" cy="5.5" r="2.4" fill="currentColor" />
+
+      {/* Placa metálica sobre a superfície com hachura */}
+      <rect x="16" y="13" width="16" height="5" fill="currentColor" fillOpacity=".3" />
+      <path d="M20 13 V18 M24 13 V18 M28 13 V18" strokeWidth="1.2" opacity=".7" />
+
+      {/* Camadas em perfil (acabamento → intermediárias → substrato) */}
+      <rect x="5" y="18" width="38" height="5" fill="currentColor" fillOpacity=".08" />
+      <rect x="5" y="23" width="38" height="6" fill="currentColor" fillOpacity=".18" />
+      <rect x="5" y="29" width="38" height="6" fill="currentColor" fillOpacity=".1" />
+      <rect x="5" y="35" width="38" height="8" fill="currentColor" fillOpacity=".24" />
+
+      {/* Cortes laterais paralelos ao redor da placa nas camadas superiores */}
+      <path d="M15.5 18 V29 M32.5 18 V29" strokeWidth="1.6" />
     </>
   ),
 };
