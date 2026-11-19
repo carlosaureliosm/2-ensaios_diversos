@@ -2385,27 +2385,22 @@ export default function AderenciaPage() {
         {etapa === 'situacoes' && situacoes.length > 0 && (
           <>
             {/* Navegação entre situações */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => setEtapa('config')} style={{ padding: '7px 12px', borderRadius: 7, border: `1.5px solid ${BORDER}`, background: '#fff', color: SUBTEXT, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                ← Configuração
-              </button>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {situacoes.map((s, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setSituacaoAtual(i)}
-                    style={{
-                      padding: '7px 14px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-                      border: `1.5px solid ${i === situacaoAtual ? PRIMARY : BORDER}`,
-                      background: i === situacaoAtual ? PRIMARY : '#fff',
-                      color: i === situacaoAtual ? '#fff' : TEXT,
-                    }}
-                  >
-                    {numeroRomano(s.numero)}
-                  </button>
-                ))}
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18, flexWrap: 'wrap' }}>
+              {situacoes.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSituacaoAtual(i)}
+                  style={{
+                    padding: '7px 14px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+                    border: `1.5px solid ${i === situacaoAtual ? PRIMARY : BORDER}`,
+                    background: i === situacaoAtual ? PRIMARY : '#fff',
+                    color: i === situacaoAtual ? '#fff' : TEXT,
+                  }}
+                >
+                  {numeroRomano(s.numero)}
+                </button>
+              ))}
             </div>
 
             <div className="aderencia-card" style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
