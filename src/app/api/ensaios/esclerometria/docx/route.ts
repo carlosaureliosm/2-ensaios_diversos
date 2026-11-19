@@ -155,6 +155,7 @@ export async function POST(req: NextRequest) {
       endereco_intro: toTitleCase(body.endereco || ''),
       data:         datas.capa,
       segunda_data: datas.corpo,
+      data_emissao: body.data   || '—',
       b1: body.bigorna[0] ?? '', b2: body.bigorna[1] ?? '',
       b3: body.bigorna[2] ?? '', b4: body.bigorna[3] ?? '',
       b5: body.bigorna[4] ?? '', b6: body.bigorna[5] ?? '',

@@ -269,3 +269,14 @@ Todos os módulos e laudos DOCX seguem a assinatura dupla padronizada:
   - `public/modelo_aderencia.docx` regenerado e validado em `src/app/api/ensaios/aderencia/docx/route.test.ts` (5 testes ponta a ponta, incluindo teste dedicado de assinatura dupla com `rId13` + `rId901`).
   - `aderencia/page.tsx` passou a exibir `ResponsavelTecnicoPanel` na tela de configuração (incluindo suporte a "Outro engenheiro responsável" com upload de assinatura local).
 - **Pacometria** (`pacometria/page.tsx`) e **módulos futuros** (`carbonatacao`, `ultrassom`, `potencial-corrosao`): reutilizam o componente compartilhado `src/components/ResponsavelTecnicoPanel.tsx` (estética Planilha Técnica Compacta de `PlanilhaUI.tsx`), exibindo lado a lado o gestor fixo e o engenheiro do ensaio.
+
+## Página 1 padrão dos relatórios (concluído em 2026-11-19)
+
+A 1ª página do relatório de **aderência** é o modelo padrão para os demais módulos prontos (**esclerometria** e **resistividade**; pacometria ainda não tem rota DOCX). A antiga capa (imagem de fundo + "RELATÓRIO TÉCNICO") e o **SUMÁRIO foram removidos** desses dois modelos — relatórios não têm mais sumário.
+
+- Nova página 1 (mesmo estilo visual do `build-modelo-aderencia.js`): tabela de identificação `CLIENTE / OBRA / ATT. + DATA DE EMISSÃO / ENDEREÇO` → quadro `NORMA(S) DE REFERÊNCIA` (rótulo mesclado à esquerda, normas à direita, sem caixinhas) → faixa cinza `ENSAIO DE [[nome_ensaio]]` (em caixa alta). Logo em seguida continua o conteúdo que já existia depois do sumário (`[[segunda_data]]`, `1. INTRODUÇÃO`, `2. METODOLOGIA`...), sem quebra de página.
+- Aplicada por `scripts/aplicar-pagina1-padrao.js` (idempotente: substitui tudo do início do `<w:body>` até o parágrafo `[[segunda_data]]`; também remove as imagens da capa antiga que ficaram órfãs — os modelos caíram de ~2,8 MB para ~170 KB / ~110 KB). As normas de cada módulo ficam na lista `MODELOS` do script; para editar, alterar lá e rodar `node scripts/aplicar-pagina1-padrao.js`.
+  - Esclerometria: NBR 7584:2012. Resistividade: AASHTO T 358, RILEM TC 154-EMC (2003), CEB-192 (1989), COST 509.
+- Novo campo `[[data_emissao]]` (= `body.data`, `dd/mm/aaaa`) nas rotas `api/ensaios/esclerometria/docx` e `api/ensaios/resistividade/docx`.
+- Header/footer dos modelos não mudaram (logo + `[[num_rlt]]`, paginação X/Y). As assinaturas fixas (`rId13`/`rId11 -> word/media/image6.jpeg`) foram preservadas, e o `build-modelo-aderencia.js` (que clona o `modelo_esclerometria.docx`) continua funcionando.
+- **Módulos futuros** (pacometria, carbonatação, ultrassom, potencial de corrosão): começar o DOCX já com essa página 1 padrão.

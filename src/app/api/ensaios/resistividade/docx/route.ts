@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
       data_corpo:     dataCorpo,
       data:           dataCapa,
       segunda_data:   dataCorpo,
+      data_emissao:   body.data || '—',
       cliente:        body.cliente,
       obra:           body.obra,
       obra_intro:     obraTitle,
