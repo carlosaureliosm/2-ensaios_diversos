@@ -1,7 +1,7 @@
 'use client';
 // src/app/(dashboard)/ensaios/pacometria/page.tsx
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { buscarUrlAssinatura } from '@/lib/assinatura';
@@ -11,12 +11,18 @@ import {
   PlanilhaStyles,
   EnsaioCabecalho,
   EnsaioTabs,
-  InteiroInput,
   fichaInputStyle,
   tabelaHeaderStyle,
   tabelaThTextStyle,
 } from '@/components/PlanilhaUI';
 import { ResponsavelTecnicoPanel } from '@/components/ResponsavelTecnicoPanel';
+import {
+  AmostraRow,
+  Cabecalho,
+  TIPO_LABELS,
+  getResumoOpcao,
+} from '@/modules/pacometria/types';
+import { ModalAmostra } from '@/modules/pacometria/components/ModalAmostra';
 
 // ── Constantes visuais ──────────────────────────────────────────
 const PRIMARY     = '#1E3264';
@@ -27,74 +33,10 @@ const TEXT        = '#1A2340';
 const SUBTEXT     = '#6B7490';
 const SUCCESS     = '#1A7A44';
 const DANGER      = '#C0392B';
-const EXCEL_BLUE  = '#002060';
-const GREEN       = '#2E7D32';
-const GREEN_LIGHT = '#F0F8F4';
-const GREEN_BORDER = '#B8DFC8';
 
-const FACE_COLORS: Record<string, string> = {
-  '1X': '#2563EB', '2X': '#DC2626', '1Y': '#16A34A', '2Y': '#9333EA', circ: '#2563EB',
-};
-
-// ── Tipos ───────────────────────────────────────────────────────
-type TipoElemento = 'pilar' | 'viga' | 'laje';
-type OpcaoAcessibilidade = 'A' | 'B' | 'C' | 'D' | 'E';
-
-type FaceData = {
-  nEstribos: number;
-  cob: string[];    // cobrimento por estribo (mm)
-  espV: string[];   // espaçamento entre estribos (cm)
-  espH: string[];   // espaçamento entre barras longitudinais (cm)
-};
-
-type AmostraRow = {
-  id: string;
-  item: number;
-  elemento: string;
-  tipo: TipoElemento;
-  opcao: OpcaoAcessibilidade;
-  // Geometria
-  X: number; Y: number; C1: number; C2: number; D: number;
-  barras: Record<string, number>;
-  facesData: Record<string, FaceData>;
-  // Calculados
-  cobMedio: number | null;
-  cobMinimo: number | null;
-  cobMaximo: number | null;
-  cobDesvio: number | null;
-  cobCV: number | null;
-  cobModa: number | null;
-  // Foto
-  fotoFile?: File | null;
-  fotoPreview?: string | null;
-  fotoWidth?: number;
-  fotoHeight?: number;
-};
-
-type Cabecalho = {
-  rlt: string; data: string; cliente: string; obra: string;
-  att: string; endereco: string; notas: string;
-};
-
-// ── Constantes ──────────────────────────────────────────────────
 const LS_KEY = 'tecomat_pacometria_v1';
 
-const OPCOES_CONFIG: Record<OpcaoAcessibilidade, { label: string; desc: string; faces: string[] }> = {
-  A: { label: 'Todas as faces', desc: '4 faces livres', faces: ['1X', '2X', '1Y', '2Y'] },
-  B: { label: '1 face vista',   desc: 'Apenas lado 1X',  faces: ['1X'] },
-  C: { label: '2 faces em L',   desc: 'Lado 1X + 1Y',   faces: ['1X', '1Y'] },
-  D: { label: '3 faces vistas', desc: '1X + 2X + 1Y',   faces: ['1X', '2X', '1Y'] },
-  E: { label: 'Circular',       desc: 'Diâmetro D',      faces: ['circ'] },
-};
-
-const FACE_LABELS: Record<string, string> = {
-  '1X': 'Lado 1X (base)', '2X': 'Lado 2X (topo)',
-  '1Y': 'Lado 1Y (esquerda)', '2Y': 'Lado 2Y (direita)',
-  circ: 'Vista lateral',
-};
-
 // ── Utilitários ─────────────────────────────────────────────────
-function newId() { return typeof crypto !== 'undefined' ? crypto.randomUUID() : String(Math.random()); }
 function maskData(v: string) {
   const d = v.replace(/\D/g, '').slice(0, 8);
   if (d.length <= 2) return d;
@@ -107,43 +49,6 @@ function salvarLocal(cab: Cabecalho, amostras: AmostraRow[]) {
 }
 function carregarLocal(): { cab: Cabecalho; amostras: AmostraRow[] } | null {
   try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
-}
-
-function calcularCobrimentos(facesData: Record<string, FaceData>): {
-  cobMedio: number | null; cobMinimo: number | null; cobMaximo: number | null;
-  cobDesvio: number | null; cobCV: number | null; cobModa: number | null;
-} {
-  const todos: number[] = [];
-  Object.values(facesData).forEach(fd => {
-    fd.cob.forEach(v => { const n = parseFloat(v.replace(',', '.')); if (!isNaN(n) && n > 0) todos.push(n); });
-  });
-  const nil = { cobMedio: null, cobMinimo: null, cobMaximo: null, cobDesvio: null, cobCV: null, cobModa: null };
-  if (todos.length === 0) return nil;
-  const cobMedio = todos.reduce((a, b) => a + b, 0) / todos.length;
-  const cobMinimo = Math.min(...todos);
-  const cobMaximo = Math.max(...todos);
-  const cobDesvio = todos.length < 2 ? 0
-    : Math.sqrt(todos.reduce((acc, v) => acc + (v - cobMedio) ** 2, 0) / (todos.length - 1));
-  const cobCV = cobMedio > 0 ? (cobDesvio / cobMedio) * 100 : 0;
-  // Moda por arredondamento (Opção B)
-  const freq: Record<number, number> = {};
-  todos.forEach(v => { const r = Math.round(v); freq[r] = (freq[r] || 0) + 1; });
-  const maxFreq = Math.max(...Object.values(freq));
-  const modas = Object.entries(freq).filter(([, f]) => f === maxFreq).map(([v]) => Number(v));
-  const cobModa = maxFreq > 1 ? modas[0] : null;
-  return { cobMedio, cobMinimo, cobMaximo, cobDesvio, cobCV, cobModa };
-}
-
-function initFaceData(): FaceData {
-  return { nEstribos: 3, cob: ['', '', ''], espV: ['', ''], espH: [] };
-}
-
-function ensureFaceArrays(fd: FaceData, nBarras: number): FaceData {
-  const ne = Math.max(1, fd.nEstribos);
-  const cob = Array(ne).fill('').map((_, i) => fd.cob[i] ?? '');
-  const espV = Math.max(0, ne - 1) > 0 ? Array(ne - 1).fill('').map((_, i) => fd.espV[i] ?? '') : [];
-  const espH = Math.max(0, nBarras - 1) > 0 ? Array(nBarras - 1).fill('').map((_, i) => fd.espH[i] ?? '') : [];
-  return { ...fd, cob, espV, espH };
 }
 
 function comprimirImagem(file: File): Promise<{ base64: string; width: number; height: number; contentType: string }> {
@@ -168,230 +73,6 @@ function comprimirImagem(file: File): Promise<{ base64: string; width: number; h
     };
     reader.readAsDataURL(file);
   });
-}
-
-// ── SVG Helpers ─────────────────────────────────────────────────
-function svgOpcao(id: OpcaoAcessibilidade): string {
-  // Dimensões do card SVG
-  const W = 80, H = 64;
-  // Elemento concreto centrado
-  const ex = 14, ey = 8, ew = 52, eh = 38;
-  // Cobrimento visual
-  const cv = 7;
-  // Raio das barras
-  const br = 3;
-  // Hachura de obstrução
-  const hatch = `<defs><pattern id="hx${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#999" stroke-width="1.2"/></pattern></defs>`;
-  const hFill = `url(#hx${id})`;
-  const concrete = '#E8EAF0';
-  const barFill = '#1A2340';
-
-  // Barras padrão para seção retangular: 3 em cima, 3 embaixo, 1 lateral cada lado
-  function barras3x3() {
-    const xs = [ex + cv, ex + ew / 2, ex + ew - cv];
-    const yTop = ey + cv, yBot = ey + eh - cv;
-    const yMid = ey + eh / 2;
-    let b = '';
-    xs.forEach(x => {
-      b += `<circle cx="${x}" cy="${yTop}" r="${br}" fill="${barFill}"/>`;
-      b += `<circle cx="${x}" cy="${yBot}" r="${br}" fill="${barFill}"/>`;
-    });
-    // Laterais intermediárias
-    b += `<circle cx="${ex + cv}" cy="${yMid}" r="${br}" fill="${barFill}"/>`;
-    b += `<circle cx="${ex + ew - cv}" cy="${yMid}" r="${br}" fill="${barFill}"/>`;
-    return b;
-  }
-
-  // Cotas X e Y
-  const cotaX = `<line x1="${ex}" y1="${ey + eh + 5}" x2="${ex + ew}" y2="${ey + eh + 5}" stroke="#1A2340" stroke-width="0.8" marker-start="url(#arr${id})" marker-end="url(#arr${id})"/>
-    <text x="${ex + ew / 2}" y="${ey + eh + 14}" text-anchor="middle" font-size="7" fill="#1A2340" font-family="sans-serif">X</text>`;
-  const cotaY = `<line x1="${ex - 5}" y1="${ey}" x2="${ex - 5}" y2="${ey + eh}" stroke="#1A2340" stroke-width="0.8" marker-start="url(#arr${id})" marker-end="url(#arr${id})"/>
-    <text x="${ex - 12}" y="${ey + eh / 2 + 3}" text-anchor="middle" font-size="7" fill="#1A2340" font-family="sans-serif">Y</text>`;
-  const arrows = `<defs><marker id="arr${id}" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L0,4 L4,2 z" fill="#1A2340"/></marker></defs>`;
-
-  if (id === 'A') {
-    // 0 faces obstruídas — pilar isolado
-    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
-      <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
-      ${barras3x3()}
-      ${cotaX}${cotaY}
-    </svg>`;
-  }
-
-  if (id === 'B') {
-    // 3 faces obstruídas: topo, esquerda, direita — apenas base (1X) livre
-    const hTop    = `<rect x="${ex}" y="0" width="${ew}" height="${ey}" fill="${hFill}"/>`;
-    const hLeft   = `<rect x="0" y="${ey}" width="${ex}" height="${eh}" fill="${hFill}"/>`;
-    const hRight  = `<rect x="${ex + ew}" y="${ey}" width="${W - ex - ew}" height="${eh}" fill="${hFill}"/>`;
-    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
-      ${hTop}${hLeft}${hRight}
-      <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
-      ${barras3x3()}
-      ${cotaX}
-    </svg>`;
-  }
-
-  if (id === 'C') {
-    // 2 faces obstruídas: topo e direita — base (1X) e esquerda (1Y) livres
-    const hTop   = `<rect x="${ex}" y="0" width="${ew}" height="${ey}" fill="${hFill}"/>`;
-    const hRight = `<rect x="${ex + ew}" y="${ey}" width="${W - ex - ew}" height="${eh}" fill="${hFill}"/>`;
-    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
-      ${hTop}${hRight}
-      <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
-      ${barras3x3()}
-      ${cotaX}${cotaY}
-    </svg>`;
-  }
-
-  if (id === 'D') {
-    // 1 face obstruída: apenas topo — base, esquerda e direita livres
-    const hTop = `<rect x="${ex}" y="0" width="${ew}" height="${ey}" fill="${hFill}"/>`;
-    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hatch}${arrows}
-      ${hTop}
-      <rect x="${ex}" y="${ey}" width="${ew}" height="${eh}" fill="${concrete}" stroke="#1A2340" stroke-width="1.5"/>
-      ${barras3x3()}
-      ${cotaX}${cotaY}
-    </svg>`;
-  }
-
-  if (id === 'E') {
-    // Circular
-    const cx = W / 2, cy = H / 2 - 4, r = 22, rb = r - 6;
-    const nb = 8;
-    let bcirc = '';
-    for (let i = 0; i < nb; i++) {
-      const ang = (2 * Math.PI / nb) * i - Math.PI / 2;
-      bcirc += `<circle cx="${(cx + rb * Math.cos(ang)).toFixed(1)}" cy="${(cy + rb * Math.sin(ang)).toFixed(1)}" r="${br}" fill="${barFill}"/>`;
-    }
-    // Diâmetro com seta diagonal
-    const x1 = (cx - r * 0.6).toFixed(1), y1 = (cy + r * 0.6).toFixed(1);
-    const x2 = (cx + r * 0.6).toFixed(1), y2 = (cy - r * 0.6).toFixed(1);
-    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-      <defs><marker id="arr${id}" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L0,4 L4,2 z" fill="#1A2340"/></marker></defs>
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${concrete}" stroke="#1A2340" stroke-width="2"/>
-      <circle cx="${cx}" cy="${cy}" r="${rb}" fill="none" stroke="#1A2340" stroke-width="0.8" stroke-dasharray="2,2"/>
-      ${bcirc}
-      <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1A2340" stroke-width="0.8" marker-end="url(#arr${id})"/>
-      <line x1="${(cx - r).toFixed(1)}" y1="${(cy + r + 5).toFixed(1)}" x2="${(cx + r).toFixed(1)}" y2="${(cy + r + 5).toFixed(1)}" stroke="#1A2340" stroke-width="0.8" marker-start="url(#arr${id})" marker-end="url(#arr${id})"/>
-      <text x="${cx}" y="${(cy + r + 14).toFixed(1)}" text-anchor="middle" font-size="7" fill="#1A2340" font-family="sans-serif">D</text>
-    </svg>`;
-  }
-
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"/>`;
-}
-
-function SvgSecao({ X, Y, C1, C2, faces, barras }: { X: number; Y: number; C1: number; C2: number; faces: string[]; barras: Record<string, number> }) {
-  const W = 240, H = 180, MX = 36, MY = 28;
-  const sc = Math.min((W - 2 * MX) / Math.max(X, 1), (H - 2 * MY) / Math.max(Y, 1));
-  const cw = X * sc, ch = Y * sc;
-  const ox = (W - cw) / 2, oy = (H - ch) / 2;
-  const c1 = C1 * sc, c2 = C2 * sc;
-  const BAR = Math.max(3, Math.min(6, sc * 0.7));
-  const cv = Math.min(cw, ch) * 0.12;
-
-  function barsInFace(face: string) {
-    const n = barras[face] || 2;
-    const pts: { x: number; y: number }[] = [];
-    if (face === '1X' || face === '2X') {
-      const y = face === '1X' ? oy + ch - c2 : oy + c2;
-      const avail = cw - 2 * c1;
-      for (let i = 0; i < n; i++) pts.push({ x: ox + c1 + (n === 1 ? avail / 2 : (avail / (n - 1)) * i), y });
-    } else {
-      const x = face === '1Y' ? ox + c1 : ox + cw - c1;
-      const avail = ch - 2 * c2;
-      for (let i = 1; i < n - 1; i++) pts.push({ x, y: oy + c2 + (avail / (n - 1)) * i });
-    }
-    return pts;
-  }
-
-  return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace' }}>
-      <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-      <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
-      {(['1X', '2X', '1Y', '2Y'] as string[]).map(f =>
-        faces.includes(f) ? barsInFace(f).map((p, i) => (
-          <g key={`${f}-${i}`}>
-            <circle cx={p.x} cy={p.y} r={BAR + 2} fill="white" stroke={FACE_COLORS[f]} strokeWidth={1.5} />
-            <circle cx={p.x} cy={p.y} r={BAR * 0.55} fill={FACE_COLORS[f]} />
-          </g>
-        )) : null
-      )}
-      {/* Cotas */}
-      <line x1={ox} y1={oy + ch + 12} x2={ox + cw} y2={oy + ch + 12} stroke={GOLD} strokeWidth={1} />
-      <text x={ox + cw / 2} y={oy + ch + 22} textAnchor="middle" fontSize={9} fill={GOLD}>{X} cm</text>
-      <line x1={ox - 12} y1={oy} x2={ox - 12} y2={oy + ch} stroke={GOLD} strokeWidth={1} />
-      <text x={ox - 24} y={oy + ch / 2} textAnchor="middle" fontSize={9} fill={GOLD} transform={`rotate(-90,${ox - 24},${oy + ch / 2})`}>{Y} cm</text>
-      {/* Labels faces */}
-      <text x={ox + cw / 2} y={oy - 6} textAnchor="middle" fontSize={8} fill={FACE_COLORS['2X']} fontWeight="500">2X{!faces.includes('2X') ? ' ✕' : ''}</text>
-      <text x={ox + cw / 2} y={oy + ch + 34} textAnchor="middle" fontSize={8} fill={FACE_COLORS['1X']} fontWeight="500">1X{!faces.includes('1X') ? ' ✕' : ''}</text>
-      <text x={ox - 30} y={oy + ch / 2} textAnchor="middle" fontSize={8} fill={FACE_COLORS['1Y']} transform={`rotate(-90,${ox - 30},${oy + ch / 2})`}>1Y{!faces.includes('1Y') ? ' ✕' : ''}</text>
-      <text x={ox + cw + 28} y={oy + ch / 2} textAnchor="middle" fontSize={8} fill={FACE_COLORS['2Y']} transform={`rotate(90,${ox + cw + 28},${oy + ch / 2})`}>2Y{!faces.includes('2Y') ? ' ✕' : ''}</text>
-    </svg>
-  );
-}
-
-function SvgPerfil({ face, nBarras, fd, C1 }: { face: string; nBarras: number; fd: FaceData; C1: number }) {
-  const W = 220, H = 200, MX = 32, MY = 20;
-  const espVals = fd.espV.map(v => parseFloat(v) || 15);
-  const espHVals = fd.espH.map(v => parseFloat(v) || 10);
-  const ne = fd.nEstribos;
-  const FOLGA = espVals.length > 0 ? espVals[0] * 0.4 : 8;
-  const totalH = ne > 1 ? espVals.slice(0, ne - 1).reduce((a, b) => a + b, 0) : 0;
-  const altReal = totalH + 2 * FOLGA;
-  const totalW = nBarras > 1 ? espHVals.slice(0, nBarras - 1).reduce((a, b) => a + b, 0) : 20;
-  const concreteW = totalW + C1 * 2;
-  const sc = Math.min((W - 2 * MX) / Math.max(concreteW, 1), (H - 2 * MY) / Math.max(altReal, 1));
-  const cw = concreteW * sc, ch = altReal * sc;
-  const ox = (W - cw) / 2, oy = (H - ch) / 2;
-  const c1s = C1 * sc;
-  const folgas = FOLGA * sc;
-  const col = FACE_COLORS[face] || '#2563EB';
-
-  const barX: number[] = [ox + c1s];
-  for (let i = 0; i < nBarras - 1; i++) barX.push(barX[barX.length - 1] + (espHVals[i] || 10) * sc);
-
-  const estrY: number[] = [oy + folgas];
-  for (let i = 0; i < ne - 1; i++) estrY.push(estrY[estrY.length - 1] + (espVals[i] || 15) * sc);
-
-  return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace' }}>
-      <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-      {/* Barras longitudinais */}
-      {barX.map((x, i) => <line key={i} x1={x} y1={oy + 4} x2={x} y2={oy + ch - 4} stroke={col} strokeWidth={2} />)}
-      {/* Estribos */}
-      {estrY.map((y, i) => (
-        <g key={i}>
-          <line x1={ox + c1s - 4} y1={y} x2={ox + cw - c1s + 4} y2={y} stroke={col} strokeWidth={2} />
-          {fd.cob[i] ? <text x={ox + cw - c1s + 8} y={y + 4} fontSize={8} fill={col}>{fd.cob[i]}mm</text> : null}
-        </g>
-      ))}
-      {/* Cotas espV */}
-      {estrY.map((y, i) => i < estrY.length - 1 ? (
-        <g key={i}>
-          <line x1={ox - 12} y1={y} x2={ox - 12} y2={estrY[i + 1]} stroke={GOLD} strokeWidth={1} />
-          <text x={ox - 14} y={(y + estrY[i + 1]) / 2 + 4} textAnchor="end" fontSize={8} fill={GOLD}>{espVals[i] || '?'}cm</text>
-        </g>
-      ) : null)}
-      {/* Cotas espH */}
-      {barX.map((x, i) => i < barX.length - 1 ? (
-        <g key={i}>
-          <line x1={x} y1={oy + ch + 12} x2={barX[i + 1]} y2={oy + ch + 12} stroke={GOLD} strokeWidth={1} />
-          <text x={(x + barX[i + 1]) / 2} y={oy + ch + 22} textAnchor="middle" fontSize={8} fill={GOLD}>{espHVals[i] || '?'}cm</text>
-        </g>
-      ) : null)}
-      <text x={W / 2} y={H - 4} textAnchor="middle" fontSize={9} fill={col} fontWeight="500">{FACE_LABELS[face]}</text>
-    </svg>
-  );
-}
-
-// ── Sub-componentes ─────────────────────────────────────────────
-function Campo({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label htmlFor={htmlFor} style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
-      {children}
-    </div>
-  );
 }
 
 const inputStyle: React.CSSProperties = {
@@ -428,240 +109,6 @@ function Header({ displayName, initials, cargo, onSignOut }: { displayName: stri
         </button>
       </div>
     </header>
-  );
-}
-
-// ── Modal de Amostra (fluxo 3 etapas) ──────────────────────────
-type ModalAmostraProps = {
-  amostraInicial?: AmostraRow | null;
-  onSalvar: (a: AmostraRow) => void;
-  onFechar: () => void;
-  itemNum: number;
-};
-
-function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: ModalAmostraProps) {
-  const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
-  const [elemento, setElemento] = useState(amostraInicial?.elemento ?? '');
-  const [tipo, setTipo] = useState<TipoElemento>(amostraInicial?.tipo ?? 'pilar');
-  const [opcao, setOpcao] = useState<OpcaoAcessibilidade | null>(amostraInicial?.opcao ?? null);
-  const [X, setX] = useState(amostraInicial?.X ?? 30);
-  const [Y, setY] = useState(amostraInicial?.Y ?? 50);
-  const [C1, setC1] = useState(amostraInicial?.C1 ?? 3);
-  const [C2, setC2] = useState(amostraInicial?.C2 ?? 3);
-  const [D, setD] = useState(amostraInicial?.D ?? 40);
-  const [barras, setBarras] = useState<Record<string, number>>(amostraInicial?.barras ?? { '1X': 3, '2X': 3, '1Y': 2, '2Y': 2, circ: 6 });
-  const [facesData, setFacesData] = useState<Record<string, FaceData>>(amostraInicial?.facesData ?? {});
-
-  const faces = opcao ? OPCOES_CONFIG[opcao].faces : [];
-  const isCirc = opcao === 'E';
-
-  // Garante que cada face tem sua FaceData inicializada
-  function getFaceData(face: string): FaceData {
-    const nb = barras[face] || 2;
-    const fd = facesData[face] || initFaceData();
-    return ensureFaceArrays(fd, nb);
-  }
-
-  function updateFaceData(face: string, updater: (fd: FaceData) => FaceData) {
-    setFacesData(prev => {
-      const current = prev[face] || initFaceData();
-      const updated = updater(ensureFaceArrays(current, barras[face] || 2));
-      return { ...prev, [face]: updated };
-    });
-  }
-
-  function handleSalvar() {
-    const allFacesData: Record<string, FaceData> = {};
-    faces.forEach(f => { allFacesData[f] = getFaceData(f); });
-    const { cobMedio, cobMinimo, cobMaximo, cobDesvio, cobCV, cobModa } = calcularCobrimentos(allFacesData);
-    const id = amostraInicial?.id ?? newId();
-    const item = amostraInicial?.item ?? itemNum;
-    onSalvar({ id, item, elemento, tipo, opcao: opcao!, X, Y, C1, C2, D, barras, facesData: allFacesData, cobMedio, cobMinimo, cobMaximo, cobDesvio, cobCV, cobModa });
-  }
-
-  const podeAvancar1 = !!opcao && elemento.trim().length > 0;
-  const podeAvancar2 = true;
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 780, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}>
-        {/* Header modal */}
-        <div style={{ padding: '18px 24px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: PRIMARY }}>{amostraInicial ? 'Editar amostra' : 'Nova amostra'}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 11, color: SUBTEXT }}>Item {amostraInicial?.item ?? itemNum}</p>
-          </div>
-          {/* Step indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {([1, 2, 3] as const).map((s, i) => (
-              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, background: etapa > s ? SUCCESS : etapa === s ? PRIMARY : BORDER, color: etapa >= s ? '#fff' : SUBTEXT }}>{etapa > s ? '✓' : s}</div>
-                {i < 2 && <div style={{ width: 20, height: 1, background: BORDER }} />}
-              </div>
-            ))}
-          </div>
-          <button onClick={onFechar} aria-label="Fechar modal" style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${BORDER}`, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUBTEXT }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        <div style={{ padding: '20px 24px' }}>
-
-          {/* ── ETAPA 1 ── */}
-          {etapa === 1 && (
-            <div>
-              <div style={{ marginBottom: 20 }}>
-                <Campo label="Identificação do elemento" htmlFor="elem-nome">
-                  <input id="elem-nome" style={{ ...inputStyle, textTransform: 'uppercase' }} value={elemento} onChange={e => setElemento(e.target.value.toUpperCase())} placeholder="EX: P1 – TÉRREO" />
-                </Campo>
-              </div>
-              <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Acessibilidade do pilar em campo</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 20 }}>
-                {(Object.keys(OPCOES_CONFIG) as OpcaoAcessibilidade[]).map(id => (
-                  <button key={id} onClick={() => setOpcao(id)} style={{ border: `1.5px solid ${opcao === id ? PRIMARY : BORDER}`, borderRadius: 10, padding: '10px 6px 8px', cursor: 'pointer', background: opcao === id ? '#EEF2FF' : '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <div dangerouslySetInnerHTML={{ __html: svgOpcao(id) }} style={{ lineHeight: 0 }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>{id} — {OPCOES_CONFIG[id].label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── ETAPA 2 ── */}
-          {etapa === 2 && (
-            <div>
-              <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Dados geométricos — {isCirc ? 'seção circular' : 'seção transversal'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px 16px', marginBottom: 20 }}>
-                {isCirc ? (
-                  <>
-                    <Campo label="Diâmetro D (cm)" htmlFor="geom-d"><InteiroInput id="geom-d" style={inputStyle} value={D} min={5} onChange={setD} /></Campo>
-                    <Campo label="Nº barras (total)" htmlFor="geom-bcirc"><InteiroInput id="geom-bcirc" style={inputStyle} value={barras['circ'] ?? 6} min={1} onChange={n => setBarras(p => ({ ...p, circ: n }))} /></Campo>
-                  </>
-                ) : (
-                  <>
-                    <Campo label="Dimensão X (cm)" htmlFor="geom-x"><InteiroInput id="geom-x" style={inputStyle} value={X} min={5} onChange={setX} /></Campo>
-                    <Campo label="Dimensão Y (cm)" htmlFor="geom-y"><InteiroInput id="geom-y" style={inputStyle} value={Y} min={5} onChange={setY} /></Campo>
-                    {/* Barras por face habilitada */}
-                    {(['1X', '2X', '1Y', '2Y'] as string[]).map(f => {
-                      const enabled = faces.includes(f);
-                      return (
-                        <Campo key={f} label={`Barras ${FACE_LABELS[f]}`} htmlFor={`geom-b${f}`}>
-                          <InteiroInput id={`geom-b${f}`} style={{ ...inputStyle, opacity: enabled ? 1 : 0.4 }} disabled={!enabled} value={barras[f] ?? 2} min={1} onChange={n => setBarras(p => ({ ...p, [f]: n }))} />
-                        </Campo>
-                      );
-                    })}
-                  </>
-                )}
-              </div>
-              {/* Preview seção transversal */}
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0', background: BG, borderRadius: 10, border: `1px solid ${BORDER}` }}>
-                {isCirc ? (
-                  <svg width={180} height={160} viewBox="0 0 180 160">
-                    {(() => { const r = Math.min(60, D * 1.1), cx = 90, cy = 75; const nb = barras['circ'] || 6; return (<g>
-                      <circle cx={cx} cy={cy} r={r} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-                      <circle cx={cx} cy={cy} r={r * 0.75} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
-                      {Array.from({ length: nb }, (_, i) => { const ang = (2 * Math.PI / nb) * i - Math.PI / 2; const bx = cx + (r * 0.75) * Math.cos(ang), by = cy + (r * 0.75) * Math.sin(ang); return (<g key={i}><circle cx={bx} cy={by} r={5} fill="white" stroke="#2563EB" strokeWidth={1.5} /><circle cx={bx} cy={by} r={2.5} fill="#2563EB" /></g>); })}
-                      <text x={cx} y={cy + r + 16} textAnchor="middle" fontSize={9} fill={GOLD}>⌀ {D} cm</text>
-                    </g>); })()}
-                  </svg>
-                ) : (
-                  <SvgSecao X={X} Y={Y} C1={C1} C2={C2} faces={faces} barras={barras} />
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── ETAPA 3 ── */}
-          {etapa === 3 && (
-            <div>
-              <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Vistas laterais — dados do ensaio por face</p>
-              {faces.map((face, fi) => {
-                const fd = getFaceData(face);
-                const nBarras = isCirc ? (barras['circ'] || 6) : (barras[face] || 2);
-                const col = FACE_COLORS[face] || '#2563EB';
-                return (
-                  <div key={face} style={{ marginBottom: fi < faces.length - 1 ? 24 : 0 }}>
-                    <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, color: col, background: col + '18', borderRadius: 6, padding: '3px 10px', marginBottom: 12 }}>{FACE_LABELS[face]}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 16, alignItems: 'start' }}>
-                      {/* SVG perfil */}
-                      <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, padding: 8, display: 'flex', justifyContent: 'center' }}>
-                        <SvgPerfil face={face} nBarras={nBarras} fd={fd} C1={isCirc ? C1 : C1} />
-                      </div>
-                      {/* Inputs */}
-                      <div>
-                        {/* nEstribos */}
-                        <div style={{ marginBottom: 12 }}>
-                          <Campo label="Nº de estribos no trecho" htmlFor={`ne-${face}`}>
-                            <InteiroInput
-                              id={`ne-${face}`}
-                              style={{ ...inputStyle, maxWidth: 120 }}
-                              value={fd.nEstribos}
-                              min={1}
-                              onChange={n => updateFaceData(face, f => ensureFaceArrays({ ...f, nEstribos: n }, nBarras))}
-                            />
-                          </Campo>
-                        </div>
-                        <div style={{ height: 1, background: BORDER, marginBottom: 12 }} />
-                        {/* Tabela compacta por estribo */}
-                        <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr style={{ background: PRIMARY }}>
-                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center', width: 56 }}>Estribo</th>
-                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Cobrimento (mm)</th>
-                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. Estribos (cm)</th>
-                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. Long. (cm)</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {Array.from({ length: fd.nEstribos }, (_, i) => (
-                                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#F8F9FA', borderBottom: `1px solid ${BORDER}` }}>
-                                  <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 700, color: col, textAlign: 'center' }}>C{i + 1}</td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    <input type="text" inputMode="decimal" value={fd.cob[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const c = [...f.cob]; c[i] = e.target.value; return { ...f, cob: c }; })} />
-                                  </td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    {i < fd.nEstribos - 1
-                                      ? <input type="text" inputMode="decimal" value={fd.espV[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const ev = [...f.espV]; ev[i] = e.target.value; return { ...f, espV: ev }; })} />
-                                      : <span style={{ display: 'block', textAlign: 'center', color: SUBTEXT, fontSize: 12 }}>—</span>}
-                                  </td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    {i < fd.espH.length
-                                      ? <input type="text" inputMode="decimal" value={fd.espH[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const eh = [...f.espH]; eh[i] = e.target.value; return { ...f, espH: eh }; })} />
-                                      : <span style={{ display: 'block', textAlign: 'center', color: SUBTEXT, fontSize: 12 }}>—</span>}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                    {fi < faces.length - 1 && <div style={{ height: 1, background: BORDER, marginTop: 20 }} />}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Footer modal */}
-        <div style={{ padding: '14px 24px', borderTop: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', bottom: 0, background: '#fff' }}>
-          <button onClick={etapa === 1 ? onFechar : () => setEtapa(e => (e - 1) as 1 | 2 | 3)} style={{ padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: TEXT, border: 'none' }}>
-            {etapa === 1 ? 'Cancelar' : '← Voltar'}
-          </button>
-          {etapa < 3 ? (
-            <button onClick={() => setEtapa(e => (e + 1) as 2 | 3)} disabled={etapa === 1 ? !podeAvancar1 : !podeAvancar2} style={{ padding: '8px 22px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: podeAvancar1 || etapa > 1 ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: PRIMARY, color: '#fff', border: 'none', opacity: (etapa === 1 ? podeAvancar1 : podeAvancar2) ? 1 : 0.45 }}>
-              Próximo →
-            </button>
-          ) : (
-            <button onClick={handleSalvar} style={{ padding: '8px 22px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: SUCCESS, color: '#fff', border: 'none' }}>
-              ✓ Confirmar amostra
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -1086,8 +533,8 @@ export default function PacometriaPage() {
                           <td style={{ padding: '9px 10px', fontSize: 12.5, fontWeight: 800, color: '#475569', textAlign: 'center', width: 44 }}>{a.item}</td>
                           <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 700, color: TEXT, borderLeft: '1px solid #E2E8F0' }}>{a.elemento}</td>
                           <td style={{ padding: '9px 10px', fontSize: 12, color: SUBTEXT, borderLeft: '1px solid #E2E8F0' }}>
-                            <span style={{ fontWeight: 600, color: TEXT }}>{a.tipo.charAt(0).toUpperCase() + a.tipo.slice(1)}</span>
-                            <span style={{ marginLeft: 6, fontSize: 11, background: '#EEF2FF', color: PRIMARY, borderRadius: 4, padding: '2px 6px', fontWeight: 700 }}>Opção {a.opcao}</span>
+                            <span style={{ fontWeight: 600, color: TEXT }}>{TIPO_LABELS[a.tipo] ?? a.tipo}</span>
+                            <span style={{ marginLeft: 6, fontSize: 11, background: '#EEF2FF', color: PRIMARY, borderRadius: 4, padding: '2px 6px', fontWeight: 700 }}>{getResumoOpcao(a)}</span>
                           </td>
                           <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 700, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobMedio !== null ? TEXT : SUBTEXT }}>
                             {a.cobMedio !== null ? `${a.cobMedio.toFixed(1)} mm` : '—'}
@@ -1166,10 +613,12 @@ export default function PacometriaPage() {
               ) : amostras.map(a => (
                 <div key={a.id} style={{ background: '#fff', borderRadius: 8, border: '1px solid #94A3B8', padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 11, fontWeight: 800, color: SUBTEXT }}>#{a.item}</span>
                         <span style={{ fontSize: 14, fontWeight: 800, color: TEXT }}>{a.elemento}</span>
-                        <span style={{ fontSize: 10, background: '#EEF2FF', color: PRIMARY, borderRadius: 4, padding: '1px 5px', fontWeight: 700 }}>Opção {a.opcao}</span>
+                        <span style={{ fontSize: 10, background: '#EEF2FF', color: PRIMARY, borderRadius: 4, padding: '1px 5px', fontWeight: 700 }}>
+                          {TIPO_LABELS[a.tipo] ?? a.tipo} · {getResumoOpcao(a)}
+                        </span>
                       </div>
                       <div style={{ display: 'flex', gap: 5 }}>
                         <button onClick={() => editarAmostra(a)} aria-label="Editar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: '#EEF1F8', color: PRIMARY, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
