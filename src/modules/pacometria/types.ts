@@ -9,26 +9,30 @@ export type OpcaoAcessibilidade = OpcaoPilar | OpcaoViga | OpcaoLaje;
 
 export type FaceData = {
   nEstribos: number;
-  cob: string[];       // cobrimento por estribo na face exposta (mm) — length = nEstribos
+  cob: string[];       // cobrimento por estribo na face exposta (mm) — único que define o cobrimento do elemento
   espV: string[];      // espaçamento entre estribos (cm) — length = max(0, nEstribos - 1)
   espH: string[];      // espaçamento entre barras longitudinais (cm) — length = max(0, nBarras - 1)
-  cobLong?: string[];  // cobrimento da barra longitudinal na face exposta (mm) — length = nBarras
-  cobPerp?: string[];  // cobrimento da barra em relação à face exposta perpendicular (mm) — length = nBarras
+  cobPerpIni?: string; // cobrimento perpendicular da 1ª barra à borda inicial (Esq. no pilar / Sup. na viga) (mm)
+  cobPerpFim?: string; // cobrimento perpendicular da última barra à borda final (Dir. no pilar / Inf. na viga) (mm)
 };
 
 export type BarraMalha = {
   id: string;
   pos: number;      // posição em cm a partir da borda (topo para H, esquerda para V)
-  cob: string;      // cobrimento medido na face exposta (mm)
-  cobPerp?: string; // cobrimento em relação à face/borda perpendicular exposta (mm)
+  cob: string;      // cobrimento medido na face exposta (mm) — preenchido apenas na camada mais externa
 };
 
 export type LajeData = {
   larguraX: number;       // largura da área ensaiada (cm)
   alturaY: number;        // altura/comprimento da área ensaiada (cm)
   passoGrid: number;      // resolução da malha quadrada (cm)
+  camadaExterna?: 'H' | 'V'; // qual direção está mais próxima da face exposta (define o cobrimento)
   barrasH: BarraMalha[];  // barras horizontais (correm em X, posicionadas ao longo de Y)
   barrasV: BarraMalha[];  // barras verticais (correm em Y, posicionadas ao longo de X)
+  cobPerpHSup?: string;   // borda superior → H1 (mm)
+  cobPerpHInf?: string;   // Hn → borda inferior (mm)
+  cobPerpVEsq?: string;   // borda esquerda → V1 (mm)
+  cobPerpVDir?: string;   // Vm → borda direita (mm)
 };
 
 export type EstatisticasCobrimento = {
@@ -168,7 +172,7 @@ export function newId(): string {
 }
 
 export function initFaceData(): FaceData {
-  return { nEstribos: 3, cob: ['', '', ''], espV: ['', ''], espH: [], cobLong: [], cobPerp: [] };
+  return { nEstribos: 3, cob: ['', '', ''], espV: ['', ''], espH: [], cobPerpIni: '', cobPerpFim: '' };
 }
 
 export function ensureFaceArrays(fd: FaceData, nBarras: number): FaceData {
@@ -177,9 +181,14 @@ export function ensureFaceArrays(fd: FaceData, nBarras: number): FaceData {
   const cob = Array(ne).fill('').map((_, i) => fd.cob[i] ?? '');
   const espV = Math.max(0, ne - 1) > 0 ? Array(ne - 1).fill('').map((_, i) => fd.espV[i] ?? '') : [];
   const espH = Math.max(0, nb - 1) > 0 ? Array(nb - 1).fill('').map((_, i) => fd.espH[i] ?? '') : [];
-  const cobLong = Array(nb).fill('').map((_, i) => fd.cobLong?.[i] ?? '');
-  const cobPerp = Array(nb).fill('').map((_, i) => fd.cobPerp?.[i] ?? '');
-  return { ...fd, cob, espV, espH, cobLong, cobPerp };
+  return {
+    ...fd,
+    cob,
+    espV,
+    espH,
+    cobPerpIni: fd.cobPerpIni ?? '',
+    cobPerpFim: fd.cobPerpFim ?? '',
+  };
 }
 
 export function gerarMalhaRegular(
@@ -189,6 +198,7 @@ export function gerarMalhaRegular(
   permiteH: boolean,
   permiteV: boolean,
   passoGrid = 10,
+  camadaExterna?: 'H' | 'V',
 ): LajeData {
   const step = Math.max(5, espacamentoCm);
   const barrasH: BarraMalha[] = [];
@@ -212,12 +222,13 @@ export function gerarMalhaRegular(
     }
   }
 
-  return { larguraX, alturaY, passoGrid, barrasH, barrasV };
+  const ext: 'H' | 'V' = camadaExterna ?? (permiteH ? 'H' : 'V');
+  return { larguraX, alturaY, passoGrid, camadaExterna: ext, barrasH, barrasV };
 }
 
 export function initLajeData(opcao: OpcaoLaje = 'LA'): LajeData {
   const cfg = OPCOES_LAJE[opcao];
-  return gerarMalhaRegular(100, 100, 20, cfg.permiteH, cfg.permiteV, 10);
+  return gerarMalhaRegular(100, 100, 20, cfg.permiteH, cfg.permiteV, 10, cfg.permiteH ? 'H' : 'V');
 }
 
 export function ordenarBarras(barras: BarraMalha[]): BarraMalha[] {
@@ -265,27 +276,34 @@ export function calcularEstatisticasLista(valores: number[]): EstatisticasCobrim
   return { cobMedio, cobMinimo, cobMaximo, cobDesvio, cobCV, cobModa };
 }
 
+/**
+ * Em pilares e vigas, o cobrimento da estrutura é definido exclusivamente
+ * pela armadura transversal externa (estribos), pois as barras longitudinais
+ * ficam atrás dos estribos (NBR 6118).
+ */
 export function calcularCobrimentos(facesData: Record<string, FaceData>): EstatisticasCobrimento {
   const todos: number[] = [];
   Object.values(facesData).forEach(fd => {
-    const listas = [fd.cob, fd.cobLong ?? [], fd.cobPerp ?? []];
-    listas.forEach(lista => {
-      lista.forEach(v => {
-        const n = parseFloat(v.replace(',', '.'));
-        if (!isNaN(n) && n > 0) todos.push(n);
-      });
+    fd.cob.forEach(v => {
+      const n = parseFloat(v.replace(',', '.'));
+      if (!isNaN(n) && n > 0) todos.push(n);
     });
   });
   return calcularEstatisticasLista(todos);
 }
 
+/**
+ * Em lajes / áreas livres, o cobrimento é definido exclusivamente pela
+ * camada de armadura mais externa (H ou V, conforme configurado na malha).
+ */
 export function calcularCobrimentosLaje(lajeData: LajeData): EstatisticasCobrimento {
+  const externa: 'H' | 'V' = lajeData.camadaExterna
+    ?? (lajeData.barrasH.length > 0 ? 'H' : 'V');
+  const barrasExternas = externa === 'V' ? lajeData.barrasV : lajeData.barrasH;
   const todos: number[] = [];
-  [...lajeData.barrasH, ...lajeData.barrasV].forEach(b => {
-    [b.cob, b.cobPerp ?? ''].forEach(raw => {
-      const n = parseFloat(raw.replace(',', '.'));
-      if (!isNaN(n) && n > 0) todos.push(n);
-    });
+  barrasExternas.forEach(b => {
+    const n = parseFloat(b.cob.replace(',', '.'));
+    if (!isNaN(n) && n > 0) todos.push(n);
   });
   return calcularEstatisticasLista(todos);
 }

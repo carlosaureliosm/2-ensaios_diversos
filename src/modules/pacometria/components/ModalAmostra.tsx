@@ -147,15 +147,24 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
   function selecionarOpcaoLaje(op: OpcaoLaje) {
     setOpcao(op);
     const cfg = OPCOES_LAJE[op];
-    setLajeData(prev => ({
-      ...prev,
-      barrasH: cfg.permiteH
-        ? (prev.barrasH.length > 0 ? prev.barrasH : gerarMalhaRegular(prev.larguraX, prev.alturaY, espRapido, true, false, prev.passoGrid).barrasH)
-        : [],
-      barrasV: cfg.permiteV
-        ? (prev.barrasV.length > 0 ? prev.barrasV : gerarMalhaRegular(prev.larguraX, prev.alturaY, espRapido, false, true, prev.passoGrid).barrasV)
-        : [],
-    }));
+    setLajeData(prev => {
+      const novaExt: 'H' | 'V' =
+        cfg.permiteH && cfg.permiteV
+          ? (prev.camadaExterna ?? 'H')
+          : cfg.permiteH
+            ? 'H'
+            : 'V';
+      return {
+        ...prev,
+        camadaExterna: novaExt,
+        barrasH: cfg.permiteH
+          ? (prev.barrasH.length > 0 ? prev.barrasH : gerarMalhaRegular(prev.larguraX, prev.alturaY, espRapido, true, false, prev.passoGrid, novaExt).barrasH)
+          : [],
+        barrasV: cfg.permiteV
+          ? (prev.barrasV.length > 0 ? prev.barrasV : gerarMalhaRegular(prev.larguraX, prev.alturaY, espRapido, false, true, prev.passoGrid, novaExt).barrasV)
+          : [],
+      };
+    });
     if (!cfg.permiteH && ferramenta === 'addH') setFerramenta('addV');
     if (!cfg.permiteV && ferramenta === 'addV') setFerramenta('addH');
   }
@@ -188,7 +197,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
       if (ferramenta === 'remove') return prev;
       return {
         ...prev,
-        [key]: ordenarBarras([...lista, { id: newId(), pos: posCm, cob: '', cobPerp: '' }]),
+        [key]: ordenarBarras([...lista, { id: newId(), pos: posCm, cob: '' }]),
       };
     });
   }
@@ -290,18 +299,25 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
   const barrasHOrd = ordenarBarras(lajeData.barrasH);
   const barrasVOrd = ordenarBarras(lajeData.barrasV);
 
-  // Renderiza as tabelas padronizadas da Etapa 3 para Pilar e Viga (zero células bloqueadas!)
+  // Renderiza as tabelas padronizadas da Etapa 3 para Pilar e Viga
+  // Regra estrutural (NBR 6118): cobrimento na face é SEMPRE nos estribos (camada externa);
+  // barras longitudinais ficam atrás dos estribos (apenas espaçamento e distância às bordas perpendiculares).
   function renderTabelasFace(face: string, nBarras: number, fd: FaceData) {
     const col = FACE_COLORS[face] || '#2563EB';
+    const labelIni = isViga ? 'Borda Sup. → B1 (mm)' : 'Borda Esq. → B1 (mm)';
+    const labelFim = isViga ? `B${nBarras} → Borda Inf. (mm)` : `B${nBarras} → Borda Dir. (mm)`;
+    const colsEst = Math.min(Math.max(1, fd.nEstribos - 1), 4);
+    const colsLong = Math.min(Math.max(1, nBarras - 1), 4);
+
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 14, alignItems: 'start' }}>
-        {/* BLOCO 1: ESTRIBOS */}
+        {/* BLOCO 1: ESTRIBOS (CAMADA EXTERNA — DEFINE COBRIMENTO) */}
         <div style={{ border: `1px solid ${BORDER_PANEL}`, borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
           <div style={{ padding: '6px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_PANEL}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Estribos ({fd.nEstribos})
             </span>
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: SUBTEXT }}>Cobrimento na face (mm)</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: col }}>Camada externa — define cobrimento</span>
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -334,7 +350,6 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
             </tbody>
           </table>
 
-          {/* Espaçamento entre estribos — só aparece quando há vãos (nEstribos > 1) */}
           {fd.nEstribos > 1 && (
             <div style={{ borderTop: `1px solid ${BORDER_PANEL}` }}>
               <div style={{ padding: '5px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_CELL}` }}>
@@ -342,13 +357,13 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                   Espaçamento entre estribos (cm)
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(fd.nEstribos - 1, 4)}, minmax(0, 1fr))` }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${colsEst}, minmax(0, 1fr))` }}>
                 {Array.from({ length: fd.nEstribos - 1 }, (_, i) => (
                   <CelulaFicha
                     key={i}
                     label={`E${i + 1} – E${i + 2}`}
-                    borderRight={(i + 1) % Math.min(fd.nEstribos - 1, 4) !== 0 && i < fd.nEstribos - 2}
-                    borderBottom={i < fd.nEstribos - 1 - ((fd.nEstribos - 1) % Math.min(fd.nEstribos - 1, 4) || Math.min(fd.nEstribos - 1, 4))}
+                    borderRight={(i + 1) % colsEst !== 0 && i < fd.nEstribos - 2}
+                    borderBottom={i < fd.nEstribos - 1 - ((fd.nEstribos - 1) % colsEst || colsEst)}
                   >
                     <input
                       type="text"
@@ -369,75 +384,29 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
           )}
         </div>
 
-        {/* BLOCO 2: BARRAS LONGITUDINAIS */}
+        {/* BLOCO 2: BARRAS LONGITUDINAIS (ATRÁS DOS ESTRIBOS — SEM COBRIMENTO NA FACE) */}
         <div style={{ border: `1px solid ${BORDER_PANEL}`, borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
           <div style={{ padding: '6px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_PANEL}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Barras Longitudinais ({nBarras})
             </span>
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: PERP_COLOR }}>⊥ = face perpendicular</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: SUBTEXT }}>Internas (atrás dos estribos)</span>
           </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={tabelaHeaderStyle}>
-                <th style={{ ...tabelaThTextStyle, padding: '6px 8px', width: 64 }}>Barra</th>
-                <th style={{ ...tabelaThTextStyle, padding: '6px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>Cob. Face (mm)</th>
-                <th style={{ ...tabelaThTextStyle, padding: '6px 8px', borderLeft: `1px solid ${BORDER_CELL}`, color: PERP_COLOR }}>Cob. Perp. ⊥ (mm)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: nBarras }, (_, i) => (
-                <tr key={i} style={{ background: i % 2 === 1 ? ZEBRA : '#fff', borderTop: i > 0 ? `1px solid ${BORDER_CELL}` : undefined }}>
-                  <td style={{ padding: '4px 8px', fontSize: 12, fontWeight: 800, color: PRIMARY, textAlign: 'center' }}>B{i + 1}</td>
-                  <td className="planilha-cell" style={{ padding: '2px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={fd.cobLong?.[i] ?? ''}
-                      placeholder="—"
-                      style={cellInputCenter}
-                      onChange={e => updateFaceData(face, f => {
-                        const cl = [...(f.cobLong ?? [])];
-                        cl[i] = e.target.value;
-                        return { ...f, cobLong: cl };
-                      })}
-                    />
-                  </td>
-                  <td className="planilha-cell" style={{ padding: '2px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={fd.cobPerp?.[i] ?? ''}
-                      placeholder="—"
-                      style={{ ...cellInputCenter, color: PERP_COLOR }}
-                      onChange={e => updateFaceData(face, f => {
-                        const cp = [...(f.cobPerp ?? [])];
-                        cp[i] = e.target.value;
-                        return { ...f, cobPerp: cp };
-                      })}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Espaçamento entre barras longitudinais — só aparece quando há vãos (nBarras > 1) */}
-          {nBarras > 1 && (
-            <div style={{ borderTop: `1px solid ${BORDER_PANEL}` }}>
+          {nBarras > 1 ? (
+            <div>
               <div style={{ padding: '5px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_CELL}` }}>
                 <span style={{ fontSize: 9.5, fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Espaçamento entre barras longitudinais (cm)
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(nBarras - 1, 4)}, minmax(0, 1fr))` }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${colsLong}, minmax(0, 1fr))` }}>
                 {Array.from({ length: nBarras - 1 }, (_, i) => (
                   <CelulaFicha
                     key={i}
                     label={`B${i + 1} – B${i + 2}`}
-                    borderRight={(i + 1) % Math.min(nBarras - 1, 4) !== 0 && i < nBarras - 2}
-                    borderBottom={i < nBarras - 1 - ((nBarras - 1) % Math.min(nBarras - 1, 4) || Math.min(nBarras - 1, 4))}
+                    borderRight={(i + 1) % colsLong !== 0 && i < nBarras - 2}
+                    borderBottom={!isCirc || i < nBarras - 1 - ((nBarras - 1) % colsLong || colsLong)}
                   >
                     <input
                       type="text"
@@ -455,6 +424,45 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                 ))}
               </div>
             </div>
+          ) : (
+            <div style={{ padding: '10px 12px', fontSize: 11, color: SUBTEXT, borderBottom: !isCirc ? `1px solid ${BORDER_CELL}` : undefined }}>
+              1 barra longitudinal nesta face (sem vão entre barras).
+            </div>
+          )}
+
+          {/* Cobrimento / distância à face perpendicular nas bordas (apenas se não circular) */}
+          {!isCirc && (
+            <div style={{ borderTop: nBarras > 1 ? `1px solid ${BORDER_PANEL}` : undefined }}>
+              <div style={{ padding: '5px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_CELL}` }}>
+                <span style={{ fontSize: 9.5, fontWeight: 800, color: PERP_COLOR, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Cobrimento perpendicular às bordas (mm) — linha de cota
+                </span>
+              </div>
+              <div className={nBarras > 1 ? 'planilha-grid-2' : undefined}>
+                <CelulaFicha label={labelIni} borderRight={nBarras > 1} borderBottom={false}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={fd.cobPerpIni ?? ''}
+                    placeholder="mm"
+                    style={{ ...cellInputCenter, textAlign: 'left', color: PERP_COLOR }}
+                    onChange={e => updateFaceData(face, f => ({ ...f, cobPerpIni: e.target.value }))}
+                  />
+                </CelulaFicha>
+                {nBarras > 1 && (
+                  <CelulaFicha label={labelFim} borderBottom={false}>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={fd.cobPerpFim ?? ''}
+                      placeholder="mm"
+                      style={{ ...cellInputCenter, textAlign: 'left', color: PERP_COLOR }}
+                      onChange={e => updateFaceData(face, f => ({ ...f, cobPerpFim: e.target.value }))}
+                    />
+                  </CelulaFicha>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -466,27 +474,42 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
     if (lista.length === 0) return null;
     const isH = dir === 'H';
     const cor = isH ? FACE_COLORS.dirH : FACE_COLORS.dirV;
+    const camadaExterna: 'H' | 'V' = lajeData.camadaExterna ?? (barrasHOrd.length > 0 ? 'H' : 'V');
+    const isExterna = dir === camadaExterna;
+
     const titulo = isH
       ? `Barras Horizontais — Direção X (${lista.length})`
       : `Barras Verticais — Direção Y (${lista.length})`;
     const maxPos = isH ? lajeData.alturaY : lajeData.larguraX;
 
+    const cobIniKey = isH ? 'cobPerpHSup' : 'cobPerpVEsq';
+    const cobFimKey = isH ? 'cobPerpHInf' : 'cobPerpVDir';
+    const labelIni = isH ? 'Borda Sup. → H1 (mm)' : 'Borda Esq. → V1 (mm)';
+    const labelFim = isH ? `H${lista.length} → Borda Inf. (mm)` : `V${lista.length} → Borda Dir. (mm)`;
+
     return (
       <PainelPlanilha
         titulo={titulo}
         marginBottom={14}
-        direita={<span style={{ fontSize: 10, fontWeight: 700, color: '#BFDBFE' }}>⊥ = borda perpendicular</span>}
+        direita={
+          <span style={{ fontSize: 10, fontWeight: 700, color: isExterna ? '#FDE68A' : '#CBD5E1' }}>
+            {isExterna ? '★ Camada externa (define cobrimento)' : 'Camada interna (atrás da externa)'}
+          </span>
+        }
       >
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={tabelaHeaderStyle}>
-                <th style={{ ...tabelaThTextStyle, padding: '7px 8px', width: 54 }}>Barra</th>
+                <th style={{ ...tabelaThTextStyle, padding: '7px 8px', width: 58 }}>Barra</th>
                 <th style={{ ...tabelaThTextStyle, padding: '7px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>
                   {isH ? 'Pos. Y (cm)' : 'Pos. X (cm)'}
                 </th>
-                <th style={{ ...tabelaThTextStyle, padding: '7px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>Cob. Face (mm)</th>
-                <th style={{ ...tabelaThTextStyle, padding: '7px 8px', borderLeft: `1px solid ${BORDER_CELL}`, color: PERP_COLOR }}>Cob. Perp. ⊥ (mm)</th>
+                {isExterna && (
+                  <th style={{ ...tabelaThTextStyle, padding: '7px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                    Cobrimento na face (mm)
+                  </th>
+                )}
                 <th style={{ ...tabelaThTextStyle, padding: '7px 6px', borderLeft: `1px solid ${BORDER_CELL}`, width: 34 }} />
               </tr>
             </thead>
@@ -519,29 +542,20 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                         }}
                       />
                     </td>
-                    <td className="planilha-cell" style={{ padding: '2px 6px', borderLeft: `1px solid ${BORDER_CELL}` }}>
-                      <input
-                        ref={el => { cobInputsRef.current[b.id] = el; }}
-                        type="text"
-                        inputMode="decimal"
-                        value={b.cob}
-                        placeholder="—"
-                        style={cellInputCenter}
-                        onFocus={() => setBarraSelId(b.id)}
-                        onChange={e => atualizarBarra(dir, b.id, { cob: e.target.value })}
-                      />
-                    </td>
-                    <td className="planilha-cell" style={{ padding: '2px 6px', borderLeft: `1px solid ${BORDER_CELL}` }}>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={b.cobPerp ?? ''}
-                        placeholder="—"
-                        style={{ ...cellInputCenter, color: PERP_COLOR }}
-                        onFocus={() => setBarraSelId(b.id)}
-                        onChange={e => atualizarBarra(dir, b.id, { cobPerp: e.target.value })}
-                      />
-                    </td>
+                    {isExterna && (
+                      <td className="planilha-cell" style={{ padding: '2px 6px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                        <input
+                          ref={el => { cobInputsRef.current[b.id] = el; }}
+                          type="text"
+                          inputMode="decimal"
+                          value={b.cob}
+                          placeholder="—"
+                          style={cellInputCenter}
+                          onFocus={() => setBarraSelId(b.id)}
+                          onChange={e => atualizarBarra(dir, b.id, { cob: e.target.value })}
+                        />
+                      </td>
+                    )}
                     <td style={{ padding: '2px 4px', textAlign: 'center', borderLeft: `1px solid ${BORDER_CELL}` }}>
                       <button
                         type="button"
@@ -559,9 +573,42 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
           </table>
         </div>
 
-        {/* Rodapé técnico com espaçamentos calculados entre barras consecutivas (zero células vazias) */}
+        {/* Cobrimento perpendicular nas bordas (segue a linha de cota) */}
+        <div style={{ borderTop: `1px solid ${BORDER_PANEL}` }}>
+          <div style={{ padding: '5px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_CELL}` }}>
+            <span style={{ fontSize: 9.5, fontWeight: 800, color: PERP_COLOR, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Cobrimento perpendicular às bordas (mm) — linha de cota
+            </span>
+          </div>
+          <div className={lista.length > 1 ? 'planilha-grid-2' : undefined}>
+            <CelulaFicha label={labelIni} borderRight={lista.length > 1} borderBottom={lista.length > 1}>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={lajeData[cobIniKey] ?? ''}
+                placeholder="mm"
+                style={{ ...cellInputCenter, textAlign: 'left', color: PERP_COLOR }}
+                onChange={e => setLajeData(p => ({ ...p, [cobIniKey]: e.target.value }))}
+              />
+            </CelulaFicha>
+            {lista.length > 1 && (
+              <CelulaFicha label={labelFim} borderBottom={true}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={lajeData[cobFimKey] ?? ''}
+                  placeholder="mm"
+                  style={{ ...cellInputCenter, textAlign: 'left', color: PERP_COLOR }}
+                  onChange={e => setLajeData(p => ({ ...p, [cobFimKey]: e.target.value }))}
+                />
+              </CelulaFicha>
+            )}
+          </div>
+        </div>
+
+        {/* Rodapé técnico com espaçamentos calculados entre barras consecutivas */}
         {lista.length > 1 && (
-          <div style={{ padding: '7px 12px', background: HEADER_SUB, borderTop: `1px solid ${BORDER_PANEL}`, display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center' }}>
+          <div style={{ padding: '7px 12px', background: HEADER_SUB, display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center' }}>
             <span style={{ fontSize: 9.5, fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Espaçamentos:
             </span>
@@ -988,7 +1035,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                       <InteiroInput id="laje-esp" style={fichaInputStyle} value={espRapido} min={5} onChange={setEspRapido} />
                       <button
                         type="button"
-                        onClick={() => setLajeData(p => gerarMalhaRegular(p.larguraX, p.alturaY, espRapido, lajeCfg.permiteH, lajeCfg.permiteV, p.passoGrid))}
+                        onClick={() => setLajeData(p => gerarMalhaRegular(p.larguraX, p.alturaY, espRapido, lajeCfg.permiteH, lajeCfg.permiteV, p.passoGrid, p.camadaExterna))}
                         style={{ padding: '4px 10px', borderRadius: 5, border: 'none', background: PRIMARY, color: '#fff', fontSize: 10.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
                       >
                         Aplicar
@@ -996,6 +1043,41 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                     </div>
                   </CelulaFicha>
                 </div>
+                {lajeCfg.permiteH && lajeCfg.permiteV && (
+                  <div style={{ padding: '8px 12px', background: HEADER_SUB, borderTop: `1px solid ${BORDER_CELL}`, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Armadura mais externa (define o cobrimento da laje):
+                    </span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {([
+                        { id: 'H' as const, label: '━ Barras Horizontais (H)', cor: FACE_COLORS.dirH },
+                        { id: 'V' as const, label: '┃ Barras Verticais (V)', cor: FACE_COLORS.dirV },
+                      ]).map(opt => {
+                        const sel = (lajeData.camadaExterna ?? 'H') === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setLajeData(p => ({ ...p, camadaExterna: opt.id }))}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 5,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                              border: `1.5px solid ${sel ? opt.cor : BORDER_CELL}`,
+                              background: sel ? opt.cor : '#fff',
+                              color: sel ? '#fff' : opt.cor,
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </PainelPlanilha>
 
               <PainelPlanilha
@@ -1155,7 +1237,38 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
               <PainelPlanilha
                 titulo={`Malha Desenhada — ${lajeData.larguraX} × ${lajeData.alturaY} cm (passo ${lajeData.passoGrid} cm)`}
                 marginBottom={14}
-                direita={<span style={{ fontSize: 10, fontWeight: 700, color: '#BFDBFE' }}>Clique na barra para editar</span>}
+                direita={
+                  lajeCfg.permiteH && lajeCfg.permiteV ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#BFDBFE' }}>Camada externa:</span>
+                      {(['H', 'V'] as const).map(dir => {
+                        const sel = (lajeData.camadaExterna ?? 'H') === dir;
+                        return (
+                          <button
+                            key={dir}
+                            type="button"
+                            onClick={() => setLajeData(p => ({ ...p, camadaExterna: dir }))}
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              fontSize: 10.5,
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                              border: '1px solid rgba(255,255,255,0.45)',
+                              background: sel ? GOLD : 'transparent',
+                              color: sel ? PRIMARY : '#fff',
+                            }}
+                          >
+                            {dir === 'H' ? 'Horiz. (H)' : 'Vert. (V)'}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#BFDBFE' }}>Clique na barra para editar</span>
+                  )
+                }
               >
                 <div style={{ padding: 12, background: '#fff', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
                   <SvgMalhaLaje

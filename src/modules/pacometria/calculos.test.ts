@@ -52,43 +52,58 @@ describe('Pacometria — malha quadrada (laje)', () => {
     expect(esp).toEqual([20, 25]);
   });
 
-  it('calcula estatísticas de cobrimento na laje (incluindo cobrimento perpendicular e vírgula decimal)', () => {
-    const stats = calcularCobrimentosLaje({
+  it('calcula estatísticas de cobrimento na laje considerando apenas a camada mais externa', () => {
+    const statsH = calcularCobrimentosLaje({
       larguraX: 100,
       alturaY: 100,
       passoGrid: 10,
+      camadaExterna: 'H',
       barrasH: [
-        { id: 'h1', pos: 20, cob: '20', cobPerp: '25' },
-        { id: 'h2', pos: 40, cob: '20,0', cobPerp: '' },
+        { id: 'h1', pos: 20, cob: '20' },
+        { id: 'h2', pos: 40, cob: '20,0' },
+        { id: 'h3', pos: 60, cob: '26' },
       ],
       barrasV: [
-        { id: 'v1', pos: 30, cob: '30', cobPerp: '35' },
-        { id: 'v2', pos: 60, cob: '' },
+        { id: 'v1', pos: 30, cob: '99' }, // camada interna: deve ser ignorada
+      ],
+      cobPerpHSup: '15',
+    });
+    expect(statsH.cobMinimo).toBe(20);
+    expect(statsH.cobMaximo).toBe(26);
+    expect(statsH.cobMedio).toBeCloseTo(22, 2);
+    expect(statsH.cobModa).toBe(20);
+
+    const statsV = calcularCobrimentosLaje({
+      larguraX: 100,
+      alturaY: 100,
+      passoGrid: 10,
+      camadaExterna: 'V',
+      barrasH: [{ id: 'h1', pos: 20, cob: '99' }], // interna: ignorada
+      barrasV: [
+        { id: 'v1', pos: 30, cob: '24' },
+        { id: 'v2', pos: 60, cob: '28' },
       ],
     });
-    expect(stats.cobMinimo).toBe(20);
-    expect(stats.cobMaximo).toBe(35);
-    expect(stats.cobMedio).toBeCloseTo(26, 2);
-    expect(stats.cobModa).toBe(20);
-    expect(stats.cobDesvio).toBeGreaterThan(0);
-    expect(stats.cobCV).toBeGreaterThan(0);
+    expect(statsV.cobMinimo).toBe(24);
+    expect(statsV.cobMaximo).toBe(28);
+    expect(statsV.cobMedio).toBe(26);
   });
 
-  it('calcula estatísticas de cobrimento em faces de pilar/viga (estribos + long. + perpendicular)', () => {
+  it('calcula estatísticas de cobrimento em pilar/viga considerando exclusivamente os estribos', () => {
     const stats = calcularCobrimentos({
       fundo: {
         nEstribos: 2,
         cob: ['25', '27'],
         espV: ['15'],
         espH: ['10', '10'],
-        cobLong: ['30', '', '30'],
-        cobPerp: ['25', '', '28'],
+        cobPerpIni: '12',
+        cobPerpFim: '13',
       },
       lat1: { nEstribos: 2, cob: ['25', '29'], espV: ['15'], espH: ['12'] },
     });
     expect(stats.cobMinimo).toBe(25);
-    expect(stats.cobMaximo).toBe(30);
+    expect(stats.cobMaximo).toBe(29);
     expect(stats.cobModa).toBe(25);
-    expect(stats.cobMedio).toBeCloseTo((25 + 27 + 30 + 30 + 25 + 28 + 25 + 29) / 8, 2);
+    expect(stats.cobMedio).toBe(26.5);
   });
 });

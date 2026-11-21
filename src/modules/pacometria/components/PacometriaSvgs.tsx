@@ -210,6 +210,24 @@ export function SvgSecaoPilar({
 
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace', display: 'block' }}>
+      <defs>
+        <pattern id="pilarHatchPreview" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="6" stroke="#94A3B8" strokeWidth="1.2" />
+        </pattern>
+      </defs>
+      {/* Hachura nas faces obstruídas (sem textos 1X/2X/1Y/2Y) */}
+      {!faces.includes('2X') && (
+        <rect x={ox} y={oy - 14} width={cw} height={14} fill="url(#pilarHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
+      )}
+      {!faces.includes('1X') && (
+        <rect x={ox} y={oy + ch} width={cw} height={14} fill="url(#pilarHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
+      )}
+      {!faces.includes('1Y') && (
+        <rect x={ox - 14} y={oy} width={14} height={ch} fill="url(#pilarHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
+      )}
+      {!faces.includes('2Y') && (
+        <rect x={ox + cw} y={oy} width={14} height={ch} fill="url(#pilarHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
+      )}
       <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
       <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1.1} strokeDasharray="3,2" />
       {(['1X', '2X', '1Y', '2Y'] as string[]).map(f =>
@@ -221,30 +239,16 @@ export function SvgSecaoPilar({
         )) : null,
       )}
       {/* Cota X (inferior) */}
-      <line x1={ox} y1={oy + ch + 15} x2={ox + cw} y2={oy + ch + 15} stroke={GOLD} strokeWidth={1.2} />
-      <line x1={ox} y1={oy + ch + 10} x2={ox} y2={oy + ch + 20} stroke={GOLD} strokeWidth={1.2} />
-      <line x1={ox + cw} y1={oy + ch + 10} x2={ox + cw} y2={oy + ch + 20} stroke={GOLD} strokeWidth={1.2} />
-      <text x={ox + cw / 2} y={oy + ch + 30} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700">X = {X} cm</text>
+      <line x1={ox} y1={oy + ch + (!faces.includes('1X') ? 24 : 16)} x2={ox + cw} y2={oy + ch + (!faces.includes('1X') ? 24 : 16)} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox} y1={oy + ch + (!faces.includes('1X') ? 19 : 11)} x2={ox} y2={oy + ch + (!faces.includes('1X') ? 29 : 21)} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox + cw} y1={oy + ch + (!faces.includes('1X') ? 19 : 11)} x2={ox + cw} y2={oy + ch + (!faces.includes('1X') ? 29 : 21)} stroke={GOLD} strokeWidth={1.2} />
+      <text x={ox + cw / 2} y={oy + ch + (!faces.includes('1X') ? 40 : 32)} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700">X = {X} cm</text>
 
       {/* Cota Y (esquerda) */}
-      <line x1={ox - 15} y1={oy} x2={ox - 15} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
-      <line x1={ox - 20} y1={oy} x2={ox - 10} y2={oy} stroke={GOLD} strokeWidth={1.2} />
-      <line x1={ox - 20} y1={oy + ch} x2={ox - 10} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
-      <text x={ox - 28} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - 28},${oy + ch / 2})`}>Y = {Y} cm</text>
-
-      {/* Labels das faces bem afastados das cotas */}
-      <text x={ox + cw / 2} y={oy - 16} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['2X']} fontWeight="700">
-        2X{!faces.includes('2X') ? ' ✕' : ''}
-      </text>
-      <text x={ox + cw / 2} y={oy + ch + 48} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['1X']} fontWeight="700">
-        1X{!faces.includes('1X') ? ' ✕' : ''}
-      </text>
-      <text x={ox - 54} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['1Y']} fontWeight="700" transform={`rotate(-90,${ox - 54},${oy + ch / 2})`}>
-        1Y{!faces.includes('1Y') ? ' ✕' : ''}
-      </text>
-      <text x={ox + cw + 26} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['2Y']} fontWeight="700" transform={`rotate(90,${ox + cw + 26},${oy + ch / 2})`}>
-        2Y{!faces.includes('2Y') ? ' ✕' : ''}
-      </text>
+      <line x1={ox - (!faces.includes('1Y') ? 24 : 16)} y1={oy} x2={ox - (!faces.includes('1Y') ? 24 : 16)} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox - (!faces.includes('1Y') ? 29 : 21)} y1={oy} x2={ox - (!faces.includes('1Y') ? 19 : 11)} y2={oy} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox - (!faces.includes('1Y') ? 29 : 21)} y1={oy + ch} x2={ox - (!faces.includes('1Y') ? 19 : 11)} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
+      <text x={ox - (!faces.includes('1Y') ? 38 : 30)} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - (!faces.includes('1Y') ? 38 : 30)},${oy + ch / 2})`}>Y = {Y} cm</text>
     </svg>
   );
 }
@@ -347,13 +351,13 @@ export function SvgPerfilVertical({
     return !isNaN(n) && n > 0 ? n : null;
   });
 
-  const cobPerpEsq = fd.cobPerp?.[0]?.trim() || '';
-  const cobPerpDir = nb > 1 ? (fd.cobPerp?.[nb - 1]?.trim() || '') : '';
+  const cobPerpEsq = fd.cobPerpIni?.trim() || '';
+  const cobPerpDir = fd.cobPerpFim?.trim() || '';
 
   // Margens generosas para fonte maior (11–12px)
   const ML = 76; // cotas de espaçamento de estribos (esquerda)
-  const MR = 92; // labels E1..En + cobrimento (direita)
-  const MT = 42; // labels B1..Bm + cobrimento na face (topo)
+  const MR = 92; // labels E1..En + cobrimento dos estribos (direita)
+  const MT = 30; // labels B1..Bm (topo)
   const MB = 48; // linha de cota inferior (cobrimento perp. esq + esp. long + cobrimento perp. dir)
 
   const minStepY = 44;
@@ -405,24 +409,18 @@ export function SvgPerfilVertical({
       {/* Contorno do pilar */}
       <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2.2} />
 
-      {/* Barras longitudinais (verticais) + labels B1..Bm e cobrimento na face no topo */}
-      {barX.map((x, i) => {
-        const cobLong = fd.cobLong?.[i]?.trim();
-        return (
-          <g key={`b-${i}`}>
-            <line x1={x} y1={oy + 6} x2={x} y2={oy + ch - 6} stroke={col} strokeWidth={2.4} />
-            <text x={x} y={oy - (cobLong ? 22 : 10)} textAnchor="middle" fontSize={11.5} fill={PRIMARY} fontWeight="700">B{i + 1}</text>
-            {cobLong ? (
-              <text x={x} y={oy - 8} textAnchor="middle" fontSize={10.5} fill={col} fontWeight="700">{cobLong}mm</text>
-            ) : null}
-          </g>
-        );
-      })}
+      {/* Barras longitudinais (verticais, atrás dos estribos) — apenas identificação B1..Bm */}
+      {barX.map((x, i) => (
+        <g key={`b-${i}`}>
+          <line x1={x} y1={oy + 6} x2={x} y2={oy + ch - 6} stroke={col} strokeWidth={2} opacity={0.75} />
+          <text x={x} y={oy - 10} textAnchor="middle" fontSize={11.5} fill={PRIMARY} fontWeight="700">B{i + 1}</text>
+        </g>
+      ))}
 
-      {/* Estribos (horizontais) + labels E1..En e cobrimento à direita */}
+      {/* Estribos (horizontais, na frente das barras longitudinais) + cobrimento real do elemento */}
       {estrY.map((y, i) => (
         <g key={`e-${i}`}>
-          <line x1={ox + 12} y1={y} x2={ox + cw - 12} y2={y} stroke={col} strokeWidth={2.4} />
+          <line x1={ox + 12} y1={y} x2={ox + cw - 12} y2={y} stroke={col} strokeWidth={2.8} />
           <text x={ox + cw + 10} y={y + 4} fontSize={11} fill={SUBTEXT} fontWeight="700">
             E{i + 1}
           </text>
@@ -501,13 +499,13 @@ export function SvgPerfilHorizontal({
     return !isNaN(n) && n > 0 ? n : null;
   });
 
-  const cobPerpSup = fd.cobPerp?.[0]?.trim() || '';
-  const cobPerpInf = nb > 1 ? (fd.cobPerp?.[nb - 1]?.trim() || '') : '';
+  const cobPerpSup = fd.cobPerpIni?.trim() || '';
+  const cobPerpInf = fd.cobPerpFim?.trim() || '';
 
   // Margens generosas para fonte maior (11–12px)
   const ML = 78; // linha de cota esquerda (cob. perp. sup + esp. long + cob. perp. inf)
-  const MR = 92; // labels B1..Bm + cobrimento na face (direita)
-  const MT = 46; // labels E1..En + cobrimento (topo)
+  const MR = 48; // labels B1..Bm (direita)
+  const MT = 46; // labels E1..En + cobrimento dos estribos (topo)
   const MB = 46; // cotas de espaçamento entre estribos (embaixo)
 
   const minStepX = 68;
@@ -561,28 +559,20 @@ export function SvgPerfilHorizontal({
       <line x1={ox} y1={oy - 3} x2={ox} y2={oy + ch + 3} stroke={PRIMARY} strokeWidth={1.6} strokeDasharray="3,2" />
       <line x1={ox + cw} y1={oy - 3} x2={ox + cw} y2={oy + ch + 3} stroke={PRIMARY} strokeWidth={1.6} strokeDasharray="3,2" />
 
-      {/* Barras longitudinais (HORIZONTAIS) + labels B1..Bm e cobrimento na face à direita */}
-      {barY.map((y, i) => {
-        const cobLong = fd.cobLong?.[i]?.trim();
-        return (
-          <g key={`b-${i}`}>
-            <line x1={ox + 6} y1={y} x2={ox + cw - 6} y2={y} stroke={col} strokeWidth={2.4} />
-            <text x={ox + cw + 10} y={y + 4} fontSize={11} fill={PRIMARY} fontWeight="700">
-              B{i + 1}
-            </text>
-            {cobLong ? (
-              <text x={ox + cw + 34} y={y + 4} fontSize={11} fill={col} fontWeight="700">
-                {cobLong}mm
-              </text>
-            ) : null}
-          </g>
-        );
-      })}
+      {/* Barras longitudinais (HORIZONTAIS, atrás dos estribos) — apenas identificação B1..Bm */}
+      {barY.map((y, i) => (
+        <g key={`b-${i}`}>
+          <line x1={ox + 6} y1={y} x2={ox + cw - 6} y2={y} stroke={col} strokeWidth={2} opacity={0.75} />
+          <text x={ox + cw + 10} y={y + 4} fontSize={11.5} fill={PRIMARY} fontWeight="700">
+            B{i + 1}
+          </text>
+        </g>
+      ))}
 
-      {/* Estribos (VERTICAIS) + labels E1..En e cobrimento no topo */}
+      {/* Estribos (VERTICAIS, na frente das barras longitudinais) + cobrimento real do elemento */}
       {estrX.map((x, i) => (
         <g key={`e-${i}`}>
-          <line x1={x} y1={oy + 10} x2={x} y2={oy + ch - 10} stroke={col} strokeWidth={2.4} />
+          <line x1={x} y1={oy + 10} x2={x} y2={oy + ch - 10} stroke={col} strokeWidth={2.8} />
           <text x={x} y={oy - 24} textAnchor="middle" fontSize={11} fill={SUBTEXT} fontWeight="700">E{i + 1}</text>
           {fd.cob[i]?.trim() ? (
             <text x={x} y={oy - 9} textAnchor="middle" fontSize={11} fill={col} fontWeight="700">{fd.cob[i].trim()}mm</text>
@@ -667,10 +657,14 @@ export function SvgMalhaLaje({
   const barrasH = ordenarBarras(lajeData.barrasH);
   const barrasV = ordenarBarras(lajeData.barrasV);
 
-  const cobPerpHSup = barrasH[0]?.cobPerp?.trim() || '';
-  const cobPerpHInf = barrasH.length > 1 ? (barrasH[barrasH.length - 1]?.cobPerp?.trim() || '') : '';
-  const cobPerpVEsq = barrasV[0]?.cobPerp?.trim() || '';
-  const cobPerpVDir = barrasV.length > 1 ? (barrasV[barrasV.length - 1]?.cobPerp?.trim() || '') : '';
+  const camadaExterna: 'H' | 'V' = lajeData.camadaExterna ?? (barrasH.length > 0 ? 'H' : 'V');
+  const hExterna = camadaExterna === 'H';
+  const vExterna = camadaExterna === 'V';
+
+  const cobPerpHSup = lajeData.cobPerpHSup?.trim() || '';
+  const cobPerpHInf = lajeData.cobPerpHInf?.trim() || '';
+  const cobPerpVEsq = lajeData.cobPerpVEsq?.trim() || '';
+  const cobPerpVDir = lajeData.cobPerpVDir?.trim() || '';
 
   // Margens generosas para fonte 11px sem cortes
   const ML = 78;
@@ -811,50 +805,79 @@ export function SvgMalhaLaje({
         </g>
       )}
 
-      {/* Barras Horizontais (Dir. X — azul) */}
-      {barrasH.map((b, i) => {
-        const y = oy + b.pos * sc;
-        const selected = barraSelecionadaId === b.id;
-        const cobTxt = b.cob?.trim();
-        return (
-          <g
-            key={b.id}
-            style={{ cursor: modo === 'leitura' ? 'pointer' : undefined }}
-            onClick={modo === 'leitura' ? () => onSelectBarra?.(b.id) : undefined}
-          >
-            <line x1={ox} y1={y} x2={ox + drawW} y2={y} stroke="transparent" strokeWidth={12} />
-            <line x1={ox + 2} y1={y} x2={ox + drawW - 2} y2={y} stroke={FACE_COLORS.dirH} strokeWidth={selected ? 3.8 : 2.4} />
-            <text x={ox + drawW + 10} y={y + 4} fontSize={11} fill={FACE_COLORS.dirH} fontWeight="700">
-              H{i + 1}{cobTxt ? ` ${cobTxt}mm` : ''}
-            </text>
-          </g>
-        );
-      })}
-
-      {/* Barras Verticais (Dir. Y — vermelho) */}
-      {barrasV.map((b, i) => {
-        const x = ox + b.pos * sc;
-        const selected = barraSelecionadaId === b.id;
-        const cobTxt = b.cob?.trim();
-        return (
-          <g
-            key={b.id}
-            style={{ cursor: modo === 'leitura' ? 'pointer' : undefined }}
-            onClick={modo === 'leitura' ? () => onSelectBarra?.(b.id) : undefined}
-          >
-            <line x1={x} y1={oy} x2={x} y2={oy + drawH} stroke="transparent" strokeWidth={12} />
-            <line x1={x} y1={oy + 2} x2={x} y2={oy + drawH - 2} stroke={FACE_COLORS.dirV} strokeWidth={selected ? 3.8 : 2.4} />
-            <text x={x} y={oy - (cobTxt ? 24 : 10)} textAnchor="middle" fontSize={11} fill={FACE_COLORS.dirV} fontWeight="700">
-              V{i + 1}
-            </text>
-            {cobTxt ? (
-              <text x={x} y={oy - 9} textAnchor="middle" fontSize={10.5} fill={FACE_COLORS.dirV} fontWeight="700">
-                {cobTxt}mm
+      {/* Camada interna primeiro, depois camada externa por cima */}
+      {(() => {
+        const renderH = barrasH.map((b, i) => {
+          const y = oy + b.pos * sc;
+          const selected = barraSelecionadaId === b.id;
+          const cobTxt = hExterna ? b.cob?.trim() : '';
+          return (
+            <g
+              key={b.id}
+              style={{ cursor: modo === 'leitura' ? 'pointer' : undefined }}
+              onClick={modo === 'leitura' ? () => onSelectBarra?.(b.id) : undefined}
+            >
+              <line x1={ox} y1={y} x2={ox + drawW} y2={y} stroke="transparent" strokeWidth={12} />
+              <line
+                x1={ox + 2}
+                y1={y}
+                x2={ox + drawW - 2}
+                y2={y}
+                stroke={FACE_COLORS.dirH}
+                strokeWidth={selected ? 3.8 : hExterna ? 2.8 : 1.9}
+                opacity={hExterna ? 1 : 0.72}
+              />
+              <text x={ox + drawW + 10} y={y + 4} fontSize={11} fill={FACE_COLORS.dirH} fontWeight="700">
+                H{i + 1}{cobTxt ? ` ${cobTxt}mm` : ''}
               </text>
-            ) : null}
-          </g>
+            </g>
+          );
+        });
+
+        const renderV = barrasV.map((b, i) => {
+          const x = ox + b.pos * sc;
+          const selected = barraSelecionadaId === b.id;
+          const cobTxt = vExterna ? b.cob?.trim() : '';
+          return (
+            <g
+              key={b.id}
+              style={{ cursor: modo === 'leitura' ? 'pointer' : undefined }}
+              onClick={modo === 'leitura' ? () => onSelectBarra?.(b.id) : undefined}
+            >
+              <line x1={x} y1={oy} x2={x} y2={oy + drawH} stroke="transparent" strokeWidth={12} />
+              <line
+                x1={x}
+                y1={oy + 2}
+                x2={x}
+                y2={oy + drawH - 2}
+                stroke={FACE_COLORS.dirV}
+                strokeWidth={selected ? 3.8 : vExterna ? 2.8 : 1.9}
+                opacity={vExterna ? 1 : 0.72}
+              />
+              <text x={x} y={oy - (cobTxt ? 24 : 10)} textAnchor="middle" fontSize={11} fill={FACE_COLORS.dirV} fontWeight="700">
+                V{i + 1}
+              </text>
+              {cobTxt ? (
+                <text x={x} y={oy - 9} textAnchor="middle" fontSize={10.5} fill={FACE_COLORS.dirV} fontWeight="700">
+                  {cobTxt}mm
+                </text>
+              ) : null}
+            </g>
+          );
+        });
+
+        return hExterna ? (
+          <>
+            {renderV}
+            {renderH}
+          </>
+        ) : (
+          <>
+            {renderH}
+            {renderV}
+          </>
         );
-      })}
+      })()}
 
       {/* Pontos de cruzamento */}
       {barrasH.map(bh =>
