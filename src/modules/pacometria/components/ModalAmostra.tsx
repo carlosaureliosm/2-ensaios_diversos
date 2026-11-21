@@ -38,6 +38,7 @@ import {
 } from '../types';
 import {
   FerramentaMalha,
+  SvgIndicadorFace,
   SvgMalhaLaje,
   SvgPerfilHorizontal,
   SvgPerfilVertical,
@@ -893,18 +894,21 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                       {faces.map((f, idx) => (
                         <CelulaFicha
                           key={f}
-                          label={`Barras — ${FACE_LABELS[f]}`}
+                          label={`● Barras — ${FACE_LABELS[f]}`}
                           htmlFor={`geom-b${f}`}
                           borderRight={idx < faces.length - 1}
                           borderBottom={false}
                         >
-                          <InteiroInput
-                            id={`geom-b${f}`}
-                            style={fichaInputStyle}
-                            value={barras[f] ?? 2}
-                            min={1}
-                            onChange={n => setBarras(p => ({ ...p, [f]: n }))}
-                          />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ width: 9, height: 9, borderRadius: '50%', background: FACE_COLORS[f] || PRIMARY, flexShrink: 0 }} />
+                            <InteiroInput
+                              id={`geom-b${f}`}
+                              style={fichaInputStyle}
+                              value={barras[f] ?? 2}
+                              min={1}
+                              onChange={n => setBarras(p => ({ ...p, [f]: n }))}
+                            />
+                          </div>
                         </CelulaFicha>
                       ))}
                     </div>
@@ -962,18 +966,21 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                   {faces.map((f, idx) => (
                     <CelulaFicha
                       key={f}
-                      label={`Barras — ${FACE_LABELS[f]}`}
+                      label={`● Barras — ${FACE_LABELS[f]}`}
                       htmlFor={`viga-b-${f}`}
                       borderRight={idx < faces.length - 1}
                       borderBottom={false}
                     >
-                      <InteiroInput
-                        id={`viga-b-${f}`}
-                        style={fichaInputStyle}
-                        value={barras[f] ?? 2}
-                        min={1}
-                        onChange={n => setBarras(p => ({ ...p, [f]: n }))}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: FACE_COLORS[f] || PRIMARY, flexShrink: 0 }} />
+                        <InteiroInput
+                          id={`viga-b-${f}`}
+                          style={fichaInputStyle}
+                          value={barras[f] ?? 2}
+                          min={1}
+                          onChange={n => setBarras(p => ({ ...p, [f]: n }))}
+                        />
+                      </div>
                     </CelulaFicha>
                   ))}
                 </div>
@@ -1203,23 +1210,41 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                       </div>
                     }
                   >
-                    {/* Área do desenho SVG — com scroll automático para muitos estribos/barras */}
+                    {/* Área do desenho SVG + miniatura com seta indicando a face vista */}
                     <div
                       style={{
                         padding: '12px',
                         background: '#fff',
                         borderBottom: `1px solid ${BORDER_PANEL}`,
-                        overflow: 'auto',
-                        maxHeight: 420,
                         display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
                         justifyContent: 'center',
+                        gap: 16,
                       }}
                     >
-                      {isViga ? (
-                        <SvgPerfilHorizontal face={face} nBarras={nBarras} fd={fd} />
-                      ) : (
-                        <SvgPerfilVertical face={face} nBarras={nBarras} fd={fd} />
-                      )}
+                      <div
+                        style={{
+                          padding: '8px 10px',
+                          background: ZEBRA,
+                          border: `1px solid ${BORDER_CELL}`,
+                          borderRadius: 8,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <SvgIndicadorFace
+                          tipo={isViga ? 'viga' : 'pilar'}
+                          faceAtiva={face}
+                          facesLivres={faces}
+                        />
+                      </div>
+                      <div style={{ flex: '1 1 320px', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
+                        {isViga ? (
+                          <SvgPerfilHorizontal face={face} nBarras={nBarras} fd={fd} />
+                        ) : (
+                          <SvgPerfilVertical face={face} nBarras={nBarras} fd={fd} />
+                        )}
+                      </div>
                     </div>
 
                     {/* Tabelas padronizadas refletindo exatamente estribos e barras longitudinais */}
@@ -1270,13 +1295,21 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                   )
                 }
               >
-                <div style={{ padding: 12, background: '#fff', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
-                  <SvgMalhaLaje
-                    lajeData={lajeData}
-                    modo="leitura"
-                    barraSelecionadaId={barraSelId}
-                    onSelectBarra={handleSelectBarraSvg}
-                  />
+                <div style={{ padding: 12, background: '#fff', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+                  <div style={{ padding: '8px 10px', background: ZEBRA, border: `1px solid ${BORDER_CELL}`, borderRadius: 8, flexShrink: 0 }}>
+                    <SvgIndicadorFace
+                      tipo="laje"
+                      camadaExterna={lajeData.camadaExterna ?? (barrasHOrd.length > 0 ? 'H' : 'V')}
+                    />
+                  </div>
+                  <div style={{ flex: '1 1 340px', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
+                    <SvgMalhaLaje
+                      lajeData={lajeData}
+                      modo="leitura"
+                      barraSelecionadaId={barraSelId}
+                      onSelectBarra={handleSelectBarraSvg}
+                    />
+                  </div>
                 </div>
               </PainelPlanilha>
 

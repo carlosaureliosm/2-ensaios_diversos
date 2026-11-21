@@ -103,23 +103,23 @@ export const FACE_COLORS: Record<string, string> = {
 
 export const FACE_LABELS: Record<string, string> = {
   // Pilar
-  '1X': 'Lado 1X (base)',
-  '2X': 'Lado 2X (topo)',
-  '1Y': 'Lado 1Y (esquerda)',
-  '2Y': 'Lado 2Y (direita)',
-  circ: 'Vista lateral',
+  '1X': 'Face Inferior',
+  '2X': 'Face Superior',
+  '1Y': 'Face Esquerda',
+  '2Y': 'Face Direita',
+  circ: 'Face Externa (Circular)',
   // Viga
-  fundo: 'Fundo (inferior)',
-  topo: 'Topo (superior)',
-  lat1: 'Lateral 1 (esquerda)',
-  lat2: 'Lateral 2 (direita)',
+  fundo: 'Face Inferior (Fundo)',
+  topo: 'Face Superior (Topo)',
+  lat1: 'Face Lateral Esquerda',
+  lat2: 'Face Lateral Direita',
 };
 
 export const OPCOES_PILAR: Record<OpcaoPilar, { codigo: string; label: string; desc: string; faces: string[] }> = {
   A: { codigo: 'A', label: 'Todas as faces', desc: '4 faces livres', faces: ['1X', '2X', '1Y', '2Y'] },
-  B: { codigo: 'B', label: '1 face vista', desc: 'Apenas lado 1X', faces: ['1X'] },
-  C: { codigo: 'C', label: '2 faces em L', desc: 'Lado 1X + 1Y', faces: ['1X', '1Y'] },
-  D: { codigo: 'D', label: '3 faces vistas', desc: '1X + 2X + 1Y', faces: ['1X', '2X', '1Y'] },
+  B: { codigo: 'B', label: '1 face vista', desc: 'Apenas face inferior', faces: ['1X'] },
+  C: { codigo: 'C', label: '2 faces em L', desc: 'Face inferior + esquerda', faces: ['1X', '1Y'] },
+  D: { codigo: 'D', label: '3 faces vistas', desc: 'Inferior + esquerda + direita', faces: ['1X', '1Y', '2Y'] },
   E: { codigo: 'E', label: 'Circular', desc: 'Diâmetro D', faces: ['circ'] },
 };
 

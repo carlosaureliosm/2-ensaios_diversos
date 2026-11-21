@@ -203,7 +203,14 @@ export function SvgSecaoPilar({
     } else {
       const x = face === '1Y' ? ox + c1 : ox + cw - c1;
       const avail = ch - 2 * c2;
-      for (let i = 1; i < n - 1; i++) pts.push({ x, y: oy + c2 + (avail / (n - 1)) * i });
+      // Desenha todas as barras da face lateral (evitando duplicar exatamente o canto se 1X/2X também estiverem livres)
+      const skipTop = faces.includes('2X') && n > 2;
+      const skipBot = faces.includes('1X') && n > 2;
+      const start = skipTop ? 1 : 0;
+      const end = skipBot ? n - 1 : n;
+      for (let i = start; i < end; i++) {
+        pts.push({ x, y: oy + c2 + (n === 1 ? avail / 2 : (avail / (n - 1)) * i) });
+      }
     }
     return pts;
   }
@@ -290,8 +297,18 @@ export function SvgSecaoViga({
           <line x1="0" y1="0" x2="0" y2="6" stroke="#94A3B8" strokeWidth="1.2" />
         </pattern>
       </defs>
+      {/* Hachuras nas faces obstruídas da viga */}
       {!faces.includes('topo') && (
         <rect x={Math.max(16, ox - 38)} y={oy - 14} width={Math.min(W - 32, cw + 76)} height={14} fill="url(#vigaHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
+      )}
+      {!faces.includes('fundo') && (
+        <rect x={ox} y={oy + ch} width={cw} height={14} fill="url(#vigaHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
+      )}
+      {!faces.includes('lat1') && (
+        <rect x={ox - 14} y={oy} width={14} height={ch} fill="url(#vigaHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
+      )}
+      {!faces.includes('lat2') && (
+        <rect x={ox + cw} y={oy} width={14} height={ch} fill="url(#vigaHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
       )}
       <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
       <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1.1} strokeDasharray="3,2" />
@@ -304,30 +321,16 @@ export function SvgSecaoViga({
         )) : null,
       )}
       {/* Cota b (inferior) */}
-      <line x1={ox} y1={oy + ch + 15} x2={ox + cw} y2={oy + ch + 15} stroke={GOLD} strokeWidth={1.2} />
-      <line x1={ox} y1={oy + ch + 10} x2={ox} y2={oy + ch + 20} stroke={GOLD} strokeWidth={1.2} />
-      <line x1={ox + cw} y1={oy + ch + 10} x2={ox + cw} y2={oy + ch + 20} stroke={GOLD} strokeWidth={1.2} />
-      <text x={ox + cw / 2} y={oy + ch + 30} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700">b = {b} cm</text>
+      <line x1={ox} y1={oy + ch + (!faces.includes('fundo') ? 24 : 16)} x2={ox + cw} y2={oy + ch + (!faces.includes('fundo') ? 24 : 16)} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox} y1={oy + ch + (!faces.includes('fundo') ? 19 : 11)} x2={ox} y2={oy + ch + (!faces.includes('fundo') ? 29 : 21)} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox + cw} y1={oy + ch + (!faces.includes('fundo') ? 19 : 11)} x2={ox + cw} y2={oy + ch + (!faces.includes('fundo') ? 29 : 21)} stroke={GOLD} strokeWidth={1.2} />
+      <text x={ox + cw / 2} y={oy + ch + (!faces.includes('fundo') ? 40 : 32)} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700">b = {b} cm</text>
 
       {/* Cota h (esquerda) */}
-      <line x1={ox - 15} y1={oy} x2={ox - 15} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
-      <line x1={ox - 20} y1={oy} x2={ox - 10} y2={oy} stroke={GOLD} strokeWidth={1.2} />
-      <line x1={ox - 20} y1={oy + ch} x2={ox - 10} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
-      <text x={ox - 28} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - 28},${oy + ch / 2})`}>h = {h} cm</text>
-
-      {/* Labels das faces com folga garantida */}
-      <text x={ox + cw / 2} y={oy - 24} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['topo']} fontWeight="700">
-        Topo{!faces.includes('topo') ? ' (laje)' : ''}
-      </text>
-      <text x={ox + cw / 2} y={oy + ch + 48} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['fundo']} fontWeight="700">
-        Fundo{!faces.includes('fundo') ? ' ✕' : ''}
-      </text>
-      <text x={ox - 56} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['lat1']} fontWeight="700" transform={`rotate(-90,${ox - 56},${oy + ch / 2})`}>
-        Lat. 1{!faces.includes('lat1') ? ' ✕' : ''}
-      </text>
-      <text x={ox + cw + 28} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['lat2']} fontWeight="700" transform={`rotate(90,${ox + cw + 28},${oy + ch / 2})`}>
-        Lat. 2{!faces.includes('lat2') ? ' ✕' : ''}
-      </text>
+      <line x1={ox - (!faces.includes('lat1') ? 24 : 16)} y1={oy} x2={ox - (!faces.includes('lat1') ? 24 : 16)} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox - (!faces.includes('lat1') ? 29 : 21)} y1={oy} x2={ox - (!faces.includes('lat1') ? 19 : 11)} y2={oy} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox - (!faces.includes('lat1') ? 29 : 21)} y1={oy + ch} x2={ox - (!faces.includes('lat1') ? 19 : 11)} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
+      <text x={ox - (!faces.includes('lat1') ? 38 : 30)} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - (!faces.includes('lat1') ? 38 : 30)},${oy + ch / 2})`}>h = {h} cm</text>
     </svg>
   );
 }
@@ -970,6 +973,155 @@ export function SvgMalhaLaje({
           </text>
         </g>
       )}
+    </svg>
+  );
+}
+
+// ── Miniatura Indicadora da Face Vista (com seta) — Todos os 3 elementos ──
+export function SvgIndicadorFace({
+  tipo,
+  faceAtiva,
+  facesLivres,
+  camadaExterna = 'H',
+}: {
+  tipo: 'pilar' | 'viga' | 'laje';
+  faceAtiva?: string;
+  facesLivres?: string[];
+  camadaExterna?: 'H' | 'V';
+}) {
+  const W = 128;
+  const H = 104;
+  const uid = `${tipo}-${faceAtiva ?? camadaExterna}`;
+
+  // Laje: corte esquemático mostrando face ensaiada com seta + camada externa em destaque
+  if (tipo === 'laje') {
+    const colExt = camadaExterna === 'H' ? FACE_COLORS.dirH : FACE_COLORS.dirV;
+    const colInt = camadaExterna === 'H' ? FACE_COLORS.dirV : FACE_COLORS.dirH;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', fontFamily: 'sans-serif' }}>
+          <defs>
+            <marker id={`arr-${uid}`} markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 z" fill={colExt} />
+            </marker>
+          </defs>
+          {/* Corte da laje */}
+          <rect x={16} y={20} width={96} height={44} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={1.8} />
+          {/* Camada interna (atrás) */}
+          <line x1={22} y1={48} x2={106} y2={48} stroke={colInt} strokeWidth={1.8} strokeDasharray="3,2" opacity={0.75} />
+          {/* Camada externa (mais próxima da face ensaiada) */}
+          {[30, 48, 66, 84, 98].map(cx => (
+            <circle key={cx} cx={cx} cy={56} r={3} fill={colExt} />
+          ))}
+          {/* Face ensaiada destacada */}
+          <line x1={16} y1={64} x2={112} y2={64} stroke={colExt} strokeWidth={3.2} />
+          {/* Seta apontando para a face ensaiada */}
+          <line x1={64} y1={90} x2={64} y2={70} stroke={colExt} strokeWidth={2.5} markerEnd={`url(#arr-${uid})`} />
+          <text x={64} y={13} textAnchor="middle" fontSize={9} fontWeight="700" fill={SUBTEXT}>CORTE DA LAJE</text>
+          <text x={64} y={101} textAnchor="middle" fontSize={9} fontWeight="800" fill={colExt}>
+            Face ensaiada ({camadaExterna})
+          </text>
+        </svg>
+      </div>
+    );
+  }
+
+  const col = (faceAtiva && FACE_COLORS[faceAtiva]) || '#2563EB';
+  const livres = facesLivres ?? [];
+
+  // Pilar Circular
+  if (tipo === 'pilar' && faceAtiva === 'circ') {
+    const cx = 64, cy = 48, r = 24;
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', fontFamily: 'sans-serif' }}>
+        <defs>
+          <marker id={`arr-${uid}`} markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" fill={col} />
+          </marker>
+        </defs>
+        <circle cx={cx} cy={cy} r={r} fill="#EEF2F7" stroke={col} strokeWidth={2.6} />
+        <circle cx={cx} cy={cy} r={r - 6} fill="none" stroke={PRIMARY} strokeWidth={1} strokeDasharray="2,2" />
+        <line x1={14} y1={cy} x2={cx - r - 4} y2={cy} stroke={col} strokeWidth={2.5} markerEnd={`url(#arr-${uid})`} />
+        <text x={cx} y={96} textAnchor="middle" fontSize={9} fontWeight="800" fill={col}>Vista externa</text>
+      </svg>
+    );
+  }
+
+  // Pilar Retangular ou Viga
+  const isViga = tipo === 'viga';
+  const rw = isViga ? 36 : 48;
+  const rh = isViga ? 46 : 38;
+  const rx = (W - rw) / 2;
+  const ry = (H - rh) / 2 - 2;
+
+  const topKey = isViga ? 'topo' : '2X';
+  const botKey = isViga ? 'fundo' : '1X';
+  const leftKey = isViga ? 'lat1' : '1Y';
+  const rightKey = isViga ? 'lat2' : '2Y';
+
+  const isTop = faceAtiva === topKey;
+  const isBot = faceAtiva === botKey;
+  const isLeft = faceAtiva === leftKey;
+  const isRight = faceAtiva === rightKey;
+
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', fontFamily: 'sans-serif' }}>
+      <defs>
+        <pattern id={`h-ind-${uid}`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="5" stroke="#94A3B8" strokeWidth="1.2" />
+        </pattern>
+        <marker id={`arr-${uid}`} markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 z" fill={col} />
+        </marker>
+      </defs>
+
+      {/* Hachura nas faces obstruídas */}
+      {!livres.includes(topKey) && (
+        <rect x={isViga ? rx - 16 : rx} y={ry - 9} width={isViga ? rw + 32 : rw} height={9} fill={`url(#h-ind-${uid})`} stroke="#CBD5E1" strokeWidth={0.6} />
+      )}
+      {!livres.includes(botKey) && (
+        <rect x={rx} y={ry + rh} width={rw} height={9} fill={`url(#h-ind-${uid})`} stroke="#CBD5E1" strokeWidth={0.6} />
+      )}
+      {!livres.includes(leftKey) && (
+        <rect x={rx - 9} y={ry} width={9} height={rh} fill={`url(#h-ind-${uid})`} stroke="#CBD5E1" strokeWidth={0.6} />
+      )}
+      {!livres.includes(rightKey) && (
+        <rect x={rx + rw} y={ry} width={9} height={rh} fill={`url(#h-ind-${uid})`} stroke="#CBD5E1" strokeWidth={0.6} />
+      )}
+
+      {/* Seção transversal */}
+      <rect x={rx} y={ry} width={rw} height={rh} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={1.6} />
+      <rect x={rx + 5} y={ry + 5} width={rw - 10} height={rh - 10} fill="none" stroke="#94A3B8" strokeWidth={0.9} strokeDasharray="2,2" />
+
+      {/* Face atualmente vista destacada + seta apontando para ela */}
+      {isBot && (
+        <>
+          <line x1={rx} y1={ry + rh} x2={rx + rw} y2={ry + rh} stroke={col} strokeWidth={3.5} />
+          <line x1={W / 2} y1={ry + rh + 24} x2={W / 2} y2={ry + rh + 6} stroke={col} strokeWidth={2.5} markerEnd={`url(#arr-${uid})`} />
+        </>
+      )}
+      {isTop && (
+        <>
+          <line x1={rx} y1={ry} x2={rx + rw} y2={ry} stroke={col} strokeWidth={3.5} />
+          <line x1={W / 2} y1={ry - 24} x2={W / 2} y2={ry - 6} stroke={col} strokeWidth={2.5} markerEnd={`url(#arr-${uid})`} />
+        </>
+      )}
+      {isLeft && (
+        <>
+          <line x1={rx} y1={ry} x2={rx} y2={ry + rh} stroke={col} strokeWidth={3.5} />
+          <line x1={rx - 26} y1={ry + rh / 2} x2={rx - 6} y2={ry + rh / 2} stroke={col} strokeWidth={2.5} markerEnd={`url(#arr-${uid})`} />
+        </>
+      )}
+      {isRight && (
+        <>
+          <line x1={rx + rw} y1={ry} x2={rx + rw} y2={ry + rh} stroke={col} strokeWidth={3.5} />
+          <line x1={rx + rw + 26} y1={ry + rh / 2} x2={rx + rw + 6} y2={ry + rh / 2} stroke={col} strokeWidth={2.5} markerEnd={`url(#arr-${uid})`} />
+        </>
+      )}
+
+      <text x={W / 2} y={H - 2} textAnchor="middle" fontSize={8.5} fontWeight="800" fill={col}>
+        VISTA DESTA FACE
+      </text>
     </svg>
   );
 }
