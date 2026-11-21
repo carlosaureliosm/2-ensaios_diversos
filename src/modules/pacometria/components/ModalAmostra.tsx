@@ -2,7 +2,15 @@
 // src/modules/pacometria/components/ModalAmostra.tsx
 
 import { useState, useRef } from 'react';
-import { InteiroInput } from '@/components/PlanilhaUI';
+import {
+  CORES_PLANILHA,
+  CelulaFicha,
+  InteiroInput,
+  PainelPlanilha,
+  fichaInputStyle,
+  tabelaHeaderStyle,
+  tabelaThTextStyle,
+} from '@/components/PlanilhaUI';
 import {
   AmostraRow,
   BarraMalha,
@@ -40,40 +48,29 @@ import {
   svgOpcaoViga,
 } from './PacometriaSvgs';
 
-const PRIMARY = '#1E3264';
-const BG = '#F8F9FA';
-const BORDER = '#E8EAF0';
-const TEXT = '#1A2340';
-const SUBTEXT = '#6B7490';
-const SUCCESS = '#1A7A44';
-const DANGER = '#C0392B';
+const {
+  PRIMARY,
+  GOLD,
+  BG,
+  BORDER,
+  BORDER_CELL,
+  BORDER_PANEL,
+  HEADER_SUB,
+  ZEBRA,
+  TEXT,
+  SUBTEXT,
+  SUCCESS,
+  DANGER,
+} = CORES_PLANILHA;
 
-const inputStyle: React.CSSProperties = {
-  padding: '9px 12px',
-  borderRadius: 7,
-  border: `1.5px solid ${BORDER}`,
-  fontSize: 14,
-  fontFamily: 'inherit',
-  color: TEXT,
-  background: '#fff',
-  outline: 'none',
-  width: '100%',
-  boxSizing: 'border-box',
+const PERP_COLOR = '#0F766E';
+
+const cellInputCenter: React.CSSProperties = {
+  ...fichaInputStyle,
+  textAlign: 'center',
+  fontWeight: 600,
+  height: 26,
 };
-
-function Campo({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label
-        htmlFor={htmlFor}
-        style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}
-      >
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
 
 export type ModalAmostraProps = {
   amostraInicial?: AmostraRow | null;
@@ -152,8 +149,12 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
     const cfg = OPCOES_LAJE[op];
     setLajeData(prev => ({
       ...prev,
-      barrasH: cfg.permiteH ? (prev.barrasH.length > 0 ? prev.barrasH : gerarMalhaRegular(prev.larguraX, prev.alturaY, espRapido, true, false, prev.passoGrid).barrasH) : [],
-      barrasV: cfg.permiteV ? (prev.barrasV.length > 0 ? prev.barrasV : gerarMalhaRegular(prev.larguraX, prev.alturaY, espRapido, false, true, prev.passoGrid).barrasV) : [],
+      barrasH: cfg.permiteH
+        ? (prev.barrasH.length > 0 ? prev.barrasH : gerarMalhaRegular(prev.larguraX, prev.alturaY, espRapido, true, false, prev.passoGrid).barrasH)
+        : [],
+      barrasV: cfg.permiteV
+        ? (prev.barrasV.length > 0 ? prev.barrasV : gerarMalhaRegular(prev.larguraX, prev.alturaY, espRapido, false, true, prev.passoGrid).barrasV)
+        : [],
     }));
     if (!cfg.permiteH && ferramenta === 'addH') setFerramenta('addV');
     if (!cfg.permiteV && ferramenta === 'addV') setFerramenta('addH');
@@ -161,15 +162,16 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
 
   // Helpers Pilar / Viga
   function getFaceData(face: string): FaceData {
-    const nb = barras[face] || 2;
+    const nb = isCirc ? (barras['circ'] || 6) : (barras[face] || 2);
     const fd = facesData[face] || initFaceData();
     return ensureFaceArrays(fd, nb);
   }
 
   function updateFaceData(face: string, updater: (fd: FaceData) => FaceData) {
+    const nb = isCirc ? (barras['circ'] || 6) : (barras[face] || 2);
     setFacesData(prev => {
       const current = prev[face] || initFaceData();
-      const updated = updater(ensureFaceArrays(current, barras[face] || 2));
+      const updated = updater(ensureFaceArrays(current, nb));
       return { ...prev, [face]: updated };
     });
   }
@@ -186,7 +188,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
       if (ferramenta === 'remove') return prev;
       return {
         ...prev,
-        [key]: ordenarBarras([...lista, { id: newId(), pos: posCm, cob: '' }]),
+        [key]: ordenarBarras([...lista, { id: newId(), pos: posCm, cob: '', cobPerp: '' }]),
       };
     });
   }
@@ -288,642 +290,861 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
   const barrasHOrd = ordenarBarras(lajeData.barrasH);
   const barrasVOrd = ordenarBarras(lajeData.barrasV);
 
+  // Renderiza as tabelas padronizadas da Etapa 3 para Pilar e Viga (zero células bloqueadas!)
+  function renderTabelasFace(face: string, nBarras: number, fd: FaceData) {
+    const col = FACE_COLORS[face] || '#2563EB';
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 14, alignItems: 'start' }}>
+        {/* BLOCO 1: ESTRIBOS */}
+        <div style={{ border: `1px solid ${BORDER_PANEL}`, borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+          <div style={{ padding: '6px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_PANEL}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Estribos ({fd.nEstribos})
+            </span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: SUBTEXT }}>Cobrimento na face (mm)</span>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={tabelaHeaderStyle}>
+                <th style={{ ...tabelaThTextStyle, padding: '6px 8px', width: 72 }}>Estribo</th>
+                <th style={{ ...tabelaThTextStyle, padding: '6px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>Cobrimento na face (mm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: fd.nEstribos }, (_, i) => (
+                <tr key={i} style={{ background: i % 2 === 1 ? ZEBRA : '#fff', borderTop: i > 0 ? `1px solid ${BORDER_CELL}` : undefined }}>
+                  <td style={{ padding: '4px 8px', fontSize: 12, fontWeight: 800, color: col, textAlign: 'center' }}>E{i + 1}</td>
+                  <td className="planilha-cell" style={{ padding: '2px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={fd.cob[i] ?? ''}
+                      placeholder="—"
+                      style={cellInputCenter}
+                      onChange={e => updateFaceData(face, f => {
+                        const c = [...f.cob];
+                        c[i] = e.target.value;
+                        return { ...f, cob: c };
+                      })}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Espaçamento entre estribos — só aparece quando há vãos (nEstribos > 1) */}
+          {fd.nEstribos > 1 && (
+            <div style={{ borderTop: `1px solid ${BORDER_PANEL}` }}>
+              <div style={{ padding: '5px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_CELL}` }}>
+                <span style={{ fontSize: 9.5, fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Espaçamento entre estribos (cm)
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(fd.nEstribos - 1, 4)}, minmax(0, 1fr))` }}>
+                {Array.from({ length: fd.nEstribos - 1 }, (_, i) => (
+                  <CelulaFicha
+                    key={i}
+                    label={`E${i + 1} – E${i + 2}`}
+                    borderRight={(i + 1) % Math.min(fd.nEstribos - 1, 4) !== 0 && i < fd.nEstribos - 2}
+                    borderBottom={i < fd.nEstribos - 1 - ((fd.nEstribos - 1) % Math.min(fd.nEstribos - 1, 4) || Math.min(fd.nEstribos - 1, 4))}
+                  >
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={fd.espV[i] ?? ''}
+                      placeholder="cm"
+                      style={{ ...cellInputCenter, textAlign: 'left' }}
+                      onChange={e => updateFaceData(face, f => {
+                        const ev = [...f.espV];
+                        ev[i] = e.target.value;
+                        return { ...f, espV: ev };
+                      })}
+                    />
+                  </CelulaFicha>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* BLOCO 2: BARRAS LONGITUDINAIS */}
+        <div style={{ border: `1px solid ${BORDER_PANEL}`, borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+          <div style={{ padding: '6px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_PANEL}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: PRIMARY, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Barras Longitudinais ({nBarras})
+            </span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: PERP_COLOR }}>⊥ = face perpendicular</span>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={tabelaHeaderStyle}>
+                <th style={{ ...tabelaThTextStyle, padding: '6px 8px', width: 64 }}>Barra</th>
+                <th style={{ ...tabelaThTextStyle, padding: '6px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>Cob. Face (mm)</th>
+                <th style={{ ...tabelaThTextStyle, padding: '6px 8px', borderLeft: `1px solid ${BORDER_CELL}`, color: PERP_COLOR }}>Cob. Perp. ⊥ (mm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: nBarras }, (_, i) => (
+                <tr key={i} style={{ background: i % 2 === 1 ? ZEBRA : '#fff', borderTop: i > 0 ? `1px solid ${BORDER_CELL}` : undefined }}>
+                  <td style={{ padding: '4px 8px', fontSize: 12, fontWeight: 800, color: PRIMARY, textAlign: 'center' }}>B{i + 1}</td>
+                  <td className="planilha-cell" style={{ padding: '2px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={fd.cobLong?.[i] ?? ''}
+                      placeholder="—"
+                      style={cellInputCenter}
+                      onChange={e => updateFaceData(face, f => {
+                        const cl = [...(f.cobLong ?? [])];
+                        cl[i] = e.target.value;
+                        return { ...f, cobLong: cl };
+                      })}
+                    />
+                  </td>
+                  <td className="planilha-cell" style={{ padding: '2px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={fd.cobPerp?.[i] ?? ''}
+                      placeholder="—"
+                      style={{ ...cellInputCenter, color: PERP_COLOR }}
+                      onChange={e => updateFaceData(face, f => {
+                        const cp = [...(f.cobPerp ?? [])];
+                        cp[i] = e.target.value;
+                        return { ...f, cobPerp: cp };
+                      })}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Espaçamento entre barras longitudinais — só aparece quando há vãos (nBarras > 1) */}
+          {nBarras > 1 && (
+            <div style={{ borderTop: `1px solid ${BORDER_PANEL}` }}>
+              <div style={{ padding: '5px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_CELL}` }}>
+                <span style={{ fontSize: 9.5, fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Espaçamento entre barras longitudinais (cm)
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(nBarras - 1, 4)}, minmax(0, 1fr))` }}>
+                {Array.from({ length: nBarras - 1 }, (_, i) => (
+                  <CelulaFicha
+                    key={i}
+                    label={`B${i + 1} – B${i + 2}`}
+                    borderRight={(i + 1) % Math.min(nBarras - 1, 4) !== 0 && i < nBarras - 2}
+                    borderBottom={i < nBarras - 1 - ((nBarras - 1) % Math.min(nBarras - 1, 4) || Math.min(nBarras - 1, 4))}
+                  >
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={fd.espH[i] ?? ''}
+                      placeholder="cm"
+                      style={{ ...cellInputCenter, textAlign: 'left' }}
+                      onChange={e => updateFaceData(face, f => {
+                        const eh = [...f.espH];
+                        eh[i] = e.target.value;
+                        return { ...f, espH: eh };
+                      })}
+                    />
+                  </CelulaFicha>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Renderiza tabela de barras (H ou V) para Laje no padrão Planilha Técnica Compacta
+  function renderTabelaLaje(dir: 'H' | 'V', lista: BarraMalha[]) {
+    if (lista.length === 0) return null;
+    const isH = dir === 'H';
+    const cor = isH ? FACE_COLORS.dirH : FACE_COLORS.dirV;
+    const titulo = isH
+      ? `Barras Horizontais — Direção X (${lista.length})`
+      : `Barras Verticais — Direção Y (${lista.length})`;
+    const maxPos = isH ? lajeData.alturaY : lajeData.larguraX;
+
+    return (
+      <PainelPlanilha
+        titulo={titulo}
+        marginBottom={14}
+        direita={<span style={{ fontSize: 10, fontWeight: 700, color: '#BFDBFE' }}>⊥ = borda perpendicular</span>}
+      >
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={tabelaHeaderStyle}>
+                <th style={{ ...tabelaThTextStyle, padding: '7px 8px', width: 54 }}>Barra</th>
+                <th style={{ ...tabelaThTextStyle, padding: '7px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                  {isH ? 'Pos. Y (cm)' : 'Pos. X (cm)'}
+                </th>
+                <th style={{ ...tabelaThTextStyle, padding: '7px 8px', borderLeft: `1px solid ${BORDER_CELL}` }}>Cob. Face (mm)</th>
+                <th style={{ ...tabelaThTextStyle, padding: '7px 8px', borderLeft: `1px solid ${BORDER_CELL}`, color: PERP_COLOR }}>Cob. Perp. ⊥ (mm)</th>
+                <th style={{ ...tabelaThTextStyle, padding: '7px 6px', borderLeft: `1px solid ${BORDER_CELL}`, width: 34 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {lista.map((b, i) => {
+                const sel = barraSelId === b.id;
+                return (
+                  <tr
+                    key={b.id}
+                    style={{
+                      background: sel ? '#EFF6FF' : i % 2 === 1 ? ZEBRA : '#fff',
+                      borderTop: i > 0 ? `1px solid ${BORDER_CELL}` : undefined,
+                    }}
+                  >
+                    <td style={{ padding: '4px 8px', fontSize: 12, fontWeight: 800, color: cor, textAlign: 'center' }}>
+                      {dir}{i + 1}
+                    </td>
+                    <td className="planilha-cell" style={{ padding: '2px 6px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={String(b.pos)}
+                        style={cellInputCenter}
+                        onFocus={() => setBarraSelId(b.id)}
+                        onChange={e => {
+                          const v = parseFloat(e.target.value.replace(',', '.'));
+                          if (!isNaN(v) && v >= 0 && v <= maxPos) {
+                            atualizarBarra(dir, b.id, { pos: v });
+                          }
+                        }}
+                      />
+                    </td>
+                    <td className="planilha-cell" style={{ padding: '2px 6px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                      <input
+                        ref={el => { cobInputsRef.current[b.id] = el; }}
+                        type="text"
+                        inputMode="decimal"
+                        value={b.cob}
+                        placeholder="—"
+                        style={cellInputCenter}
+                        onFocus={() => setBarraSelId(b.id)}
+                        onChange={e => atualizarBarra(dir, b.id, { cob: e.target.value })}
+                      />
+                    </td>
+                    <td className="planilha-cell" style={{ padding: '2px 6px', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={b.cobPerp ?? ''}
+                        placeholder="—"
+                        style={{ ...cellInputCenter, color: PERP_COLOR }}
+                        onFocus={() => setBarraSelId(b.id)}
+                        onChange={e => atualizarBarra(dir, b.id, { cobPerp: e.target.value })}
+                      />
+                    </td>
+                    <td style={{ padding: '2px 4px', textAlign: 'center', borderLeft: `1px solid ${BORDER_CELL}` }}>
+                      <button
+                        type="button"
+                        onClick={() => removerBarraPorId(dir, b.id)}
+                        aria-label="Remover barra"
+                        style={{ border: 'none', background: 'transparent', color: DANGER, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Rodapé técnico com espaçamentos calculados entre barras consecutivas (zero células vazias) */}
+        {lista.length > 1 && (
+          <div style={{ padding: '7px 12px', background: HEADER_SUB, borderTop: `1px solid ${BORDER_PANEL}`, display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center' }}>
+            <span style={{ fontSize: 9.5, fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Espaçamentos:
+            </span>
+            {lista.slice(0, -1).map((b, i) => {
+              const esp = Math.round((lista[i + 1].pos - b.pos) * 10) / 10;
+              return (
+                <span key={b.id} style={{ fontSize: 11, fontWeight: 700, color: TEXT }}>
+                  <span style={{ color: cor }}>{dir}{i + 1}–{dir}{i + 2}:</span> {esp} cm
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </PainelPlanilha>
+    );
+  }
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 820, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.52)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+      <div style={{ background: BG, borderRadius: 10, border: `1px solid ${BORDER_PANEL}`, width: '100%', maxWidth: 920, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(15,23,42,0.28)' }}>
         {/* Header modal */}
-        <div style={{ padding: '18px 24px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: PRIMARY }}>
+        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${BORDER_PANEL}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 20 }}>
+          <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 10 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: PRIMARY }}>
               {amostraInicial ? 'Editar amostra' : 'Nova amostra'}
             </p>
-            <p style={{ margin: '2px 0 0', fontSize: 11, color: SUBTEXT }}>Item {amostraInicial?.item ?? itemNum}</p>
+            <p style={{ margin: '1px 0 0', fontSize: 11, color: SUBTEXT }}>Item {amostraInicial?.item ?? itemNum}</p>
           </div>
           {/* Step indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {([1, 2, 3] as const).map((s, i) => (
+            {([
+              { s: 1 as const, label: 'Tipo' },
+              { s: 2 as const, label: isLaje ? 'Malha' : 'Geometria' },
+              { s: 3 as const, label: 'Leituras' },
+            ]).map(({ s, label }, i) => (
               <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, background: etapa > s ? SUCCESS : etapa === s ? PRIMARY : BORDER, color: etapa >= s ? '#fff' : SUBTEXT }}>
-                  {etapa > s ? '✓' : s}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, background: etapa > s ? SUCCESS : etapa === s ? PRIMARY : '#E2E8F0', color: etapa >= s ? '#fff' : SUBTEXT }}>
+                    {etapa > s ? '✓' : s}
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: etapa === s ? PRIMARY : SUBTEXT }}>{label}</span>
                 </div>
-                {i < 2 && <div style={{ width: 20, height: 1, background: BORDER }} />}
+                {i < 2 && <div style={{ width: 18, height: 1, background: '#CBD5E1' }} />}
               </div>
             ))}
           </div>
-          <button onClick={onFechar} aria-label="Fechar modal" style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${BORDER}`, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUBTEXT }}>
+          <button
+            type="button"
+            onClick={onFechar}
+            aria-label="Fechar modal"
+            style={{ width: 30, height: 30, borderRadius: 6, border: `1px solid ${BORDER_PANEL}`, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUBTEXT }}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
 
-        <div style={{ padding: '20px 24px' }}>
+        <div style={{ padding: '18px 20px' }}>
           {/* ── ETAPA 1: IDENTIFICAÇÃO, TIPO E CONFIGURAÇÃO ── */}
           {etapa === 1 && (
             <div>
-              {/* Seletor de Tipo de Elemento */}
-              <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Tipo de elemento estrutural
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
-                {([
-                  {
-                    id: 'pilar' as const,
-                    titulo: 'Pilar',
-                    subtitulo: 'Desenho vertical (seção + perfil)',
-                    icon: (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="7" y="2" width="10" height="20" rx="1.5" />
-                        <line x1="10" y1="4" x2="10" y2="20" />
-                        <line x1="14" y1="4" x2="14" y2="20" />
-                        <line x1="7" y1="8" x2="17" y2="8" />
-                        <line x1="7" y1="16" x2="17" y2="16" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    id: 'viga' as const,
-                    titulo: 'Viga',
-                    subtitulo: 'Desenho horizontal (estribos verticais)',
-                    icon: (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="2" y="7" width="20" height="10" rx="1.5" />
-                        <line x1="4" y1="10" x2="20" y2="10" />
-                        <line x1="4" y1="14" x2="20" y2="14" />
-                        <line x1="8" y1="7" x2="8" y2="17" />
-                        <line x1="16" y1="7" x2="16" y2="17" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    id: 'laje' as const,
-                    titulo: 'Área Livre / Laje',
-                    subtitulo: 'Desenho livre em malha quadrada',
-                    icon: (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="3" width="18" height="18" rx="1.5" />
-                        <line x1="3" y1="9" x2="21" y2="9" />
-                        <line x1="3" y1="15" x2="21" y2="15" />
-                        <line x1="9" y1="3" x2="9" y2="21" />
-                        <line x1="15" y1="3" x2="15" y2="21" />
-                      </svg>
-                    ),
-                  },
-                ]).map(item => {
-                  const ativo = tipo === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => selecionarTipo(item.id)}
-                      style={{
-                        border: `1.5px solid ${ativo ? PRIMARY : BORDER}`,
-                        borderRadius: 10,
-                        padding: '12px 14px',
-                        cursor: 'pointer',
-                        background: ativo ? '#EEF2FF' : '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 11,
-                        textAlign: 'left',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <div style={{ width: 38, height: 38, borderRadius: 8, background: ativo ? PRIMARY : '#F1F5F9', color: ativo ? '#fff' : SUBTEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {item.icon}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: ativo ? PRIMARY : TEXT }}>{item.titulo}</div>
-                        <div style={{ fontSize: 11, color: SUBTEXT, marginTop: 2, lineHeight: 1.25 }}>{item.subtitulo}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Identificação */}
-              <div style={{ marginBottom: 20 }}>
-                <Campo label="Identificação do elemento" htmlFor="elem-nome">
+              <PainelPlanilha titulo="Identificação e Tipo de Elemento" marginBottom={14}>
+                <CelulaFicha label="Identificação do elemento" htmlFor="elem-nome">
                   <input
                     id="elem-nome"
-                    style={{ ...inputStyle, textTransform: 'uppercase' }}
+                    style={{ ...fichaInputStyle, textTransform: 'uppercase', fontWeight: 700, fontSize: 13 }}
                     value={elemento}
                     onChange={e => setElemento(e.target.value.toUpperCase())}
                     placeholder={placeholderElemento}
                   />
-                </Campo>
-              </div>
-
-              {/* Opções conforme o tipo */}
-              {tipo === 'pilar' && (
-                <>
-                  <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Acessibilidade do pilar em campo
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 12 }}>
-                    {(Object.keys(OPCOES_PILAR) as OpcaoPilar[]).map(id => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setOpcao(id)}
-                        style={{
-                          border: `1.5px solid ${opcao === id ? PRIMARY : BORDER}`,
-                          borderRadius: 10,
-                          padding: '10px 6px 8px',
-                          cursor: 'pointer',
-                          background: opcao === id ? '#EEF2FF' : '#fff',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 6,
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        <div dangerouslySetInnerHTML={{ __html: svgOpcaoPilar(id) }} style={{ lineHeight: 0 }} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>
-                          {id} — {OPCOES_PILAR[id].label}
-                        </span>
-                      </button>
-                    ))}
+                </CelulaFicha>
+                <div style={{ padding: 12, background: '#fff' }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                    Tipo de elemento estrutural
                   </div>
-                </>
-              )}
-
-              {tipo === 'viga' && (
-                <>
-                  <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Acessibilidade da viga em campo
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 12 }}>
-                    {(Object.keys(OPCOES_VIGA) as OpcaoViga[]).map(id => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setOpcao(id)}
-                        style={{
-                          border: `1.5px solid ${opcao === id ? PRIMARY : BORDER}`,
-                          borderRadius: 10,
-                          padding: '10px 6px 8px',
-                          cursor: 'pointer',
-                          background: opcao === id ? '#EEF2FF' : '#fff',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 6,
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        <div dangerouslySetInnerHTML={{ __html: svgOpcaoViga(id) }} style={{ lineHeight: 0 }} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>
-                          {OPCOES_VIGA[id].codigo} — {OPCOES_VIGA[id].label}
-                        </span>
-                      </button>
-                    ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+                    {([
+                      {
+                        id: 'pilar' as const,
+                        titulo: 'Pilar',
+                        subtitulo: 'Desenho vertical (seção + perfil)',
+                        icon: (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="7" y="2" width="10" height="20" rx="1.5" />
+                            <line x1="10" y1="4" x2="10" y2="20" />
+                            <line x1="14" y1="4" x2="14" y2="20" />
+                            <line x1="7" y1="8" x2="17" y2="8" />
+                            <line x1="7" y1="16" x2="17" y2="16" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        id: 'viga' as const,
+                        titulo: 'Viga',
+                        subtitulo: 'Desenho horizontal (estribos verticais)',
+                        icon: (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="7" width="20" height="10" rx="1.5" />
+                            <line x1="4" y1="10" x2="20" y2="10" />
+                            <line x1="4" y1="14" x2="20" y2="14" />
+                            <line x1="8" y1="7" x2="8" y2="17" />
+                            <line x1="16" y1="7" x2="16" y2="17" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        id: 'laje' as const,
+                        titulo: 'Área Livre / Laje',
+                        subtitulo: 'Desenho livre em malha quadrada',
+                        icon: (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="3" y="3" width="18" height="18" rx="1.5" />
+                            <line x1="3" y1="9" x2="21" y2="9" />
+                            <line x1="3" y1="15" x2="21" y2="15" />
+                            <line x1="9" y1="3" x2="9" y2="21" />
+                            <line x1="15" y1="3" x2="15" y2="21" />
+                          </svg>
+                        ),
+                      },
+                    ]).map(item => {
+                      const ativo = tipo === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => selecionarTipo(item.id)}
+                          style={{
+                            border: `1.5px solid ${ativo ? PRIMARY : BORDER_CELL}`,
+                            borderRadius: 8,
+                            padding: '10px 12px',
+                            cursor: 'pointer',
+                            background: ativo ? '#EEF2FF' : '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <div style={{ width: 34, height: 34, borderRadius: 6, background: ativo ? PRIMARY : HEADER_SUB, color: ativo ? '#fff' : SUBTEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {item.icon}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12.5, fontWeight: 800, color: ativo ? PRIMARY : TEXT }}>{item.titulo}</div>
+                            <div style={{ fontSize: 10.5, color: SUBTEXT, marginTop: 1, lineHeight: 1.25 }}>{item.subtitulo}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                </>
-              )}
+                </div>
+              </PainelPlanilha>
 
-              {tipo === 'laje' && (
-                <>
-                  <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Configuração da malha na área ensaiada
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 12 }}>
-                    {(Object.keys(OPCOES_LAJE) as OpcaoLaje[]).map(id => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => selecionarOpcaoLaje(id)}
-                        style={{
-                          border: `1.5px solid ${opcao === id ? PRIMARY : BORDER}`,
-                          borderRadius: 10,
-                          padding: '12px 10px 10px',
-                          cursor: 'pointer',
-                          background: opcao === id ? '#EEF2FF' : '#fff',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 6,
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        <div dangerouslySetInnerHTML={{ __html: svgOpcaoLaje(id) }} style={{ lineHeight: 0 }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: opcao === id ? PRIMARY : TEXT, textAlign: 'center', lineHeight: 1.3 }}>
-                          {OPCOES_LAJE[id].label}
-                        </span>
-                        <span style={{ fontSize: 10, color: SUBTEXT, textAlign: 'center' }}>
-                          {OPCOES_LAJE[id].desc}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+              <PainelPlanilha
+                titulo={
+                  tipo === 'pilar'
+                    ? 'Acessibilidade do Pilar em Campo'
+                    : tipo === 'viga'
+                      ? 'Acessibilidade da Viga em Campo'
+                      : 'Configuração da Malha na Área Ensaiada'
+                }
+                marginBottom={0}
+              >
+                <div style={{ padding: 12 }}>
+                  {tipo === 'pilar' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8 }}>
+                      {(Object.keys(OPCOES_PILAR) as OpcaoPilar[]).map(id => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setOpcao(id)}
+                          style={{
+                            border: `1.5px solid ${opcao === id ? PRIMARY : BORDER_CELL}`,
+                            borderRadius: 8,
+                            padding: '10px 6px 8px',
+                            cursor: 'pointer',
+                            background: opcao === id ? '#EEF2FF' : '#fff',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <div dangerouslySetInnerHTML={{ __html: svgOpcaoPilar(id) }} style={{ lineHeight: 0 }} />
+                          <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>
+                            {id} — {OPCOES_PILAR[id].label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {tipo === 'viga' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8 }}>
+                      {(Object.keys(OPCOES_VIGA) as OpcaoViga[]).map(id => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setOpcao(id)}
+                          style={{
+                            border: `1.5px solid ${opcao === id ? PRIMARY : BORDER_CELL}`,
+                            borderRadius: 8,
+                            padding: '10px 6px 8px',
+                            cursor: 'pointer',
+                            background: opcao === id ? '#EEF2FF' : '#fff',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <div dangerouslySetInnerHTML={{ __html: svgOpcaoViga(id) }} style={{ lineHeight: 0 }} />
+                          <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>
+                            {OPCOES_VIGA[id].codigo} — {OPCOES_VIGA[id].label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {tipo === 'laje' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+                      {(Object.keys(OPCOES_LAJE) as OpcaoLaje[]).map(id => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => selecionarOpcaoLaje(id)}
+                          style={{
+                            border: `1.5px solid ${opcao === id ? PRIMARY : BORDER_CELL}`,
+                            borderRadius: 8,
+                            padding: '12px 10px 10px',
+                            cursor: 'pointer',
+                            background: opcao === id ? '#EEF2FF' : '#fff',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <div dangerouslySetInnerHTML={{ __html: svgOpcaoLaje(id) }} style={{ lineHeight: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: opcao === id ? PRIMARY : TEXT, textAlign: 'center', lineHeight: 1.3 }}>
+                            {OPCOES_LAJE[id].label}
+                          </span>
+                          <span style={{ fontSize: 10, color: SUBTEXT, textAlign: 'center' }}>
+                            {OPCOES_LAJE[id].desc}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </PainelPlanilha>
             </div>
           )}
 
           {/* ── ETAPA 2: GEOMETRIA / DESENHO NA MALHA ── */}
           {etapa === 2 && tipo === 'pilar' && (
             <div>
-              <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Dados geométricos — {isCirc ? 'seção circular' : 'seção transversal do pilar'}
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px 16px', marginBottom: 20 }}>
+              <PainelPlanilha titulo={`Dados Geométricos — ${isCirc ? 'Seção Circular' : 'Seção Transversal do Pilar'}`} marginBottom={14}>
                 {isCirc ? (
-                  <>
-                    <Campo label="Diâmetro D (cm)" htmlFor="geom-d">
-                      <InteiroInput id="geom-d" style={inputStyle} value={D} min={5} onChange={setD} />
-                    </Campo>
-                    <Campo label="Nº barras (total)" htmlFor="geom-bcirc">
-                      <InteiroInput id="geom-bcirc" style={inputStyle} value={barras['circ'] ?? 6} min={1} onChange={n => setBarras(p => ({ ...p, circ: n }))} />
-                    </Campo>
-                  </>
+                  <div className="planilha-grid-2">
+                    <CelulaFicha label="Diâmetro D (cm)" htmlFor="geom-d" borderRight borderBottom={false}>
+                      <InteiroInput id="geom-d" style={fichaInputStyle} value={D} min={5} onChange={setD} />
+                    </CelulaFicha>
+                    <CelulaFicha label="Nº de barras longitudinais (total)" htmlFor="geom-bcirc" borderBottom={false}>
+                      <InteiroInput id="geom-bcirc" style={fichaInputStyle} value={barras['circ'] ?? 6} min={1} onChange={n => setBarras(p => ({ ...p, circ: n }))} />
+                    </CelulaFicha>
+                  </div>
                 ) : (
                   <>
-                    <Campo label="Dimensão X (cm)" htmlFor="geom-x">
-                      <InteiroInput id="geom-x" style={inputStyle} value={X} min={5} onChange={setX} />
-                    </Campo>
-                    <Campo label="Dimensão Y (cm)" htmlFor="geom-y">
-                      <InteiroInput id="geom-y" style={inputStyle} value={Y} min={5} onChange={setY} />
-                    </Campo>
-                    {(['1X', '2X', '1Y', '2Y'] as string[]).map(f => {
-                      const enabled = faces.includes(f);
-                      return (
-                        <Campo key={f} label={`Barras ${FACE_LABELS[f]}`} htmlFor={`geom-b${f}`}>
+                    <div className="planilha-grid-2">
+                      <CelulaFicha label="Dimensão X (cm)" htmlFor="geom-x" borderRight>
+                        <InteiroInput id="geom-x" style={fichaInputStyle} value={X} min={5} onChange={setX} />
+                      </CelulaFicha>
+                      <CelulaFicha label="Dimensão Y (cm)" htmlFor="geom-y">
+                        <InteiroInput id="geom-y" style={fichaInputStyle} value={Y} min={5} onChange={setY} />
+                      </CelulaFicha>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${faces.length}, minmax(0, 1fr))` }}>
+                      {faces.map((f, idx) => (
+                        <CelulaFicha
+                          key={f}
+                          label={`Barras — ${FACE_LABELS[f]}`}
+                          htmlFor={`geom-b${f}`}
+                          borderRight={idx < faces.length - 1}
+                          borderBottom={false}
+                        >
                           <InteiroInput
                             id={`geom-b${f}`}
-                            style={{ ...inputStyle, opacity: enabled ? 1 : 0.4 }}
-                            disabled={!enabled}
+                            style={fichaInputStyle}
                             value={barras[f] ?? 2}
                             min={1}
                             onChange={n => setBarras(p => ({ ...p, [f]: n }))}
                           />
-                        </Campo>
-                      );
-                    })}
+                        </CelulaFicha>
+                      ))}
+                    </div>
                   </>
                 )}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0', background: BG, borderRadius: 10, border: `1px solid ${BORDER}` }}>
-                {isCirc ? (
-                  <svg width={180} height={160} viewBox="0 0 180 160">
-                    {(() => {
-                      const r = Math.min(60, D * 1.1), cx = 90, cy = 75;
-                      const nb = barras['circ'] || 6;
-                      return (
-                        <g>
-                          <circle cx={cx} cy={cy} r={r} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-                          <circle cx={cx} cy={cy} r={r * 0.75} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
-                          {Array.from({ length: nb }, (_, i) => {
-                            const ang = (2 * Math.PI / nb) * i - Math.PI / 2;
-                            const bx = cx + r * 0.75 * Math.cos(ang);
-                            const by = cy + r * 0.75 * Math.sin(ang);
-                            return (
-                              <g key={i}>
-                                <circle cx={bx} cy={by} r={5} fill="white" stroke="#2563EB" strokeWidth={1.5} />
-                                <circle cx={bx} cy={by} r={2.5} fill="#2563EB" />
-                              </g>
-                            );
-                          })}
-                          <text x={cx} y={cy + r + 16} textAnchor="middle" fontSize={9} fill="#C8A020">⌀ {D} cm</text>
-                        </g>
-                      );
-                    })()}
-                  </svg>
-                ) : (
-                  <SvgSecaoPilar X={X} Y={Y} C1={C1} C2={C2} faces={faces} barras={barras} />
-                )}
-              </div>
+              </PainelPlanilha>
+
+              <PainelPlanilha titulo="Pré-visualização da Seção Transversal" marginBottom={0}>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 8px', background: '#fff' }}>
+                  {isCirc ? (
+                    <svg width={200} height={180} viewBox="0 0 200 180">
+                      {(() => {
+                        const r = Math.min(62, Math.max(36, D * 1.1)), cx = 100, cy = 80;
+                        const nb = barras['circ'] || 6;
+                        return (
+                          <g>
+                            <circle cx={cx} cy={cy} r={r} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
+                            <circle cx={cx} cy={cy} r={r * 0.75} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
+                            {Array.from({ length: nb }, (_, i) => {
+                              const ang = (2 * Math.PI / nb) * i - Math.PI / 2;
+                              const bx = cx + r * 0.75 * Math.cos(ang);
+                              const by = cy + r * 0.75 * Math.sin(ang);
+                              return (
+                                <g key={i}>
+                                  <circle cx={bx} cy={by} r={4.5} fill="white" stroke="#2563EB" strokeWidth={1.5} />
+                                  <circle cx={bx} cy={by} r={2.2} fill="#2563EB" />
+                                </g>
+                              );
+                            })}
+                            <text x={cx} y={cy + r + 20} textAnchor="middle" fontSize={10} fill="#B8890E" fontWeight="700">⌀ {D} cm</text>
+                          </g>
+                        );
+                      })()}
+                    </svg>
+                  ) : (
+                    <SvgSecaoPilar X={X} Y={Y} C1={C1} C2={C2} faces={faces} barras={barras} />
+                  )}
+                </div>
+              </PainelPlanilha>
             </div>
           )}
 
           {etapa === 2 && isViga && (
             <div>
-              <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Dados geométricos — seção transversal da viga
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px 16px', marginBottom: 20 }}>
-                <Campo label="Largura b (cm)" htmlFor="viga-b">
-                  <InteiroInput id="viga-b" style={inputStyle} value={X} min={5} onChange={setX} />
-                </Campo>
-                <Campo label="Altura h (cm)" htmlFor="viga-h">
-                  <InteiroInput id="viga-h" style={inputStyle} value={Y} min={5} onChange={setY} />
-                </Campo>
-                {(['fundo', 'topo', 'lat1', 'lat2'] as string[]).map(f => {
-                  const enabled = faces.includes(f);
-                  return (
-                    <Campo key={f} label={`Barras — ${FACE_LABELS[f]}`} htmlFor={`viga-b-${f}`}>
+              <PainelPlanilha titulo="Dados Geométricos — Seção Transversal da Viga" marginBottom={14}>
+                <div className="planilha-grid-2">
+                  <CelulaFicha label="Largura b (cm)" htmlFor="viga-b" borderRight>
+                    <InteiroInput id="viga-b" style={fichaInputStyle} value={X} min={5} onChange={setX} />
+                  </CelulaFicha>
+                  <CelulaFicha label="Altura h (cm)" htmlFor="viga-h">
+                    <InteiroInput id="viga-h" style={fichaInputStyle} value={Y} min={5} onChange={setY} />
+                  </CelulaFicha>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${faces.length}, minmax(0, 1fr))` }}>
+                  {faces.map((f, idx) => (
+                    <CelulaFicha
+                      key={f}
+                      label={`Barras — ${FACE_LABELS[f]}`}
+                      htmlFor={`viga-b-${f}`}
+                      borderRight={idx < faces.length - 1}
+                      borderBottom={false}
+                    >
                       <InteiroInput
                         id={`viga-b-${f}`}
-                        style={{ ...inputStyle, opacity: enabled ? 1 : 0.4 }}
-                        disabled={!enabled}
+                        style={fichaInputStyle}
                         value={barras[f] ?? 2}
                         min={1}
                         onChange={n => setBarras(p => ({ ...p, [f]: n }))}
                       />
-                    </Campo>
-                  );
-                })}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0', background: BG, borderRadius: 10, border: `1px solid ${BORDER}` }}>
-                <SvgSecaoViga b={X} h={Y} C1={C1} C2={C2} faces={faces} barras={barras} />
-              </div>
+                    </CelulaFicha>
+                  ))}
+                </div>
+              </PainelPlanilha>
+
+              <PainelPlanilha titulo="Pré-visualização da Seção Transversal" marginBottom={0}>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 8px', background: '#fff' }}>
+                  <SvgSecaoViga b={X} h={Y} C1={C1} C2={C2} faces={faces} barras={barras} />
+                </div>
+              </PainelPlanilha>
             </div>
           )}
 
           {etapa === 2 && isLaje && (
             <div>
-              <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Desenho livre em malha quadrada — defina a área e clique para posicionar as barras
-              </p>
-
-              {/* Parâmetros da malha */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
-                <Campo label="Largura Lx (cm)" htmlFor="laje-lx">
-                  <InteiroInput
-                    id="laje-lx"
-                    style={inputStyle}
-                    value={lajeData.larguraX}
-                    min={20}
-                    onChange={v => setLajeData(p => ({
-                      ...p,
-                      larguraX: v,
-                      barrasV: p.barrasV.filter(b => b.pos < v),
-                    }))}
-                  />
-                </Campo>
-                <Campo label="Altura Ly (cm)" htmlFor="laje-ly">
-                  <InteiroInput
-                    id="laje-ly"
-                    style={inputStyle}
-                    value={lajeData.alturaY}
-                    min={20}
-                    onChange={v => setLajeData(p => ({
-                      ...p,
-                      alturaY: v,
-                      barrasH: p.barrasH.filter(b => b.pos < v),
-                    }))}
-                  />
-                </Campo>
-                <Campo label="Passo da malha (cm)" htmlFor="laje-passo">
-                  <select
-                    id="laje-passo"
-                    style={inputStyle}
-                    value={lajeData.passoGrid}
-                    onChange={e => setLajeData(p => ({ ...p, passoGrid: Number(e.target.value) }))}
-                  >
-                    <option value={5}>5 cm</option>
-                    <option value={10}>10 cm</option>
-                    <option value={15}>15 cm</option>
-                    <option value={20}>20 cm</option>
-                  </select>
-                </Campo>
-                <Campo label="Gerar malha regular (cm)" htmlFor="laje-esp">
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <InteiroInput id="laje-esp" style={{ ...inputStyle, padding: '8px 8px' }} value={espRapido} min={5} onChange={setEspRapido} />
-                    <button
-                      type="button"
-                      onClick={() => setLajeData(p => gerarMalhaRegular(p.larguraX, p.alturaY, espRapido, lajeCfg.permiteH, lajeCfg.permiteV, p.passoGrid))}
-                      style={{ padding: '0 10px', borderRadius: 7, border: 'none', background: PRIMARY, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
+              <PainelPlanilha titulo="Parâmetros da Malha Quadrada" marginBottom={14}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+                  <CelulaFicha label="Largura Lx (cm)" htmlFor="laje-lx" borderRight borderBottom={false}>
+                    <InteiroInput
+                      id="laje-lx"
+                      style={fichaInputStyle}
+                      value={lajeData.larguraX}
+                      min={20}
+                      onChange={v => setLajeData(p => ({
+                        ...p,
+                        larguraX: v,
+                        barrasV: p.barrasV.filter(b => b.pos < v),
+                      }))}
+                    />
+                  </CelulaFicha>
+                  <CelulaFicha label="Altura Ly (cm)" htmlFor="laje-ly" borderRight borderBottom={false}>
+                    <InteiroInput
+                      id="laje-ly"
+                      style={fichaInputStyle}
+                      value={lajeData.alturaY}
+                      min={20}
+                      onChange={v => setLajeData(p => ({
+                        ...p,
+                        alturaY: v,
+                        barrasH: p.barrasH.filter(b => b.pos < v),
+                      }))}
+                    />
+                  </CelulaFicha>
+                  <CelulaFicha label="Passo da malha (cm)" htmlFor="laje-passo" borderRight borderBottom={false}>
+                    <select
+                      id="laje-passo"
+                      style={{ ...fichaInputStyle, cursor: 'pointer' }}
+                      value={lajeData.passoGrid}
+                      onChange={e => setLajeData(p => ({ ...p, passoGrid: Number(e.target.value) }))}
                     >
-                      Aplicar
-                    </button>
-                  </div>
-                </Campo>
-              </div>
-
-              {/* Barra de ferramentas de desenho livre */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12, padding: '8px 12px', background: '#F1F5F9', borderRadius: 8, border: `1px solid ${BORDER}` }}>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {lajeCfg.permiteH && (
-                    <button
-                      type="button"
-                      onClick={() => setFerramenta('addH')}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 6,
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        border: `1.5px solid ${ferramenta === 'addH' ? FACE_COLORS.dirH : BORDER}`,
-                        background: ferramenta === 'addH' ? FACE_COLORS.dirH : '#fff',
-                        color: ferramenta === 'addH' ? '#fff' : FACE_COLORS.dirH,
-                      }}
-                    >
-                      ━ Barra Horizontal (H)
-                    </button>
-                  )}
-                  {lajeCfg.permiteV && (
-                    <button
-                      type="button"
-                      onClick={() => setFerramenta('addV')}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 6,
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        border: `1.5px solid ${ferramenta === 'addV' ? FACE_COLORS.dirV : BORDER}`,
-                        background: ferramenta === 'addV' ? FACE_COLORS.dirV : '#fff',
-                        color: ferramenta === 'addV' ? '#fff' : FACE_COLORS.dirV,
-                      }}
-                    >
-                      ┃ Barra Vertical (V)
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setFerramenta('remove')}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: 6,
-                      fontSize: 11.5,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      border: `1.5px solid ${ferramenta === 'remove' ? DANGER : BORDER}`,
-                      background: ferramenta === 'remove' ? DANGER : '#fff',
-                      color: ferramenta === 'remove' ? '#fff' : DANGER,
-                    }}
-                  >
-                    ✕ Remover
-                  </button>
+                      <option value={5}>5 cm</option>
+                      <option value={10}>10 cm</option>
+                      <option value={15}>15 cm</option>
+                      <option value={20}>20 cm</option>
+                    </select>
+                  </CelulaFicha>
+                  <CelulaFicha label="Gerar malha regular (cm)" htmlFor="laje-esp" borderBottom={false}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <InteiroInput id="laje-esp" style={fichaInputStyle} value={espRapido} min={5} onChange={setEspRapido} />
+                      <button
+                        type="button"
+                        onClick={() => setLajeData(p => gerarMalhaRegular(p.larguraX, p.alturaY, espRapido, lajeCfg.permiteH, lajeCfg.permiteV, p.passoGrid))}
+                        style={{ padding: '4px 10px', borderRadius: 5, border: 'none', background: PRIMARY, color: '#fff', fontSize: 10.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
+                      >
+                        Aplicar
+                      </button>
+                    </div>
+                  </CelulaFicha>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT }}>
+              </PainelPlanilha>
+
+              <PainelPlanilha
+                titulo={`Desenho Livre na Malha (${lajeData.larguraX} × ${lajeData.alturaY} cm)`}
+                marginBottom={0}
+                direita={
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#BFDBFE' }}>
                     {barrasHOrd.length} H · {barrasVOrd.length} V
                   </span>
+                }
+              >
+                {/* Barra de ferramentas */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_PANEL}` }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {lajeCfg.permiteH && (
+                      <button
+                        type="button"
+                        onClick={() => setFerramenta('addH')}
+                        style={{
+                          padding: '5px 11px',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          border: `1.5px solid ${ferramenta === 'addH' ? FACE_COLORS.dirH : BORDER_CELL}`,
+                          background: ferramenta === 'addH' ? FACE_COLORS.dirH : '#fff',
+                          color: ferramenta === 'addH' ? '#fff' : FACE_COLORS.dirH,
+                        }}
+                      >
+                        ━ Barra Horizontal (H)
+                      </button>
+                    )}
+                    {lajeCfg.permiteV && (
+                      <button
+                        type="button"
+                        onClick={() => setFerramenta('addV')}
+                        style={{
+                          padding: '5px 11px',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          border: `1.5px solid ${ferramenta === 'addV' ? FACE_COLORS.dirV : BORDER_CELL}`,
+                          background: ferramenta === 'addV' ? FACE_COLORS.dirV : '#fff',
+                          color: ferramenta === 'addV' ? '#fff' : FACE_COLORS.dirV,
+                        }}
+                      >
+                        ┃ Barra Vertical (V)
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setFerramenta('remove')}
+                      style={{
+                        padding: '5px 11px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        border: `1.5px solid ${ferramenta === 'remove' ? DANGER : BORDER_CELL}`,
+                        background: ferramenta === 'remove' ? DANGER : '#fff',
+                        color: ferramenta === 'remove' ? '#fff' : DANGER,
+                      }}
+                    >
+                      ✕ Remover
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setLajeData(p => ({ ...p, barrasH: [], barrasV: [] }))}
-                    style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: `1px solid ${BORDER}`, background: '#fff', color: SUBTEXT, fontFamily: 'inherit' }}
+                    style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: `1px solid ${BORDER_PANEL}`, background: '#fff', color: SUBTEXT, fontFamily: 'inherit' }}
                   >
                     Limpar malha
                   </button>
                 </div>
-              </div>
 
-              {/* Canvas interativo da malha quadrada */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 8px', background: BG, borderRadius: 10, border: `1px solid ${BORDER}` }}>
-                <SvgMalhaLaje
-                  lajeData={lajeData}
-                  modo="editor"
-                  ferramenta={ferramenta}
-                  onToggleBarraH={pos => toggleBarra('H', pos)}
-                  onToggleBarraV={pos => toggleBarra('V', pos)}
-                />
-                <p style={{ margin: '6px 0 0', fontSize: 11, color: SUBTEXT, textAlign: 'center' }}>
-                  Clique na malha para adicionar ou remover uma barra na posição destacada (grade de {lajeData.passoGrid} cm).
-                  {totalBarrasLaje === 0 && (
-                    <strong style={{ color: DANGER }}> Adicione pelo menos 1 barra para continuar.</strong>
-                  )}
-                </p>
-              </div>
+                <div style={{ padding: '12px', background: '#fff', overflow: 'auto', maxHeight: 420, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <SvgMalhaLaje
+                    lajeData={lajeData}
+                    modo="editor"
+                    ferramenta={ferramenta}
+                    onToggleBarraH={pos => toggleBarra('H', pos)}
+                    onToggleBarraV={pos => toggleBarra('V', pos)}
+                  />
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: SUBTEXT, textAlign: 'center' }}>
+                    Clique na malha para adicionar ou remover uma barra na posição destacada (grade de {lajeData.passoGrid} cm).
+                    {totalBarrasLaje === 0 && (
+                      <strong style={{ color: DANGER }}> Adicione pelo menos 1 barra para continuar.</strong>
+                    )}
+                  </p>
+                </div>
+              </PainelPlanilha>
             </div>
           )}
 
           {/* ── ETAPA 3: LEITURAS DE COBRIMENTO E ESPAÇAMENTO ── */}
-          {etapa === 3 && tipo === 'pilar' && (
+          {etapa === 3 && (tipo === 'pilar' || isViga) && (
             <div>
-              <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Vistas laterais — dados do ensaio por face
-              </p>
               {faces.map((face, fi) => {
                 const fd = getFaceData(face);
                 const nBarras = isCirc ? (barras['circ'] || 6) : (barras[face] || 2);
-                const col = FACE_COLORS[face] || '#2563EB';
+                const tituloFace = `${FACE_LABELS[face]} — ${isViga ? 'Vista Horizontal' : 'Vista Vertical'} (${nBarras} barra${nBarras !== 1 ? 's' : ''})`;
                 return (
-                  <div key={face} style={{ marginBottom: fi < faces.length - 1 ? 24 : 0 }}>
-                    <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, color: col, background: col + '18', borderRadius: 6, padding: '3px 10px', marginBottom: 12 }}>
-                      {FACE_LABELS[face]}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 16, alignItems: 'start' }}>
-                      <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, padding: 8, display: 'flex', justifyContent: 'center' }}>
-                        <SvgPerfilVertical face={face} nBarras={nBarras} fd={fd} C1={C1} />
-                      </div>
-                      <div>
-                        <div style={{ marginBottom: 12 }}>
-                          <Campo label="Nº de estribos no trecho" htmlFor={`ne-${face}`}>
-                            <InteiroInput
-                              id={`ne-${face}`}
-                              style={{ ...inputStyle, maxWidth: 120 }}
-                              value={fd.nEstribos}
-                              min={1}
-                              onChange={n => updateFaceData(face, f => ensureFaceArrays({ ...f, nEstribos: n }, nBarras))}
-                            />
-                          </Campo>
-                        </div>
-                        <div style={{ height: 1, background: BORDER, marginBottom: 12 }} />
-                        <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr style={{ background: PRIMARY }}>
-                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center', width: 56 }}>Estribo</th>
-                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Cobrimento (mm)</th>
-                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. Estribos (cm)</th>
-                                <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. Long. (cm)</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {Array.from({ length: fd.nEstribos }, (_, i) => (
-                                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#F8F9FA', borderBottom: `1px solid ${BORDER}` }}>
-                                  <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 700, color: col, textAlign: 'center' }}>C{i + 1}</td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    <input type="text" inputMode="decimal" value={fd.cob[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const c = [...f.cob]; c[i] = e.target.value; return { ...f, cob: c }; })} />
-                                  </td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    {i < fd.nEstribos - 1
-                                      ? <input type="text" inputMode="decimal" value={fd.espV[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const ev = [...f.espV]; ev[i] = e.target.value; return { ...f, espV: ev }; })} />
-                                      : <span style={{ display: 'block', textAlign: 'center', color: SUBTEXT, fontSize: 12 }}>—</span>}
-                                  </td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    {i < fd.espH.length
-                                      ? <input type="text" inputMode="decimal" value={fd.espH[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const eh = [...f.espH]; eh[i] = e.target.value; return { ...f, espH: eh }; })} />
-                                      : <span style={{ display: 'block', textAlign: 'center', color: SUBTEXT, fontSize: 12 }}>—</span>}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                    {fi < faces.length - 1 && <div style={{ height: 1, background: BORDER, marginTop: 20 }} />}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {etapa === 3 && isViga && (
-            <div>
-              <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Vistas horizontais da viga — dados do ensaio por face
-              </p>
-              {faces.map((face, fi) => {
-                const fd = getFaceData(face);
-                const nBarras = barras[face] || 2;
-                const col = FACE_COLORS[face] || '#2563EB';
-                return (
-                  <div key={face} style={{ marginBottom: fi < faces.length - 1 ? 26 : 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
-                      <div style={{ display: 'inline-block', fontSize: 11.5, fontWeight: 700, color: col, background: col + '18', borderRadius: 6, padding: '4px 10px' }}>
-                        {FACE_LABELS[face]} ({nBarras} barras long.)
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <label htmlFor={`ne-viga-${face}`} style={{ fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase' }}>
-                          Nº de estribos:
+                  <PainelPlanilha
+                    key={face}
+                    titulo={tituloFace}
+                    marginBottom={fi < faces.length - 1 ? 16 : 0}
+                    direita={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <label htmlFor={`ne-${face}`} style={{ fontSize: 10, fontWeight: 700, color: '#BFDBFE', textTransform: 'uppercase' }}>
+                          Nº estribos:
                         </label>
                         <InteiroInput
-                          id={`ne-viga-${face}`}
-                          style={{ ...inputStyle, width: 72, padding: '5px 8px', textAlign: 'center' }}
+                          id={`ne-${face}`}
+                          style={{ width: 52, height: 24, borderRadius: 4, border: '1px solid rgba(255,255,255,0.35)', background: '#fff', color: TEXT, textAlign: 'center', fontSize: 12, fontWeight: 700, outline: 'none' }}
                           value={fd.nEstribos}
                           min={1}
                           onChange={n => updateFaceData(face, f => ensureFaceArrays({ ...f, nEstribos: n }, nBarras))}
                         />
                       </div>
+                    }
+                  >
+                    {/* Área do desenho SVG — com scroll automático para muitos estribos/barras */}
+                    <div
+                      style={{
+                        padding: '12px',
+                        background: '#fff',
+                        borderBottom: `1px solid ${BORDER_PANEL}`,
+                        overflow: 'auto',
+                        maxHeight: 420,
+                        display: 'flex',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {isViga ? (
+                        <SvgPerfilHorizontal face={face} nBarras={nBarras} fd={fd} />
+                      ) : (
+                        <SvgPerfilVertical face={face} nBarras={nBarras} fd={fd} />
+                      )}
                     </div>
 
-                    {/* Desenho HORIZONTAL em destaque */}
-                    <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, padding: '10px 12px', display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-                      <SvgPerfilHorizontal face={face} nBarras={nBarras} fd={fd} C1={C1} />
+                    {/* Tabelas padronizadas refletindo exatamente estribos e barras longitudinais */}
+                    <div style={{ padding: 12, background: BG }}>
+                      {renderTabelasFace(face, nBarras, fd)}
                     </div>
-
-                    {/* Tabela compacta por estribo */}
-                    <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ background: PRIMARY }}>
-                            <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center', width: 64 }}>Estribo</th>
-                            <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Cobrimento (mm)</th>
-                            <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. Estribos (cm)</th>
-                            <th style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. Long. (cm)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Array.from({ length: fd.nEstribos }, (_, i) => (
-                            <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#F8F9FA', borderBottom: `1px solid ${BORDER}` }}>
-                              <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 700, color: col, textAlign: 'center' }}>E{i + 1}</td>
-                              <td style={{ padding: '4px 6px' }}>
-                                <input type="text" inputMode="decimal" value={fd.cob[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const c = [...f.cob]; c[i] = e.target.value; return { ...f, cob: c }; })} />
-                              </td>
-                              <td style={{ padding: '4px 6px' }}>
-                                {i < fd.nEstribos - 1
-                                  ? <input type="text" inputMode="decimal" value={fd.espV[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const ev = [...f.espV]; ev[i] = e.target.value; return { ...f, espV: ev }; })} />
-                                  : <span style={{ display: 'block', textAlign: 'center', color: SUBTEXT, fontSize: 12 }}>—</span>}
-                              </td>
-                              <td style={{ padding: '4px 6px' }}>
-                                {i < fd.espH.length
-                                  ? <input type="text" inputMode="decimal" value={fd.espH[i] ?? ''} placeholder="—" style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13 }} onChange={e => updateFaceData(face, f => { const eh = [...f.espH]; eh[i] = e.target.value; return { ...f, espH: eh }; })} />
-                                  : <span style={{ display: 'block', textAlign: 'center', color: SUBTEXT, fontSize: 12 }}>—</span>}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {fi < faces.length - 1 && <div style={{ height: 1, background: BORDER, marginTop: 22 }} />}
-                  </div>
+                  </PainelPlanilha>
                 );
               })}
             </div>
@@ -931,13 +1152,12 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
 
           {etapa === 3 && isLaje && (
             <div>
-              <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Leituras de cobrimento na malha — clique numa barra no desenho ou preencha na tabela
-              </p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 340px) 1fr', gap: 16, alignItems: 'start' }}>
-                {/* Malha com cotas e cobrimentos */}
-                <div style={{ background: BG, borderRadius: 10, border: `1px solid ${BORDER}`, padding: 8, display: 'flex', justifyContent: 'center', position: 'sticky', top: 72 }}>
+              <PainelPlanilha
+                titulo={`Malha Desenhada — ${lajeData.larguraX} × ${lajeData.alturaY} cm (passo ${lajeData.passoGrid} cm)`}
+                marginBottom={14}
+                direita={<span style={{ fontSize: 10, fontWeight: 700, color: '#BFDBFE' }}>Clique na barra para editar</span>}
+              >
+                <div style={{ padding: 12, background: '#fff', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
                   <SvgMalhaLaje
                     lajeData={lajeData}
                     modo="leitura"
@@ -945,150 +1165,20 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                     onSelectBarra={handleSelectBarraSvg}
                   />
                 </div>
+              </PainelPlanilha>
 
-                {/* Tabelas H e V */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {barrasHOrd.length > 0 && (
-                    <div>
-                      <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, color: FACE_COLORS.dirH, background: FACE_COLORS.dirH + '18', borderRadius: 6, padding: '3px 10px', marginBottom: 8 }}>
-                        Barras Horizontais — Direção X ({barrasHOrd.length})
-                      </div>
-                      <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                          <thead>
-                            <tr style={{ background: PRIMARY }}>
-                              <th style={{ padding: '7px 8px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center', width: 52 }}>Barra</th>
-                              <th style={{ padding: '7px 8px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Pos. Y (cm)</th>
-                              <th style={{ padding: '7px 8px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. (cm)</th>
-                              <th style={{ padding: '7px 8px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Cobrimento (mm)</th>
-                              <th style={{ padding: '7px 6px', width: 32 }} />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {barrasHOrd.map((b, i) => {
-                              const esp = i > 0 ? Math.round((b.pos - barrasHOrd[i - 1].pos) * 10) / 10 : null;
-                              const sel = barraSelId === b.id;
-                              return (
-                                <tr key={b.id} style={{ background: sel ? '#EEF2FF' : i % 2 === 0 ? '#fff' : '#F8F9FA', borderBottom: `1px solid ${BORDER}` }}>
-                                  <td style={{ padding: '6px 8px', fontSize: 12, fontWeight: 700, color: FACE_COLORS.dirH, textAlign: 'center' }}>H{i + 1}</td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={String(b.pos)}
-                                      style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 12.5, color: TEXT }}
-                                      onFocus={() => setBarraSelId(b.id)}
-                                      onChange={e => {
-                                        const v = parseFloat(e.target.value.replace(',', '.'));
-                                        if (!isNaN(v) && v >= 0 && v <= lajeData.alturaY) {
-                                          atualizarBarra('H', b.id, { pos: v });
-                                        }
-                                      }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: '6px 8px', fontSize: 12, color: SUBTEXT, textAlign: 'center' }}>
-                                    {esp !== null ? `${esp} cm` : '—'}
-                                  </td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    <input
-                                      ref={el => { cobInputsRef.current[b.id] = el; }}
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={b.cob}
-                                      placeholder="—"
-                                      style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13, fontWeight: 700, color: TEXT }}
-                                      onFocus={() => setBarraSelId(b.id)}
-                                      onChange={e => atualizarBarra('H', b.id, { cob: e.target.value })}
-                                    />
-                                  </td>
-                                  <td style={{ padding: '4px', textAlign: 'center' }}>
-                                    <button type="button" onClick={() => removerBarraPorId('H', b.id)} aria-label="Remover barra" style={{ border: 'none', background: 'transparent', color: DANGER, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>✕</button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
-                  {barrasVOrd.length > 0 && (
-                    <div>
-                      <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, color: FACE_COLORS.dirV, background: FACE_COLORS.dirV + '18', borderRadius: 6, padding: '3px 10px', marginBottom: 8 }}>
-                        Barras Verticais — Direção Y ({barrasVOrd.length})
-                      </div>
-                      <div style={{ background: BG, borderRadius: 8, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                          <thead>
-                            <tr style={{ background: PRIMARY }}>
-                              <th style={{ padding: '7px 8px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center', width: 52 }}>Barra</th>
-                              <th style={{ padding: '7px 8px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Pos. X (cm)</th>
-                              <th style={{ padding: '7px 8px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Esp. (cm)</th>
-                              <th style={{ padding: '7px 8px', fontSize: 11, fontWeight: 600, color: '#fff', textAlign: 'center' }}>Cobrimento (mm)</th>
-                              <th style={{ padding: '7px 6px', width: 32 }} />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {barrasVOrd.map((b, i) => {
-                              const esp = i > 0 ? Math.round((b.pos - barrasVOrd[i - 1].pos) * 10) / 10 : null;
-                              const sel = barraSelId === b.id;
-                              return (
-                                <tr key={b.id} style={{ background: sel ? '#FEF2F2' : i % 2 === 0 ? '#fff' : '#F8F9FA', borderBottom: `1px solid ${BORDER}` }}>
-                                  <td style={{ padding: '6px 8px', fontSize: 12, fontWeight: 700, color: FACE_COLORS.dirV, textAlign: 'center' }}>V{i + 1}</td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={String(b.pos)}
-                                      style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 12.5, color: TEXT }}
-                                      onFocus={() => setBarraSelId(b.id)}
-                                      onChange={e => {
-                                        const v = parseFloat(e.target.value.replace(',', '.'));
-                                        if (!isNaN(v) && v >= 0 && v <= lajeData.larguraX) {
-                                          atualizarBarra('V', b.id, { pos: v });
-                                        }
-                                      }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: '6px 8px', fontSize: 12, color: SUBTEXT, textAlign: 'center' }}>
-                                    {esp !== null ? `${esp} cm` : '—'}
-                                  </td>
-                                  <td style={{ padding: '4px 6px' }}>
-                                    <input
-                                      ref={el => { cobInputsRef.current[b.id] = el; }}
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={b.cob}
-                                      placeholder="—"
-                                      style={{ border: 'none', outline: 'none', width: '100%', textAlign: 'center', background: 'transparent', fontSize: 13, fontWeight: 700, color: TEXT }}
-                                      onFocus={() => setBarraSelId(b.id)}
-                                      onChange={e => atualizarBarra('V', b.id, { cob: e.target.value })}
-                                    />
-                                  </td>
-                                  <td style={{ padding: '4px', textAlign: 'center' }}>
-                                    <button type="button" onClick={() => removerBarraPorId('V', b.id)} aria-label="Remover barra" style={{ border: 'none', background: 'transparent', color: DANGER, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>✕</button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              {renderTabelaLaje('H', barrasHOrd)}
+              {renderTabelaLaje('V', barrasVOrd)}
             </div>
           )}
         </div>
 
         {/* Footer modal */}
-        <div style={{ padding: '14px 24px', borderTop: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', bottom: 0, background: '#fff' }}>
+        <div style={{ padding: '12px 20px', borderTop: `1px solid ${BORDER_PANEL}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', bottom: 0, background: '#fff', zIndex: 20 }}>
           <button
             type="button"
             onClick={etapa === 1 ? onFechar : () => setEtapa(e => (e - 1) as 1 | 2 | 3)}
-            style={{ padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: '#F0F2F8', color: TEXT, border: 'none' }}
+            style={{ padding: '8px 18px', borderRadius: 7, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: HEADER_SUB, color: TEXT, border: `1px solid ${BORDER_PANEL}` }}
           >
             {etapa === 1 ? 'Cancelar' : '← Voltar'}
           </button>
@@ -1099,8 +1189,8 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
               disabled={etapa === 1 ? !podeAvancar1 : !podeAvancar2}
               style={{
                 padding: '8px 22px',
-                borderRadius: 8,
-                fontSize: 13,
+                borderRadius: 7,
+                fontSize: 12.5,
                 fontWeight: 700,
                 cursor: (etapa === 1 ? podeAvancar1 : podeAvancar2) ? 'pointer' : 'not-allowed',
                 fontFamily: 'inherit',
@@ -1116,7 +1206,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
             <button
               type="button"
               onClick={handleSalvar}
-              style={{ padding: '8px 22px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: SUCCESS, color: '#fff', border: 'none' }}
+              style={{ padding: '8px 22px', borderRadius: 7, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: SUCCESS, color: '#fff', border: 'none' }}
             >
               ✓ Confirmar amostra
             </button>

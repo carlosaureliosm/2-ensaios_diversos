@@ -9,15 +9,18 @@ export type OpcaoAcessibilidade = OpcaoPilar | OpcaoViga | OpcaoLaje;
 
 export type FaceData = {
   nEstribos: number;
-  cob: string[];    // cobrimento por estribo (mm)
-  espV: string[];   // espaçamento entre estribos (cm)
-  espH: string[];   // espaçamento entre barras longitudinais (cm)
+  cob: string[];       // cobrimento por estribo na face exposta (mm) — length = nEstribos
+  espV: string[];      // espaçamento entre estribos (cm) — length = max(0, nEstribos - 1)
+  espH: string[];      // espaçamento entre barras longitudinais (cm) — length = max(0, nBarras - 1)
+  cobLong?: string[];  // cobrimento da barra longitudinal na face exposta (mm) — length = nBarras
+  cobPerp?: string[];  // cobrimento da barra em relação à face exposta perpendicular (mm) — length = nBarras
 };
 
 export type BarraMalha = {
   id: string;
   pos: number;      // posição em cm a partir da borda (topo para H, esquerda para V)
-  cob: string;      // cobrimento medido (mm)
+  cob: string;      // cobrimento medido na face exposta (mm)
+  cobPerp?: string; // cobrimento em relação à face/borda perpendicular exposta (mm)
 };
 
 export type LajeData = {
@@ -165,15 +168,18 @@ export function newId(): string {
 }
 
 export function initFaceData(): FaceData {
-  return { nEstribos: 3, cob: ['', '', ''], espV: ['', ''], espH: [] };
+  return { nEstribos: 3, cob: ['', '', ''], espV: ['', ''], espH: [], cobLong: [], cobPerp: [] };
 }
 
 export function ensureFaceArrays(fd: FaceData, nBarras: number): FaceData {
   const ne = Math.max(1, fd.nEstribos);
+  const nb = Math.max(1, nBarras);
   const cob = Array(ne).fill('').map((_, i) => fd.cob[i] ?? '');
   const espV = Math.max(0, ne - 1) > 0 ? Array(ne - 1).fill('').map((_, i) => fd.espV[i] ?? '') : [];
-  const espH = Math.max(0, nBarras - 1) > 0 ? Array(nBarras - 1).fill('').map((_, i) => fd.espH[i] ?? '') : [];
-  return { ...fd, cob, espV, espH };
+  const espH = Math.max(0, nb - 1) > 0 ? Array(nb - 1).fill('').map((_, i) => fd.espH[i] ?? '') : [];
+  const cobLong = Array(nb).fill('').map((_, i) => fd.cobLong?.[i] ?? '');
+  const cobPerp = Array(nb).fill('').map((_, i) => fd.cobPerp?.[i] ?? '');
+  return { ...fd, cob, espV, espH, cobLong, cobPerp };
 }
 
 export function gerarMalhaRegular(
@@ -262,9 +268,12 @@ export function calcularEstatisticasLista(valores: number[]): EstatisticasCobrim
 export function calcularCobrimentos(facesData: Record<string, FaceData>): EstatisticasCobrimento {
   const todos: number[] = [];
   Object.values(facesData).forEach(fd => {
-    fd.cob.forEach(v => {
-      const n = parseFloat(v.replace(',', '.'));
-      if (!isNaN(n) && n > 0) todos.push(n);
+    const listas = [fd.cob, fd.cobLong ?? [], fd.cobPerp ?? []];
+    listas.forEach(lista => {
+      lista.forEach(v => {
+        const n = parseFloat(v.replace(',', '.'));
+        if (!isNaN(n) && n > 0) todos.push(n);
+      });
     });
   });
   return calcularEstatisticasLista(todos);
@@ -273,8 +282,10 @@ export function calcularCobrimentos(facesData: Record<string, FaceData>): Estati
 export function calcularCobrimentosLaje(lajeData: LajeData): EstatisticasCobrimento {
   const todos: number[] = [];
   [...lajeData.barrasH, ...lajeData.barrasV].forEach(b => {
-    const n = parseFloat(b.cob.replace(',', '.'));
-    if (!isNaN(n) && n > 0) todos.push(n);
+    [b.cob, b.cobPerp ?? ''].forEach(raw => {
+      const n = parseFloat(raw.replace(',', '.'));
+      if (!isNaN(n) && n > 0) todos.push(n);
+    });
   });
   return calcularEstatisticasLista(todos);
 }

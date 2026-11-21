@@ -52,36 +52,43 @@ describe('Pacometria — malha quadrada (laje)', () => {
     expect(esp).toEqual([20, 25]);
   });
 
-  it('calcula estatísticas de cobrimento na laje (aceitando vírgula decimal)', () => {
+  it('calcula estatísticas de cobrimento na laje (incluindo cobrimento perpendicular e vírgula decimal)', () => {
     const stats = calcularCobrimentosLaje({
       larguraX: 100,
       alturaY: 100,
       passoGrid: 10,
       barrasH: [
-        { id: 'h1', pos: 20, cob: '20' },
-        { id: 'h2', pos: 40, cob: '20,0' },
+        { id: 'h1', pos: 20, cob: '20', cobPerp: '25' },
+        { id: 'h2', pos: 40, cob: '20,0', cobPerp: '' },
       ],
       barrasV: [
-        { id: 'v1', pos: 30, cob: '30' },
+        { id: 'v1', pos: 30, cob: '30', cobPerp: '35' },
         { id: 'v2', pos: 60, cob: '' },
       ],
     });
     expect(stats.cobMinimo).toBe(20);
-    expect(stats.cobMaximo).toBe(30);
-    expect(stats.cobMedio).toBeCloseTo(23.333, 2);
+    expect(stats.cobMaximo).toBe(35);
+    expect(stats.cobMedio).toBeCloseTo(26, 2);
     expect(stats.cobModa).toBe(20);
     expect(stats.cobDesvio).toBeGreaterThan(0);
     expect(stats.cobCV).toBeGreaterThan(0);
   });
 
-  it('calcula estatísticas de cobrimento em faces de viga', () => {
+  it('calcula estatísticas de cobrimento em faces de pilar/viga (estribos + long. + perpendicular)', () => {
     const stats = calcularCobrimentos({
-      fundo: { nEstribos: 2, cob: ['25', '27'], espV: ['15'], espH: ['10', '10'] },
+      fundo: {
+        nEstribos: 2,
+        cob: ['25', '27'],
+        espV: ['15'],
+        espH: ['10', '10'],
+        cobLong: ['30', '', '30'],
+        cobPerp: ['25', '', '28'],
+      },
       lat1: { nEstribos: 2, cob: ['25', '29'], espV: ['15'], espH: ['12'] },
     });
-    expect(stats.cobMedio).toBe(26.5);
     expect(stats.cobMinimo).toBe(25);
-    expect(stats.cobMaximo).toBe(29);
+    expect(stats.cobMaximo).toBe(30);
     expect(stats.cobModa).toBe(25);
+    expect(stats.cobMedio).toBeCloseTo((25 + 27 + 30 + 30 + 25 + 28 + 25 + 29) / 8, 2);
   });
 });
