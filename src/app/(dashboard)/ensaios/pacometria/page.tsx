@@ -23,6 +23,8 @@ import {
   getResumoOpcao,
 } from '@/modules/pacometria/types';
 import { ModalAmostra } from '@/modules/pacometria/components/ModalAmostra';
+import { gerarSvgEsquemaPacometria } from '@/modules/pacometria/svgRelatorio';
+import { svgParaPng } from '@/modules/aderencia/svgParaPng';
 
 // ── Constantes visuais ──────────────────────────────────────────
 const PRIMARY     = '#1E3264';
@@ -260,17 +262,25 @@ export default function PacometriaPage() {
   const gerarDocx = async () => {
     setGerandoDocx(true);
     try {
-      // Comprimir fotos das amostras
+      // Comprimir fotos e rasterizar esquemas SVG das amostras
       const amostrasPayload = await Promise.all(amostras.map(async a => {
         let foto = null;
         if (a.fotoFile instanceof File) {
           foto = await comprimirImagem(a.fotoFile);
+        }
+        let esquema = null;
+        try {
+          const svg = gerarSvgEsquemaPacometria(a);
+          esquema = await svgParaPng(svg, 2);
+        } catch {
+          esquema = null;
         }
         return {
           ...a,
           fotoFile: undefined,
           fotoPreview: undefined,
           foto,
+          esquema,
         };
       }));
 
@@ -282,9 +292,11 @@ export default function PacometriaPage() {
 
       // Outro responsável
       let outroRespBase64 = '';
+      let outroRespContentType = 'image/png';
       if (outroResp && outroRespFile instanceof File) {
         const r = await comprimirImagem(outroRespFile);
         outroRespBase64 = r.base64;
+        outroRespContentType = r.contentType;
       }
 
       const body = {
@@ -292,6 +304,7 @@ export default function PacometriaPage() {
         respNome: respNomeFinal, respCrea: respCreaFinal,
         assinaturaUrl: outroResp ? '' : userAssinatura,
         outroRespBase64,
+        outroRespContentType,
         usaMotivacao, motivacao,
         usaFotoGeral, fotoGeral: fotoGeralPayload,
         usaCroquiGeral, croqui: croquiPayload,
@@ -302,14 +315,17 @@ export default function PacometriaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Erro ao gerar DOCX');
+      if (!res.ok) {
+        const erroJson = await res.json().catch(() => null);
+        throw new Error(erroJson?.error || 'Erro ao gerar DOCX');
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = `${rltOficial}.docx`; a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert('Erro ao gerar o relatório. Tente novamente.');
+      alert(e instanceof Error ? e.message : 'Erro ao gerar o relatório. Tente novamente.');
     } finally {
       setGerandoDocx(false);
     }
