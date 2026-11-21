@@ -184,13 +184,13 @@ export function SvgSecaoPilar({
 }: {
   X: number; Y: number; C1: number; C2: number; faces: string[]; barras: Record<string, number>;
 }) {
-  const W = 320, H = 240, MX = 74, MY = 52;
+  const W = 360, H = 264, MX = 86, MY = 58;
   const sc = Math.min((W - 2 * MX) / Math.max(X, 1), (H - 2 * MY) / Math.max(Y, 1));
   const cw = X * sc, ch = Y * sc;
   const ox = (W - cw) / 2, oy = (H - ch) / 2 - 4;
   const c1 = Math.min(C1 * sc, cw * 0.2);
   const c2 = Math.min(C2 * sc, ch * 0.2);
-  const BAR = Math.max(2.6, Math.min(5, sc * 0.65));
+  const BAR = Math.max(3, Math.min(5.5, sc * 0.65));
   const cv = Math.min(cw, ch) * 0.12;
 
   function barsInFace(face: string) {
@@ -211,7 +211,7 @@ export function SvgSecaoPilar({
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace', display: 'block' }}>
       <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-      <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
+      <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1.1} strokeDasharray="3,2" />
       {(['1X', '2X', '1Y', '2Y'] as string[]).map(f =>
         faces.includes(f) ? barsInFace(f).map((p, i) => (
           <g key={`${f}-${i}`}>
@@ -221,28 +221,28 @@ export function SvgSecaoPilar({
         )) : null,
       )}
       {/* Cota X (inferior) */}
-      <line x1={ox} y1={oy + ch + 14} x2={ox + cw} y2={oy + ch + 14} stroke={GOLD} strokeWidth={1} />
-      <line x1={ox} y1={oy + ch + 10} x2={ox} y2={oy + ch + 18} stroke={GOLD} strokeWidth={1} />
-      <line x1={ox + cw} y1={oy + ch + 10} x2={ox + cw} y2={oy + ch + 18} stroke={GOLD} strokeWidth={1} />
-      <text x={ox + cw / 2} y={oy + ch + 26} textAnchor="middle" fontSize={9.5} fill={GOLD} fontWeight="700">X = {X} cm</text>
+      <line x1={ox} y1={oy + ch + 15} x2={ox + cw} y2={oy + ch + 15} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox} y1={oy + ch + 10} x2={ox} y2={oy + ch + 20} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox + cw} y1={oy + ch + 10} x2={ox + cw} y2={oy + ch + 20} stroke={GOLD} strokeWidth={1.2} />
+      <text x={ox + cw / 2} y={oy + ch + 30} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700">X = {X} cm</text>
 
       {/* Cota Y (esquerda) */}
-      <line x1={ox - 14} y1={oy} x2={ox - 14} y2={oy + ch} stroke={GOLD} strokeWidth={1} />
-      <line x1={ox - 18} y1={oy} x2={ox - 10} y2={oy} stroke={GOLD} strokeWidth={1} />
-      <line x1={ox - 18} y1={oy + ch} x2={ox - 10} y2={oy + ch} stroke={GOLD} strokeWidth={1} />
-      <text x={ox - 24} y={oy + ch / 2} textAnchor="middle" fontSize={9.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - 24},${oy + ch / 2})`}>Y = {Y} cm</text>
+      <line x1={ox - 15} y1={oy} x2={ox - 15} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox - 20} y1={oy} x2={ox - 10} y2={oy} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox - 20} y1={oy + ch} x2={ox - 10} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
+      <text x={ox - 28} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - 28},${oy + ch / 2})`}>Y = {Y} cm</text>
 
       {/* Labels das faces bem afastados das cotas */}
-      <text x={ox + cw / 2} y={oy - 14} textAnchor="middle" fontSize={9.5} fill={FACE_COLORS['2X']} fontWeight="700">
+      <text x={ox + cw / 2} y={oy - 16} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['2X']} fontWeight="700">
         2X{!faces.includes('2X') ? ' ✕' : ''}
       </text>
-      <text x={ox + cw / 2} y={oy + ch + 42} textAnchor="middle" fontSize={9.5} fill={FACE_COLORS['1X']} fontWeight="700">
+      <text x={ox + cw / 2} y={oy + ch + 48} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['1X']} fontWeight="700">
         1X{!faces.includes('1X') ? ' ✕' : ''}
       </text>
-      <text x={ox - 46} y={oy + ch / 2} textAnchor="middle" fontSize={9.5} fill={FACE_COLORS['1Y']} fontWeight="700" transform={`rotate(-90,${ox - 46},${oy + ch / 2})`}>
+      <text x={ox - 54} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['1Y']} fontWeight="700" transform={`rotate(-90,${ox - 54},${oy + ch / 2})`}>
         1Y{!faces.includes('1Y') ? ' ✕' : ''}
       </text>
-      <text x={ox + cw + 22} y={oy + ch / 2} textAnchor="middle" fontSize={9.5} fill={FACE_COLORS['2Y']} fontWeight="700" transform={`rotate(90,${ox + cw + 22},${oy + ch / 2})`}>
+      <text x={ox + cw + 26} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['2Y']} fontWeight="700" transform={`rotate(90,${ox + cw + 26},${oy + ch / 2})`}>
         2Y{!faces.includes('2Y') ? ' ✕' : ''}
       </text>
     </svg>
@@ -255,13 +255,13 @@ export function SvgSecaoViga({
 }: {
   b: number; h: number; C1: number; C2: number; faces: string[]; barras: Record<string, number>;
 }) {
-  const W = 320, H = 248, MX = 76, MY = 54;
+  const W = 360, H = 272, MX = 88, MY = 60;
   const sc = Math.min((W - 2 * MX) / Math.max(b, 1), (H - 2 * MY) / Math.max(h, 1));
   const cw = b * sc, ch = h * sc;
   const ox = (W - cw) / 2, oy = (H - ch) / 2;
   const c1 = Math.min(C1 * sc, cw * 0.22);
   const c2 = Math.min(C2 * sc, ch * 0.22);
-  const BAR = Math.max(2.6, Math.min(5, sc * 0.65));
+  const BAR = Math.max(3, Math.min(5.5, sc * 0.65));
   const cv = Math.min(cw, ch) * 0.14;
 
   function barsInFace(face: string) {
@@ -287,10 +287,10 @@ export function SvgSecaoViga({
         </pattern>
       </defs>
       {!faces.includes('topo') && (
-        <rect x={Math.max(16, ox - 36)} y={oy - 14} width={Math.min(W - 32, cw + 72)} height={14} fill="url(#vigaHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
+        <rect x={Math.max(16, ox - 38)} y={oy - 14} width={Math.min(W - 32, cw + 76)} height={14} fill="url(#vigaHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
       )}
       <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-      <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1} strokeDasharray="3,2" />
+      <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1.1} strokeDasharray="3,2" />
       {(['fundo', 'topo', 'lat1', 'lat2'] as string[]).map(f =>
         faces.includes(f) ? barsInFace(f).map((p, i) => (
           <g key={`${f}-${i}`}>
@@ -300,28 +300,28 @@ export function SvgSecaoViga({
         )) : null,
       )}
       {/* Cota b (inferior) */}
-      <line x1={ox} y1={oy + ch + 14} x2={ox + cw} y2={oy + ch + 14} stroke={GOLD} strokeWidth={1} />
-      <line x1={ox} y1={oy + ch + 10} x2={ox} y2={oy + ch + 18} stroke={GOLD} strokeWidth={1} />
-      <line x1={ox + cw} y1={oy + ch + 10} x2={ox + cw} y2={oy + ch + 18} stroke={GOLD} strokeWidth={1} />
-      <text x={ox + cw / 2} y={oy + ch + 26} textAnchor="middle" fontSize={9.5} fill={GOLD} fontWeight="700">b = {b} cm</text>
+      <line x1={ox} y1={oy + ch + 15} x2={ox + cw} y2={oy + ch + 15} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox} y1={oy + ch + 10} x2={ox} y2={oy + ch + 20} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox + cw} y1={oy + ch + 10} x2={ox + cw} y2={oy + ch + 20} stroke={GOLD} strokeWidth={1.2} />
+      <text x={ox + cw / 2} y={oy + ch + 30} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700">b = {b} cm</text>
 
       {/* Cota h (esquerda) */}
-      <line x1={ox - 14} y1={oy} x2={ox - 14} y2={oy + ch} stroke={GOLD} strokeWidth={1} />
-      <line x1={ox - 18} y1={oy} x2={ox - 10} y2={oy} stroke={GOLD} strokeWidth={1} />
-      <line x1={ox - 18} y1={oy + ch} x2={ox - 10} y2={oy + ch} stroke={GOLD} strokeWidth={1} />
-      <text x={ox - 24} y={oy + ch / 2} textAnchor="middle" fontSize={9.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - 24},${oy + ch / 2})`}>h = {h} cm</text>
+      <line x1={ox - 15} y1={oy} x2={ox - 15} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox - 20} y1={oy} x2={ox - 10} y2={oy} stroke={GOLD} strokeWidth={1.2} />
+      <line x1={ox - 20} y1={oy + ch} x2={ox - 10} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
+      <text x={ox - 28} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - 28},${oy + ch / 2})`}>h = {h} cm</text>
 
       {/* Labels das faces com folga garantida */}
-      <text x={ox + cw / 2} y={oy - 22} textAnchor="middle" fontSize={9.5} fill={FACE_COLORS['topo']} fontWeight="700">
+      <text x={ox + cw / 2} y={oy - 24} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['topo']} fontWeight="700">
         Topo{!faces.includes('topo') ? ' (laje)' : ''}
       </text>
-      <text x={ox + cw / 2} y={oy + ch + 42} textAnchor="middle" fontSize={9.5} fill={FACE_COLORS['fundo']} fontWeight="700">
+      <text x={ox + cw / 2} y={oy + ch + 48} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['fundo']} fontWeight="700">
         Fundo{!faces.includes('fundo') ? ' ✕' : ''}
       </text>
-      <text x={ox - 48} y={oy + ch / 2} textAnchor="middle" fontSize={9.5} fill={FACE_COLORS['lat1']} fontWeight="700" transform={`rotate(-90,${ox - 48},${oy + ch / 2})`}>
+      <text x={ox - 56} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['lat1']} fontWeight="700" transform={`rotate(-90,${ox - 56},${oy + ch / 2})`}>
         Lat. 1{!faces.includes('lat1') ? ' ✕' : ''}
       </text>
-      <text x={ox + cw + 24} y={oy + ch / 2} textAnchor="middle" fontSize={9.5} fill={FACE_COLORS['lat2']} fontWeight="700" transform={`rotate(90,${ox + cw + 24},${oy + ch / 2})`}>
+      <text x={ox + cw + 28} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={FACE_COLORS['lat2']} fontWeight="700" transform={`rotate(90,${ox + cw + 28},${oy + ch / 2})`}>
         Lat. 2{!faces.includes('lat2') ? ' ✕' : ''}
       </text>
     </svg>
@@ -347,34 +347,34 @@ export function SvgPerfilVertical({
     return !isNaN(n) && n > 0 ? n : null;
   });
 
-  // Margens dedicadas: nunca colidem
-  const ML = 64; // cotas de espaçamento de estribos (esquerda)
-  const MR = 76; // labels E1..En + cobrimento (direita)
-  const MT = 42; // labels B1..Bm + cobrimento perpendicular (topo)
-  const MB = 38; // cotas de espaçamento longitudinal (embaixo)
+  const cobPerpEsq = fd.cobPerp?.[0]?.trim() || '';
+  const cobPerpDir = nb > 1 ? (fd.cobPerp?.[nb - 1]?.trim() || '') : '';
 
-  // Dimensões dinâmicas garantem legibilidade mesmo com 15+ estribos ou 10+ barras
-  const minStepY = 38;
-  const minStepX = 48;
-  const padX = 24;
-  const padY = 26;
+  // Margens generosas para fonte maior (11–12px)
+  const ML = 76; // cotas de espaçamento de estribos (esquerda)
+  const MR = 92; // labels E1..En + cobrimento (direita)
+  const MT = 42; // labels B1..Bm + cobrimento na face (topo)
+  const MB = 48; // linha de cota inferior (cobrimento perp. esq + esp. long + cobrimento perp. dir)
+
+  const minStepY = 44;
+  const minStepX = 64;
+  const padX = cobPerpEsq || cobPerpDir ? 48 : 32;
+  const padY = 30;
 
   const rawGapY = espVals.map(v => v ?? 15);
   const rawGapX = espHVals.map(v => v ?? 12);
 
-  // Escala Y: garante que o menor vão tenha pelo menos minStepY px
   const minRawY = rawGapY.length > 0 ? Math.min(...rawGapY) : 15;
-  const scY = Math.max(minStepY / Math.max(minRawY, 1), 2.4);
-  const gapYPx = rawGapY.map(v => Math.min(72, Math.max(minStepY, v * scY)));
+  const scY = Math.max(minStepY / Math.max(minRawY, 1), 2.8);
+  const gapYPx = rawGapY.map(v => Math.min(80, Math.max(minStepY, v * scY)));
   const totalEstriboH = gapYPx.reduce((a, b) => a + b, 0);
-  const ch = Math.max(110, totalEstriboH + 2 * padY);
+  const ch = Math.max(130, totalEstriboH + 2 * padY);
 
-  // Escala X: garante que o menor vão entre barras tenha pelo menos minStepX px
   const minRawX = rawGapX.length > 0 ? Math.min(...rawGapX) : 12;
-  const scX = Math.max(minStepX / Math.max(minRawX, 1), 3.2);
-  const gapXPx = rawGapX.map(v => Math.min(82, Math.max(minStepX, v * scX)));
+  const scX = Math.max(minStepX / Math.max(minRawX, 1), 3.6);
+  const gapXPx = rawGapX.map(v => Math.min(96, Math.max(minStepX, v * scX)));
   const totalBarraW = gapXPx.reduce((a, b) => a + b, 0);
-  const cw = Math.max(96, totalBarraW + 2 * padX);
+  const cw = Math.max(128, totalBarraW + 2 * padX);
 
   const W = ML + cw + MR;
   const H = MT + ch + MB;
@@ -398,24 +398,22 @@ export function SvgPerfilVertical({
     for (let i = 0; i < ne - 1; i++) estrY.push(estrY[estrY.length - 1] + gapYPx[i]);
   }
 
+  const cotaBotY = oy + ch + 16;
+
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace', display: 'block' }}>
       {/* Contorno do pilar */}
-      <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
+      <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2.2} />
 
-      {/* Barras longitudinais (verticais) + labels B1..Bm e cobrimento perpendicular no topo */}
+      {/* Barras longitudinais (verticais) + labels B1..Bm e cobrimento na face no topo */}
       {barX.map((x, i) => {
         const cobLong = fd.cobLong?.[i]?.trim();
-        const cobPerp = fd.cobPerp?.[i]?.trim();
         return (
           <g key={`b-${i}`}>
-            <line x1={x} y1={oy + 6} x2={x} y2={oy + ch - 6} stroke={col} strokeWidth={2.2} />
-            <text x={x} y={oy - 22} textAnchor="middle" fontSize={9} fill={PRIMARY} fontWeight="700">B{i + 1}</text>
+            <line x1={x} y1={oy + 6} x2={x} y2={oy + ch - 6} stroke={col} strokeWidth={2.4} />
+            <text x={x} y={oy - (cobLong ? 22 : 10)} textAnchor="middle" fontSize={11.5} fill={PRIMARY} fontWeight="700">B{i + 1}</text>
             {cobLong ? (
-              <text x={x} y={oy - 12} textAnchor="middle" fontSize={8} fill={col} fontWeight="700">{cobLong}mm</text>
-            ) : null}
-            {cobPerp ? (
-              <text x={x} y={oy - 3} textAnchor="middle" fontSize={8} fill={PERP_COLOR} fontWeight="700">⊥{cobPerp}mm</text>
+              <text x={x} y={oy - 8} textAnchor="middle" fontSize={10.5} fill={col} fontWeight="700">{cobLong}mm</text>
             ) : null}
           </g>
         );
@@ -424,12 +422,12 @@ export function SvgPerfilVertical({
       {/* Estribos (horizontais) + labels E1..En e cobrimento à direita */}
       {estrY.map((y, i) => (
         <g key={`e-${i}`}>
-          <line x1={ox + 10} y1={y} x2={ox + cw - 10} y2={y} stroke={col} strokeWidth={2.2} />
-          <text x={ox + cw + 8} y={y + 3} fontSize={9} fill={SUBTEXT} fontWeight="700">
+          <line x1={ox + 12} y1={y} x2={ox + cw - 12} y2={y} stroke={col} strokeWidth={2.4} />
+          <text x={ox + cw + 10} y={y + 4} fontSize={11} fill={SUBTEXT} fontWeight="700">
             E{i + 1}
           </text>
           {fd.cob[i]?.trim() ? (
-            <text x={ox + cw + 28} y={y + 3} fontSize={9} fill={col} fontWeight="700">
+            <text x={ox + cw + 34} y={y + 4} fontSize={11} fill={col} fontWeight="700">
               {fd.cob[i].trim()}mm
             </text>
           ) : null}
@@ -439,26 +437,46 @@ export function SvgPerfilVertical({
       {/* Cotas de espaçamento entre estribos (esquerda) */}
       {estrY.map((y, i) => i < estrY.length - 1 ? (
         <g key={`ev-${i}`}>
-          <line x1={ox - 12} y1={y} x2={ox - 12} y2={estrY[i + 1]} stroke={GOLD} strokeWidth={1.1} />
-          <line x1={ox - 16} y1={y} x2={ox - 8} y2={y} stroke={GOLD} strokeWidth={1.1} />
-          <line x1={ox - 16} y1={estrY[i + 1]} x2={ox - 8} y2={estrY[i + 1]} stroke={GOLD} strokeWidth={1.1} />
-          <text x={ox - 18} y={(y + estrY[i + 1]) / 2 + 3} textAnchor="end" fontSize={9} fill={GOLD} fontWeight="700">
+          <line x1={ox - 14} y1={y} x2={ox - 14} y2={estrY[i + 1]} stroke={GOLD} strokeWidth={1.2} />
+          <line x1={ox - 19} y1={y} x2={ox - 9} y2={y} stroke={GOLD} strokeWidth={1.2} />
+          <line x1={ox - 19} y1={estrY[i + 1]} x2={ox - 9} y2={estrY[i + 1]} stroke={GOLD} strokeWidth={1.2} />
+          <text x={ox - 22} y={(y + estrY[i + 1]) / 2 + 4} textAnchor="end" fontSize={11} fill={GOLD} fontWeight="700">
             {espVals[i] !== null ? `${espVals[i]}cm` : '—'}
           </text>
         </g>
       ) : null)}
 
-      {/* Cotas de espaçamento entre barras longitudinais (embaixo) */}
+      {/* Linha de cota inferior: Cob. Perp. Esq (ox -> B1) + Esp. Long (B1..Bm) + Cob. Perp. Dir (Bm -> ox+cw) */}
+      {cobPerpEsq && (
+        <g>
+          <line x1={ox} y1={cotaBotY} x2={barX[0]} y2={cotaBotY} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={ox} y1={cotaBotY - 5} x2={ox} y2={cotaBotY + 5} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={barX[0]} y1={cotaBotY - 5} x2={barX[0]} y2={cotaBotY + 5} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <text x={(ox + barX[0]) / 2} y={cotaBotY + 18} textAnchor="middle" fontSize={11} fill={PERP_COLOR} fontWeight="700">
+            {cobPerpEsq}mm
+          </text>
+        </g>
+      )}
       {barX.map((x, i) => i < barX.length - 1 ? (
         <g key={`eh-${i}`}>
-          <line x1={x} y1={oy + ch + 13} x2={barX[i + 1]} y2={oy + ch + 13} stroke={GOLD} strokeWidth={1.1} />
-          <line x1={x} y1={oy + ch + 9} x2={x} y2={oy + ch + 17} stroke={GOLD} strokeWidth={1.1} />
-          <line x1={barX[i + 1]} y1={oy + ch + 9} x2={barX[i + 1]} y2={oy + ch + 17} stroke={GOLD} strokeWidth={1.1} />
-          <text x={(x + barX[i + 1]) / 2} y={oy + ch + 28} textAnchor="middle" fontSize={9} fill={GOLD} fontWeight="700">
+          <line x1={x} y1={cotaBotY} x2={barX[i + 1]} y2={cotaBotY} stroke={GOLD} strokeWidth={1.2} />
+          <line x1={x} y1={cotaBotY - 5} x2={x} y2={cotaBotY + 5} stroke={GOLD} strokeWidth={1.2} />
+          <line x1={barX[i + 1]} y1={cotaBotY - 5} x2={barX[i + 1]} y2={cotaBotY + 5} stroke={GOLD} strokeWidth={1.2} />
+          <text x={(x + barX[i + 1]) / 2} y={cotaBotY + 18} textAnchor="middle" fontSize={11} fill={GOLD} fontWeight="700">
             {espHVals[i] !== null ? `${espHVals[i]}cm` : '—'}
           </text>
         </g>
       ) : null)}
+      {cobPerpDir && (
+        <g>
+          <line x1={barX[nb - 1]} y1={cotaBotY} x2={ox + cw} y2={cotaBotY} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={barX[nb - 1]} y1={cotaBotY - 5} x2={barX[nb - 1]} y2={cotaBotY + 5} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={ox + cw} y1={cotaBotY - 5} x2={ox + cw} y2={cotaBotY + 5} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <text x={(barX[nb - 1] + ox + cw) / 2} y={cotaBotY + 18} textAnchor="middle" fontSize={11} fill={PERP_COLOR} fontWeight="700">
+            {cobPerpDir}mm
+          </text>
+        </g>
+      )}
     </svg>
   );
 }
@@ -483,31 +501,34 @@ export function SvgPerfilHorizontal({
     return !isNaN(n) && n > 0 ? n : null;
   });
 
-  // Margens dedicadas: zero colisão
-  const ML = 64; // cotas de espaçamento longitudinal (esquerda)
-  const MR = 92; // labels B1..Bm + cobrimento face / perpendicular (direita)
-  const MT = 40; // labels E1..En + cobrimento (topo)
-  const MB = 38; // cotas de espaçamento entre estribos (embaixo)
+  const cobPerpSup = fd.cobPerp?.[0]?.trim() || '';
+  const cobPerpInf = nb > 1 ? (fd.cobPerp?.[nb - 1]?.trim() || '') : '';
 
-  const minStepX = 56;
-  const minStepY = 38;
-  const padX = 32;
-  const padY = 24;
+  // Margens generosas para fonte maior (11–12px)
+  const ML = 78; // linha de cota esquerda (cob. perp. sup + esp. long + cob. perp. inf)
+  const MR = 92; // labels B1..Bm + cobrimento na face (direita)
+  const MT = 46; // labels E1..En + cobrimento (topo)
+  const MB = 46; // cotas de espaçamento entre estribos (embaixo)
+
+  const minStepX = 68;
+  const minStepY = 44;
+  const padX = 38;
+  const padY = cobPerpSup || cobPerpInf ? 38 : 28;
 
   const rawGapX = espEstr.map(v => v ?? 15);
   const rawGapY = espLong.map(v => v ?? 10);
 
   const minRawX = rawGapX.length > 0 ? Math.min(...rawGapX) : 15;
-  const scX = Math.max(minStepX / Math.max(minRawX, 1), 3.4);
-  const gapXPx = rawGapX.map(v => Math.min(92, Math.max(minStepX, v * scX)));
+  const scX = Math.max(minStepX / Math.max(minRawX, 1), 3.8);
+  const gapXPx = rawGapX.map(v => Math.min(104, Math.max(minStepX, v * scX)));
   const totalEstriboW = gapXPx.reduce((a, b) => a + b, 0);
-  const cw = Math.max(180, totalEstriboW + 2 * padX);
+  const cw = Math.max(210, totalEstriboW + 2 * padX);
 
   const minRawY = rawGapY.length > 0 ? Math.min(...rawGapY) : 10;
-  const scY = Math.max(minStepY / Math.max(minRawY, 1), 3.2);
-  const gapYPx = rawGapY.map(v => Math.min(68, Math.max(minStepY, v * scY)));
+  const scY = Math.max(minStepY / Math.max(minRawY, 1), 3.6);
+  const gapYPx = rawGapY.map(v => Math.min(76, Math.max(minStepY, v * scY)));
   const totalBarraH = gapYPx.reduce((a, b) => a + b, 0);
-  const ch = Math.max(88, totalBarraH + 2 * padY);
+  const ch = Math.max(108, totalBarraH + 2 * padY);
 
   const W = ML + cw + MR;
   const H = MT + ch + MB;
@@ -531,26 +552,27 @@ export function SvgPerfilHorizontal({
     for (let i = 0; i < ne - 1; i++) estrX.push(estrX[estrX.length - 1] + gapXPx[i]);
   }
 
+  const cotaEsqX = ox - 14;
+
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace', display: 'block' }}>
       {/* Contorno horizontal da viga */}
-      <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
-      <line x1={ox} y1={oy - 3} x2={ox} y2={oy + ch + 3} stroke={PRIMARY} strokeWidth={1.5} strokeDasharray="3,2" />
-      <line x1={ox + cw} y1={oy - 3} x2={ox + cw} y2={oy + ch + 3} stroke={PRIMARY} strokeWidth={1.5} strokeDasharray="3,2" />
+      <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2.2} />
+      <line x1={ox} y1={oy - 3} x2={ox} y2={oy + ch + 3} stroke={PRIMARY} strokeWidth={1.6} strokeDasharray="3,2" />
+      <line x1={ox + cw} y1={oy - 3} x2={ox + cw} y2={oy + ch + 3} stroke={PRIMARY} strokeWidth={1.6} strokeDasharray="3,2" />
 
-      {/* Barras longitudinais (HORIZONTAIS) + labels B1..Bm e cobrimento face / perpendicular à direita */}
+      {/* Barras longitudinais (HORIZONTAIS) + labels B1..Bm e cobrimento na face à direita */}
       {barY.map((y, i) => {
         const cobLong = fd.cobLong?.[i]?.trim();
-        const cobPerp = fd.cobPerp?.[i]?.trim();
         return (
           <g key={`b-${i}`}>
-            <line x1={ox + 6} y1={y} x2={ox + cw - 6} y2={y} stroke={col} strokeWidth={2.2} />
-            <text x={ox + cw + 8} y={y + (cobPerp ? -2 : 3)} fontSize={9} fill={PRIMARY} fontWeight="700">
-              B{i + 1}{cobLong ? ` ${cobLong}mm` : ''}
+            <line x1={ox + 6} y1={y} x2={ox + cw - 6} y2={y} stroke={col} strokeWidth={2.4} />
+            <text x={ox + cw + 10} y={y + 4} fontSize={11} fill={PRIMARY} fontWeight="700">
+              B{i + 1}
             </text>
-            {cobPerp ? (
-              <text x={ox + cw + 8} y={y + 9} fontSize={8.5} fill={PERP_COLOR} fontWeight="700">
-                ⊥{cobPerp}mm
+            {cobLong ? (
+              <text x={ox + cw + 34} y={y + 4} fontSize={11} fill={col} fontWeight="700">
+                {cobLong}mm
               </text>
             ) : null}
           </g>
@@ -560,37 +582,57 @@ export function SvgPerfilHorizontal({
       {/* Estribos (VERTICAIS) + labels E1..En e cobrimento no topo */}
       {estrX.map((x, i) => (
         <g key={`e-${i}`}>
-          <line x1={x} y1={oy + 10} x2={x} y2={oy + ch - 10} stroke={col} strokeWidth={2.2} />
-          <text x={x} y={oy - 20} textAnchor="middle" fontSize={9} fill={SUBTEXT} fontWeight="700">E{i + 1}</text>
+          <line x1={x} y1={oy + 10} x2={x} y2={oy + ch - 10} stroke={col} strokeWidth={2.4} />
+          <text x={x} y={oy - 24} textAnchor="middle" fontSize={11} fill={SUBTEXT} fontWeight="700">E{i + 1}</text>
           {fd.cob[i]?.trim() ? (
-            <text x={x} y={oy - 7} textAnchor="middle" fontSize={9} fill={col} fontWeight="700">{fd.cob[i].trim()}mm</text>
+            <text x={x} y={oy - 9} textAnchor="middle" fontSize={11} fill={col} fontWeight="700">{fd.cob[i].trim()}mm</text>
           ) : null}
         </g>
       ))}
 
-      {/* Cotas de espaçamento entre estribos (embaixo, sem texto colidindo) */}
+      {/* Cotas de espaçamento entre estribos (embaixo) */}
       {estrX.map((x, i) => i < estrX.length - 1 ? (
         <g key={`ev-${i}`}>
-          <line x1={x} y1={oy + ch + 13} x2={estrX[i + 1]} y2={oy + ch + 13} stroke={GOLD} strokeWidth={1.1} />
-          <line x1={x} y1={oy + ch + 9} x2={x} y2={oy + ch + 17} stroke={GOLD} strokeWidth={1.1} />
-          <line x1={estrX[i + 1]} y1={oy + ch + 9} x2={estrX[i + 1]} y2={oy + ch + 17} stroke={GOLD} strokeWidth={1.1} />
-          <text x={(x + estrX[i + 1]) / 2} y={oy + ch + 28} textAnchor="middle" fontSize={9} fill={GOLD} fontWeight="700">
+          <line x1={x} y1={oy + ch + 16} x2={estrX[i + 1]} y2={oy + ch + 16} stroke={GOLD} strokeWidth={1.2} />
+          <line x1={x} y1={oy + ch + 11} x2={x} y2={oy + ch + 21} stroke={GOLD} strokeWidth={1.2} />
+          <line x1={estrX[i + 1]} y1={oy + ch + 11} x2={estrX[i + 1]} y2={oy + ch + 21} stroke={GOLD} strokeWidth={1.2} />
+          <text x={(x + estrX[i + 1]) / 2} y={oy + ch + 34} textAnchor="middle" fontSize={11} fill={GOLD} fontWeight="700">
             {espEstr[i] !== null ? `${espEstr[i]}cm` : '—'}
           </text>
         </g>
       ) : null)}
 
-      {/* Cotas de espaçamento longitudinal (esquerda) */}
+      {/* Linha de cota esquerda: Cob. Perp. Sup (oy -> B1) + Esp. Long (B1..Bm) + Cob. Perp. Inf (Bm -> oy+ch) */}
+      {cobPerpSup && (
+        <g>
+          <line x1={cotaEsqX} y1={oy} x2={cotaEsqX} y2={barY[0]} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={cotaEsqX - 5} y1={oy} x2={cotaEsqX + 5} y2={oy} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={cotaEsqX - 5} y1={barY[0]} x2={cotaEsqX + 5} y2={barY[0]} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <text x={cotaEsqX - 8} y={(oy + barY[0]) / 2 + 4} textAnchor="end" fontSize={11} fill={PERP_COLOR} fontWeight="700">
+            {cobPerpSup}mm
+          </text>
+        </g>
+      )}
       {barY.map((y, i) => i < barY.length - 1 ? (
         <g key={`eh-${i}`}>
-          <line x1={ox - 12} y1={y} x2={ox - 12} y2={barY[i + 1]} stroke={GOLD} strokeWidth={1.1} />
-          <line x1={ox - 16} y1={y} x2={ox - 8} y2={y} stroke={GOLD} strokeWidth={1.1} />
-          <line x1={ox - 16} y1={barY[i + 1]} x2={ox - 8} y2={barY[i + 1]} stroke={GOLD} strokeWidth={1.1} />
-          <text x={ox - 18} y={(y + barY[i + 1]) / 2 + 3} textAnchor="end" fontSize={9} fill={GOLD} fontWeight="700">
+          <line x1={cotaEsqX} y1={y} x2={cotaEsqX} y2={barY[i + 1]} stroke={GOLD} strokeWidth={1.2} />
+          <line x1={cotaEsqX - 5} y1={y} x2={cotaEsqX + 5} y2={y} stroke={GOLD} strokeWidth={1.2} />
+          <line x1={cotaEsqX - 5} y1={barY[i + 1]} x2={cotaEsqX + 5} y2={barY[i + 1]} stroke={GOLD} strokeWidth={1.2} />
+          <text x={cotaEsqX - 8} y={(y + barY[i + 1]) / 2 + 4} textAnchor="end" fontSize={11} fill={GOLD} fontWeight="700">
             {espLong[i] !== null ? `${espLong[i]}cm` : '—'}
           </text>
         </g>
       ) : null)}
+      {cobPerpInf && (
+        <g>
+          <line x1={cotaEsqX} y1={barY[nb - 1]} x2={cotaEsqX} y2={oy + ch} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={cotaEsqX - 5} y1={barY[nb - 1]} x2={cotaEsqX + 5} y2={barY[nb - 1]} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={cotaEsqX - 5} y1={oy + ch} x2={cotaEsqX + 5} y2={oy + ch} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <text x={cotaEsqX - 8} y={(barY[nb - 1] + oy + ch) / 2 + 4} textAnchor="end" fontSize={11} fill={PERP_COLOR} fontWeight="700">
+            {cobPerpInf}mm
+          </text>
+        </g>
+      )}
     </svg>
   );
 }
@@ -625,16 +667,21 @@ export function SvgMalhaLaje({
   const barrasH = ordenarBarras(lajeData.barrasH);
   const barrasV = ordenarBarras(lajeData.barrasV);
 
-  // Margens generosas para nunca cortar labels H/V ou cotas
-  const ML = 64;
-  const MR = modo === 'leitura' ? 112 : 56;
-  const MT = modo === 'leitura' ? 54 : 34;
-  const MB = 42;
+  const cobPerpHSup = barrasH[0]?.cobPerp?.trim() || '';
+  const cobPerpHInf = barrasH.length > 1 ? (barrasH[barrasH.length - 1]?.cobPerp?.trim() || '') : '';
+  const cobPerpVEsq = barrasV[0]?.cobPerp?.trim() || '';
+  const cobPerpVDir = barrasV.length > 1 ? (barrasV[barrasV.length - 1]?.cobPerp?.trim() || '') : '';
+
+  // Margens generosas para fonte 11px sem cortes
+  const ML = 78;
+  const MR = modo === 'leitura' ? 104 : 64;
+  const MT = modo === 'leitura' ? 48 : 36;
+  const MB = 48;
 
   // Escala dinâmica: cresce quando há muitas barras para manter legibilidade
-  const baseArea = 280;
-  const needW = Math.max(baseArea, barrasV.length * 46);
-  const needH = Math.max(baseArea, barrasH.length * 36);
+  const baseArea = 300;
+  const needW = Math.max(baseArea, barrasV.length * 56);
+  const needH = Math.max(baseArea, barrasH.length * 44);
   const sc = Math.max(needW / lx, needH / ly);
   const drawW = Math.round(lx * sc);
   const drawH = Math.round(ly * sc);
@@ -708,6 +755,8 @@ export function SvgMalhaLaje({
 
   const labelStepX = Math.max(passo, Math.ceil(lx / 5 / passo) * passo);
   const labelStepY = Math.max(passo, Math.ceil(ly / 5 / passo) * passo);
+  const cotaEsqX = ox - 14;
+  const cotaBotY = oy + drawH + 16;
 
   return (
     <svg
@@ -726,14 +775,14 @@ export function SvgMalhaLaje({
       }}
     >
       {/* Fundo da área de concreto */}
-      <rect x={ox} y={oy} width={drawW} height={drawH} fill="#F8FAFC" stroke={PRIMARY} strokeWidth={2} />
+      <rect x={ox} y={oy} width={drawW} height={drawH} fill="#F8FAFC" stroke={PRIMARY} strokeWidth={2.2} />
 
       {/* Linhas da malha quadrada */}
       {gridXs.map(x => (
         <g key={`gx-${x}`}>
           <line x1={ox + x * sc} y1={oy} x2={ox + x * sc} y2={oy + drawH} stroke="#DCE3EE" strokeWidth={0.8} />
           {modo === 'editor' && (x % labelStepX === 0 || x === lx) && (
-            <text x={ox + x * sc} y={oy + drawH + 16} textAnchor="middle" fontSize={8.5} fill={SUBTEXT}>{x}</text>
+            <text x={ox + x * sc} y={oy + drawH + 18} textAnchor="middle" fontSize={10.5} fill={SUBTEXT} fontWeight="600">{x}</text>
           )}
         </g>
       ))}
@@ -741,7 +790,7 @@ export function SvgMalhaLaje({
         <g key={`gy-${y}`}>
           <line x1={ox} y1={oy + y * sc} x2={ox + drawW} y2={oy + y * sc} stroke="#DCE3EE" strokeWidth={0.8} />
           {modo === 'editor' && (y % labelStepY === 0 || y === ly) && (
-            <text x={ox - 8} y={oy + y * sc + 3} textAnchor="end" fontSize={8.5} fill={SUBTEXT}>{y}</text>
+            <text x={ox - 10} y={oy + y * sc + 4} textAnchor="end" fontSize={10.5} fill={SUBTEXT} fontWeight="600">{y}</text>
           )}
         </g>
       ))}
@@ -749,16 +798,16 @@ export function SvgMalhaLaje({
       {/* Guia de hover no modo editor */}
       {modo === 'editor' && hoverPos && ferramenta === 'addH' && (
         <g pointerEvents="none">
-          <line x1={ox} y1={oy + hoverPos.yCm * sc} x2={ox + drawW} y2={oy + hoverPos.yCm * sc} stroke={FACE_COLORS.dirH} strokeWidth={2} strokeDasharray="5,4" opacity={0.8} />
-          <rect x={ox + drawW + 5} y={oy + hoverPos.yCm * sc - 8} width={46} height={16} rx={3} fill={FACE_COLORS.dirH} />
-          <text x={ox + drawW + 28} y={oy + hoverPos.yCm * sc + 3} textAnchor="middle" fontSize={8.5} fill="#fff" fontWeight="700">y={hoverPos.yCm}</text>
+          <line x1={ox} y1={oy + hoverPos.yCm * sc} x2={ox + drawW} y2={oy + hoverPos.yCm * sc} stroke={FACE_COLORS.dirH} strokeWidth={2.2} strokeDasharray="5,4" opacity={0.85} />
+          <rect x={ox + drawW + 6} y={oy + hoverPos.yCm * sc - 9} width={52} height={18} rx={3} fill={FACE_COLORS.dirH} />
+          <text x={ox + drawW + 32} y={oy + hoverPos.yCm * sc + 4} textAnchor="middle" fontSize={10} fill="#fff" fontWeight="700">y={hoverPos.yCm}</text>
         </g>
       )}
       {modo === 'editor' && hoverPos && ferramenta === 'addV' && (
         <g pointerEvents="none">
-          <line x1={ox + hoverPos.xCm * sc} y1={oy} x2={ox + hoverPos.xCm * sc} y2={oy + drawH} stroke={FACE_COLORS.dirV} strokeWidth={2} strokeDasharray="5,4" opacity={0.8} />
-          <rect x={ox + hoverPos.xCm * sc - 23} y={oy - 22} width={46} height={16} rx={3} fill={FACE_COLORS.dirV} />
-          <text x={ox + hoverPos.xCm * sc} y={oy - 11} textAnchor="middle" fontSize={8.5} fill="#fff" fontWeight="700">x={hoverPos.xCm}</text>
+          <line x1={ox + hoverPos.xCm * sc} y1={oy} x2={ox + hoverPos.xCm * sc} y2={oy + drawH} stroke={FACE_COLORS.dirV} strokeWidth={2.2} strokeDasharray="5,4" opacity={0.85} />
+          <rect x={ox + hoverPos.xCm * sc - 26} y={oy - 24} width={52} height={18} rx={3} fill={FACE_COLORS.dirV} />
+          <text x={ox + hoverPos.xCm * sc} y={oy - 11} textAnchor="middle" fontSize={10} fill="#fff" fontWeight="700">x={hoverPos.xCm}</text>
         </g>
       )}
 
@@ -767,7 +816,6 @@ export function SvgMalhaLaje({
         const y = oy + b.pos * sc;
         const selected = barraSelecionadaId === b.id;
         const cobTxt = b.cob?.trim();
-        const perpTxt = b.cobPerp?.trim();
         return (
           <g
             key={b.id}
@@ -775,15 +823,10 @@ export function SvgMalhaLaje({
             onClick={modo === 'leitura' ? () => onSelectBarra?.(b.id) : undefined}
           >
             <line x1={ox} y1={y} x2={ox + drawW} y2={y} stroke="transparent" strokeWidth={12} />
-            <line x1={ox + 2} y1={y} x2={ox + drawW - 2} y2={y} stroke={FACE_COLORS.dirH} strokeWidth={selected ? 3.5 : 2.2} />
-            <text x={ox + drawW + 8} y={y + (perpTxt ? -1 : 3)} fontSize={8.5} fill={FACE_COLORS.dirH} fontWeight="700">
+            <line x1={ox + 2} y1={y} x2={ox + drawW - 2} y2={y} stroke={FACE_COLORS.dirH} strokeWidth={selected ? 3.8 : 2.4} />
+            <text x={ox + drawW + 10} y={y + 4} fontSize={11} fill={FACE_COLORS.dirH} fontWeight="700">
               H{i + 1}{cobTxt ? ` ${cobTxt}mm` : ''}
             </text>
-            {perpTxt ? (
-              <text x={ox + drawW + 8} y={y + 10} fontSize={8} fill={PERP_COLOR} fontWeight="700">
-                ⊥{perpTxt}mm
-              </text>
-            ) : null}
           </g>
         );
       })}
@@ -793,7 +836,6 @@ export function SvgMalhaLaje({
         const x = ox + b.pos * sc;
         const selected = barraSelecionadaId === b.id;
         const cobTxt = b.cob?.trim();
-        const perpTxt = b.cobPerp?.trim();
         return (
           <g
             key={b.id}
@@ -801,18 +843,13 @@ export function SvgMalhaLaje({
             onClick={modo === 'leitura' ? () => onSelectBarra?.(b.id) : undefined}
           >
             <line x1={x} y1={oy} x2={x} y2={oy + drawH} stroke="transparent" strokeWidth={12} />
-            <line x1={x} y1={oy + 2} x2={x} y2={oy + drawH - 2} stroke={FACE_COLORS.dirV} strokeWidth={selected ? 3.5 : 2.2} />
-            <text x={x} y={oy - (perpTxt ? 28 : cobTxt ? 18 : 8)} textAnchor="middle" fontSize={8.5} fill={FACE_COLORS.dirV} fontWeight="700">
+            <line x1={x} y1={oy + 2} x2={x} y2={oy + drawH - 2} stroke={FACE_COLORS.dirV} strokeWidth={selected ? 3.8 : 2.4} />
+            <text x={x} y={oy - (cobTxt ? 24 : 10)} textAnchor="middle" fontSize={11} fill={FACE_COLORS.dirV} fontWeight="700">
               V{i + 1}
             </text>
             {cobTxt ? (
-              <text x={x} y={oy - (perpTxt ? 17 : 7)} textAnchor="middle" fontSize={8} fill={FACE_COLORS.dirV} fontWeight="700">
+              <text x={x} y={oy - 9} textAnchor="middle" fontSize={10.5} fill={FACE_COLORS.dirV} fontWeight="700">
                 {cobTxt}mm
-              </text>
-            ) : null}
-            {perpTxt ? (
-              <text x={x} y={oy - 6} textAnchor="middle" fontSize={8} fill={PERP_COLOR} fontWeight="700">
-                ⊥{perpTxt}mm
               </text>
             ) : null}
           </g>
@@ -826,16 +863,26 @@ export function SvgMalhaLaje({
             key={`${bh.id}-${bv.id}`}
             cx={ox + bv.pos * sc}
             cy={oy + bh.pos * sc}
-            r={2.5}
+            r={2.8}
             fill="#fff"
             stroke={PRIMARY}
-            strokeWidth={1.1}
+            strokeWidth={1.2}
             pointerEvents="none"
           />
         )),
       )}
 
-      {/* Cotas de espaçamento entre barras H (esquerda, modo leitura) */}
+      {/* Linha de cota esquerda (modo leitura): Cob. Perp. Sup + Esp. entre H + Cob. Perp. Inf */}
+      {modo === 'leitura' && cobPerpHSup && barrasH.length > 0 && (
+        <g>
+          <line x1={cotaEsqX} y1={oy} x2={cotaEsqX} y2={oy + barrasH[0].pos * sc} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={cotaEsqX - 5} y1={oy} x2={cotaEsqX + 5} y2={oy} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={cotaEsqX - 5} y1={oy + barrasH[0].pos * sc} x2={cotaEsqX + 5} y2={oy + barrasH[0].pos * sc} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <text x={cotaEsqX - 8} y={(oy + oy + barrasH[0].pos * sc) / 2 + 4} textAnchor="end" fontSize={11} fill={PERP_COLOR} fontWeight="700">
+            {cobPerpHSup}mm
+          </text>
+        </g>
+      )}
       {modo === 'leitura' && barrasH.map((b, i) => {
         if (i >= barrasH.length - 1) return null;
         const y1 = oy + b.pos * sc;
@@ -843,17 +890,37 @@ export function SvgMalhaLaje({
         const esp = Math.round((barrasH[i + 1].pos - b.pos) * 10) / 10;
         return (
           <g key={`esph-${b.id}`}>
-            <line x1={ox - 12} y1={y1} x2={ox - 12} y2={y2} stroke={GOLD} strokeWidth={1.1} />
-            <line x1={ox - 16} y1={y1} x2={ox - 8} y2={y1} stroke={GOLD} strokeWidth={1.1} />
-            <line x1={ox - 16} y1={y2} x2={ox - 8} y2={y2} stroke={GOLD} strokeWidth={1.1} />
-            <text x={ox - 18} y={(y1 + y2) / 2 + 3} textAnchor="end" fontSize={8.5} fill={GOLD} fontWeight="700">
+            <line x1={cotaEsqX} y1={y1} x2={cotaEsqX} y2={y2} stroke={GOLD} strokeWidth={1.2} />
+            <line x1={cotaEsqX - 5} y1={y1} x2={cotaEsqX + 5} y2={y1} stroke={GOLD} strokeWidth={1.2} />
+            <line x1={cotaEsqX - 5} y1={y2} x2={cotaEsqX + 5} y2={y2} stroke={GOLD} strokeWidth={1.2} />
+            <text x={cotaEsqX - 8} y={(y1 + y2) / 2 + 4} textAnchor="end" fontSize={11} fill={GOLD} fontWeight="700">
               {esp}cm
             </text>
           </g>
         );
       })}
+      {modo === 'leitura' && cobPerpHInf && barrasH.length > 1 && (
+        <g>
+          <line x1={cotaEsqX} y1={oy + barrasH[barrasH.length - 1].pos * sc} x2={cotaEsqX} y2={oy + drawH} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={cotaEsqX - 5} y1={oy + barrasH[barrasH.length - 1].pos * sc} x2={cotaEsqX + 5} y2={oy + barrasH[barrasH.length - 1].pos * sc} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={cotaEsqX - 5} y1={oy + drawH} x2={cotaEsqX + 5} y2={oy + drawH} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <text x={cotaEsqX - 8} y={(oy + barrasH[barrasH.length - 1].pos * sc + oy + drawH) / 2 + 4} textAnchor="end" fontSize={11} fill={PERP_COLOR} fontWeight="700">
+            {cobPerpHInf}mm
+          </text>
+        </g>
+      )}
 
-      {/* Cotas de espaçamento entre barras V (embaixo, modo leitura) */}
+      {/* Linha de cota inferior (modo leitura): Cob. Perp. Esq + Esp. entre V + Cob. Perp. Dir */}
+      {modo === 'leitura' && cobPerpVEsq && barrasV.length > 0 && (
+        <g>
+          <line x1={ox} y1={cotaBotY} x2={ox + barrasV[0].pos * sc} y2={cotaBotY} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={ox} y1={cotaBotY - 5} x2={ox} y2={cotaBotY + 5} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={ox + barrasV[0].pos * sc} y1={cotaBotY - 5} x2={ox + barrasV[0].pos * sc} y2={cotaBotY + 5} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <text x={(ox + ox + barrasV[0].pos * sc) / 2} y={cotaBotY + 18} textAnchor="middle" fontSize={11} fill={PERP_COLOR} fontWeight="700">
+            {cobPerpVEsq}mm
+          </text>
+        </g>
+      )}
       {modo === 'leitura' && barrasV.map((b, i) => {
         if (i >= barrasV.length - 1) return null;
         const x1 = ox + b.pos * sc;
@@ -861,15 +928,25 @@ export function SvgMalhaLaje({
         const esp = Math.round((barrasV[i + 1].pos - b.pos) * 10) / 10;
         return (
           <g key={`espv-${b.id}`}>
-            <line x1={x1} y1={oy + drawH + 13} x2={x2} y2={oy + drawH + 13} stroke={GOLD} strokeWidth={1.1} />
-            <line x1={x1} y1={oy + drawH + 9} x2={x1} y2={oy + drawH + 17} stroke={GOLD} strokeWidth={1.1} />
-            <line x1={x2} y1={oy + drawH + 9} x2={x2} y2={oy + drawH + 17} stroke={GOLD} strokeWidth={1.1} />
-            <text x={(x1 + x2) / 2} y={oy + drawH + 28} textAnchor="middle" fontSize={8.5} fill={GOLD} fontWeight="700">
+            <line x1={x1} y1={cotaBotY} x2={x2} y2={cotaBotY} stroke={GOLD} strokeWidth={1.2} />
+            <line x1={x1} y1={cotaBotY - 5} x2={x1} y2={cotaBotY + 5} stroke={GOLD} strokeWidth={1.2} />
+            <line x1={x2} y1={cotaBotY - 5} x2={x2} y2={cotaBotY + 5} stroke={GOLD} strokeWidth={1.2} />
+            <text x={(x1 + x2) / 2} y={cotaBotY + 18} textAnchor="middle" fontSize={11} fill={GOLD} fontWeight="700">
               {esp}cm
             </text>
           </g>
         );
       })}
+      {modo === 'leitura' && cobPerpVDir && barrasV.length > 1 && (
+        <g>
+          <line x1={ox + barrasV[barrasV.length - 1].pos * sc} y1={cotaBotY} x2={ox + drawW} y2={cotaBotY} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={ox + barrasV[barrasV.length - 1].pos * sc} y1={cotaBotY - 5} x2={ox + barrasV[barrasV.length - 1].pos * sc} y2={cotaBotY + 5} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <line x1={ox + drawW} y1={cotaBotY - 5} x2={ox + drawW} y2={cotaBotY + 5} stroke={PERP_COLOR} strokeWidth={1.3} />
+          <text x={(ox + barrasV[barrasV.length - 1].pos * sc + ox + drawW) / 2} y={cotaBotY + 18} textAnchor="middle" fontSize={11} fill={PERP_COLOR} fontWeight="700">
+            {cobPerpVDir}mm
+          </text>
+        </g>
+      )}
     </svg>
   );
 }
