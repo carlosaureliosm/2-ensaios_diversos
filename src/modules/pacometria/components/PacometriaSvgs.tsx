@@ -180,11 +180,11 @@ export function svgOpcaoLaje(id: OpcaoLaje): string {
 
 // ── Etapa 2: Seção Transversal Pilar ─────────────────────────────
 export function SvgSecaoPilar({
-  X, Y, C1, C2, faces, barras,
+  X, Y, C1, C2, faces, barras, faceDestaque,
 }: {
-  X: number; Y: number; C1: number; C2: number; faces: string[]; barras: Record<string, number>;
+  X: number; Y: number; C1: number; C2: number; faces: string[]; barras: Record<string, number>; faceDestaque?: string | null;
 }) {
-  const W = 360, H = 264, MX = 86, MY = 58;
+  const W = 340, H = 264, MX = 76, MY = 54;
   const sc = Math.min((W - 2 * MX) / Math.max(X, 1), (H - 2 * MY) / Math.max(Y, 1));
   const cw = X * sc, ch = Y * sc;
   const ox = (W - cw) / 2, oy = (H - ch) / 2 - 4;
@@ -203,9 +203,9 @@ export function SvgSecaoPilar({
     } else {
       const x = face === '1Y' ? ox + c1 : ox + cw - c1;
       const avail = ch - 2 * c2;
-      // Desenha todas as barras da face lateral (evitando duplicar exatamente o canto se 1X/2X também estiverem livres)
-      const skipTop = faces.includes('2X') && n > 2;
-      const skipBot = faces.includes('1X') && n > 2;
+      const isDestaque = faceDestaque === face;
+      const skipTop = !isDestaque && faces.includes('2X') && n > 2;
+      const skipBot = !isDestaque && faces.includes('1X') && n > 2;
       const start = skipTop ? 1 : 0;
       const end = skipBot ? n - 1 : n;
       for (let i = start; i < end; i++) {
@@ -215,14 +215,23 @@ export function SvgSecaoPilar({
     return pts;
   }
 
+  // Renderiza a face em destaque por último (por cima das outras)
+  const ordemFaces = (['1X', '2X', '1Y', '2Y'] as string[]).sort((a, b) =>
+    a === faceDestaque ? 1 : b === faceDestaque ? -1 : 0,
+  );
+  const destCol = faceDestaque ? (FACE_COLORS[faceDestaque] || PRIMARY) : PRIMARY;
+
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace', display: 'block' }}>
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ maxWidth: '100%', height: 'auto', fontFamily: 'monospace', display: 'block' }}>
       <defs>
         <pattern id="pilarHatchPreview" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="6" stroke="#94A3B8" strokeWidth="1.2" />
         </pattern>
+        <marker id="arr-pilar-dest" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 z" fill={destCol} />
+        </marker>
       </defs>
-      {/* Hachura nas faces obstruídas (sem textos 1X/2X/1Y/2Y) */}
+      {/* Hachura nas faces obstruídas */}
       {!faces.includes('2X') && (
         <rect x={ox} y={oy - 14} width={cw} height={14} fill="url(#pilarHatchPreview)" stroke="#CBD5E1" strokeWidth={0.8} />
       )}
@@ -237,36 +246,66 @@ export function SvgSecaoPilar({
       )}
       <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
       <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1.1} strokeDasharray="3,2" />
-      {(['1X', '2X', '1Y', '2Y'] as string[]).map(f =>
-        faces.includes(f) ? barsInFace(f).map((p, i) => (
-          <g key={`${f}-${i}`}>
-            <circle cx={p.x} cy={p.y} r={BAR + 1.8} fill="white" stroke={FACE_COLORS[f]} strokeWidth={1.5} />
-            <circle cx={p.x} cy={p.y} r={BAR * 0.55} fill={FACE_COLORS[f]} />
-          </g>
-        )) : null,
+
+      {/* Destaque visual (aresta grossa + seta) na face em edição */}
+      {faceDestaque === '1X' && faces.includes('1X') && (
+        <g>
+          <line x1={ox} y1={oy + ch} x2={ox + cw} y2={oy + ch} stroke={destCol} strokeWidth={4.5} />
+          <line x1={ox + cw / 2} y1={oy + ch + 52} x2={ox + cw / 2} y2={oy + ch + 36} stroke={destCol} strokeWidth={2.5} markerEnd="url(#arr-pilar-dest)" />
+        </g>
       )}
+      {faceDestaque === '2X' && faces.includes('2X') && (
+        <g>
+          <line x1={ox} y1={oy} x2={ox + cw} y2={oy} stroke={destCol} strokeWidth={4.5} />
+          <line x1={ox + cw / 2} y1={oy - 28} x2={ox + cw / 2} y2={oy - 8} stroke={destCol} strokeWidth={2.5} markerEnd="url(#arr-pilar-dest)" />
+        </g>
+      )}
+      {faceDestaque === '1Y' && faces.includes('1Y') && (
+        <g>
+          <line x1={ox} y1={oy} x2={ox} y2={oy + ch} stroke={destCol} strokeWidth={4.5} />
+          <line x1={ox - 62} y1={oy + ch / 2} x2={ox - 44} y2={oy + ch / 2} stroke={destCol} strokeWidth={2.5} markerEnd="url(#arr-pilar-dest)" />
+        </g>
+      )}
+      {faceDestaque === '2Y' && faces.includes('2Y') && (
+        <g>
+          <line x1={ox + cw} y1={oy} x2={ox + cw} y2={oy + ch} stroke={destCol} strokeWidth={4.5} />
+          <line x1={ox + cw + 30} y1={oy + ch / 2} x2={ox + cw + 9} y2={oy + ch / 2} stroke={destCol} strokeWidth={2.5} markerEnd="url(#arr-pilar-dest)" />
+        </g>
+      )}
+
+      {ordemFaces.map(f => {
+        if (!faces.includes(f)) return null;
+        const isDest = f === faceDestaque;
+        return barsInFace(f).map((p, i) => (
+          <g key={`${f}-${i}`}>
+            {isDest && <circle cx={p.x} cy={p.y} r={BAR + 5.5} fill={FACE_COLORS[f]} opacity={0.22} />}
+            <circle cx={p.x} cy={p.y} r={isDest ? BAR + 2.4 : BAR + 1.6} fill="white" stroke={FACE_COLORS[f]} strokeWidth={isDest ? 2.2 : 1.5} />
+            <circle cx={p.x} cy={p.y} r={isDest ? BAR * 0.72 : BAR * 0.55} fill={FACE_COLORS[f]} />
+          </g>
+        ));
+      })}
       {/* Cota X (inferior) */}
       <line x1={ox} y1={oy + ch + (!faces.includes('1X') ? 24 : 16)} x2={ox + cw} y2={oy + ch + (!faces.includes('1X') ? 24 : 16)} stroke={GOLD} strokeWidth={1.2} />
       <line x1={ox} y1={oy + ch + (!faces.includes('1X') ? 19 : 11)} x2={ox} y2={oy + ch + (!faces.includes('1X') ? 29 : 21)} stroke={GOLD} strokeWidth={1.2} />
       <line x1={ox + cw} y1={oy + ch + (!faces.includes('1X') ? 19 : 11)} x2={ox + cw} y2={oy + ch + (!faces.includes('1X') ? 29 : 21)} stroke={GOLD} strokeWidth={1.2} />
-      <text x={ox + cw / 2} y={oy + ch + (!faces.includes('1X') ? 40 : 32)} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700">X = {X} cm</text>
+      <text x={ox + cw / 2} y={oy + ch + (!faces.includes('1X') ? 40 : 32)} textAnchor="middle" fontSize={12} fill={GOLD} fontWeight="700">X = {X} cm</text>
 
       {/* Cota Y (esquerda) */}
       <line x1={ox - (!faces.includes('1Y') ? 24 : 16)} y1={oy} x2={ox - (!faces.includes('1Y') ? 24 : 16)} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
       <line x1={ox - (!faces.includes('1Y') ? 29 : 21)} y1={oy} x2={ox - (!faces.includes('1Y') ? 19 : 11)} y2={oy} stroke={GOLD} strokeWidth={1.2} />
       <line x1={ox - (!faces.includes('1Y') ? 29 : 21)} y1={oy + ch} x2={ox - (!faces.includes('1Y') ? 19 : 11)} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
-      <text x={ox - (!faces.includes('1Y') ? 38 : 30)} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - (!faces.includes('1Y') ? 38 : 30)},${oy + ch / 2})`}>Y = {Y} cm</text>
+      <text x={ox - (!faces.includes('1Y') ? 38 : 30)} y={oy + ch / 2} textAnchor="middle" fontSize={12} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - (!faces.includes('1Y') ? 38 : 30)},${oy + ch / 2})`}>Y = {Y} cm</text>
     </svg>
   );
 }
 
 // ── Etapa 2: Seção Transversal Viga ──────────────────────────────
 export function SvgSecaoViga({
-  b, h, C1, C2, faces, barras,
+  b, h, C1, C2, faces, barras, faceDestaque,
 }: {
-  b: number; h: number; C1: number; C2: number; faces: string[]; barras: Record<string, number>;
+  b: number; h: number; C1: number; C2: number; faces: string[]; barras: Record<string, number>; faceDestaque?: string | null;
 }) {
-  const W = 360, H = 272, MX = 88, MY = 60;
+  const W = 340, H = 272, MX = 78, MY = 58;
   const sc = Math.min((W - 2 * MX) / Math.max(b, 1), (H - 2 * MY) / Math.max(h, 1));
   const cw = b * sc, ch = h * sc;
   const ox = (W - cw) / 2, oy = (H - ch) / 2;
@@ -290,12 +329,20 @@ export function SvgSecaoViga({
     return pts;
   }
 
+  const ordemFaces = (['fundo', 'topo', 'lat1', 'lat2'] as string[]).sort((a, b) =>
+    a === faceDestaque ? 1 : b === faceDestaque ? -1 : 0,
+  );
+  const destCol = faceDestaque ? (FACE_COLORS[faceDestaque] || PRIMARY) : PRIMARY;
+
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ fontFamily: 'monospace', display: 'block' }}>
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ maxWidth: '100%', height: 'auto', fontFamily: 'monospace', display: 'block' }}>
       <defs>
         <pattern id="vigaHatchPreview" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="6" stroke="#94A3B8" strokeWidth="1.2" />
         </pattern>
+        <marker id="arr-viga-dest" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 z" fill={destCol} />
+        </marker>
       </defs>
       {/* Hachuras nas faces obstruídas da viga */}
       {!faces.includes('topo') && (
@@ -312,25 +359,55 @@ export function SvgSecaoViga({
       )}
       <rect x={ox} y={oy} width={cw} height={ch} fill="#EEF2F7" stroke={PRIMARY} strokeWidth={2} />
       <rect x={ox + cv} y={oy + cv} width={cw - 2 * cv} height={ch - 2 * cv} fill="none" stroke="#2563EB" strokeWidth={1.1} strokeDasharray="3,2" />
-      {(['fundo', 'topo', 'lat1', 'lat2'] as string[]).map(f =>
-        faces.includes(f) ? barsInFace(f).map((p, i) => (
-          <g key={`${f}-${i}`}>
-            <circle cx={p.x} cy={p.y} r={BAR + 1.8} fill="white" stroke={FACE_COLORS[f]} strokeWidth={1.5} />
-            <circle cx={p.x} cy={p.y} r={BAR * 0.55} fill={FACE_COLORS[f]} />
-          </g>
-        )) : null,
+
+      {/* Destaque visual (aresta grossa + seta) na face em edição */}
+      {faceDestaque === 'fundo' && faces.includes('fundo') && (
+        <g>
+          <line x1={ox} y1={oy + ch} x2={ox + cw} y2={oy + ch} stroke={destCol} strokeWidth={4.5} />
+          <line x1={ox + cw / 2} y1={oy + ch + 52} x2={ox + cw / 2} y2={oy + ch + 36} stroke={destCol} strokeWidth={2.5} markerEnd="url(#arr-viga-dest)" />
+        </g>
       )}
+      {faceDestaque === 'topo' && faces.includes('topo') && (
+        <g>
+          <line x1={ox} y1={oy} x2={ox + cw} y2={oy} stroke={destCol} strokeWidth={4.5} />
+          <line x1={ox + cw / 2} y1={oy - 28} x2={ox + cw / 2} y2={oy - 8} stroke={destCol} strokeWidth={2.5} markerEnd="url(#arr-viga-dest)" />
+        </g>
+      )}
+      {faceDestaque === 'lat1' && faces.includes('lat1') && (
+        <g>
+          <line x1={ox} y1={oy} x2={ox} y2={oy + ch} stroke={destCol} strokeWidth={4.5} />
+          <line x1={ox - 62} y1={oy + ch / 2} x2={ox - 44} y2={oy + ch / 2} stroke={destCol} strokeWidth={2.5} markerEnd="url(#arr-viga-dest)" />
+        </g>
+      )}
+      {faceDestaque === 'lat2' && faces.includes('lat2') && (
+        <g>
+          <line x1={ox + cw} y1={oy} x2={ox + cw} y2={oy + ch} stroke={destCol} strokeWidth={4.5} />
+          <line x1={ox + cw + 30} y1={oy + ch / 2} x2={ox + cw + 9} y2={oy + ch / 2} stroke={destCol} strokeWidth={2.5} markerEnd="url(#arr-viga-dest)" />
+        </g>
+      )}
+
+      {ordemFaces.map(f => {
+        if (!faces.includes(f)) return null;
+        const isDest = f === faceDestaque;
+        return barsInFace(f).map((p, i) => (
+          <g key={`${f}-${i}`}>
+            {isDest && <circle cx={p.x} cy={p.y} r={BAR + 5.5} fill={FACE_COLORS[f]} opacity={0.22} />}
+            <circle cx={p.x} cy={p.y} r={isDest ? BAR + 2.4 : BAR + 1.6} fill="white" stroke={FACE_COLORS[f]} strokeWidth={isDest ? 2.2 : 1.5} />
+            <circle cx={p.x} cy={p.y} r={isDest ? BAR * 0.72 : BAR * 0.55} fill={FACE_COLORS[f]} />
+          </g>
+        ));
+      })}
       {/* Cota b (inferior) */}
       <line x1={ox} y1={oy + ch + (!faces.includes('fundo') ? 24 : 16)} x2={ox + cw} y2={oy + ch + (!faces.includes('fundo') ? 24 : 16)} stroke={GOLD} strokeWidth={1.2} />
       <line x1={ox} y1={oy + ch + (!faces.includes('fundo') ? 19 : 11)} x2={ox} y2={oy + ch + (!faces.includes('fundo') ? 29 : 21)} stroke={GOLD} strokeWidth={1.2} />
       <line x1={ox + cw} y1={oy + ch + (!faces.includes('fundo') ? 19 : 11)} x2={ox + cw} y2={oy + ch + (!faces.includes('fundo') ? 29 : 21)} stroke={GOLD} strokeWidth={1.2} />
-      <text x={ox + cw / 2} y={oy + ch + (!faces.includes('fundo') ? 40 : 32)} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700">b = {b} cm</text>
+      <text x={ox + cw / 2} y={oy + ch + (!faces.includes('fundo') ? 40 : 32)} textAnchor="middle" fontSize={12} fill={GOLD} fontWeight="700">b = {b} cm</text>
 
       {/* Cota h (esquerda) */}
       <line x1={ox - (!faces.includes('lat1') ? 24 : 16)} y1={oy} x2={ox - (!faces.includes('lat1') ? 24 : 16)} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
       <line x1={ox - (!faces.includes('lat1') ? 29 : 21)} y1={oy} x2={ox - (!faces.includes('lat1') ? 19 : 11)} y2={oy} stroke={GOLD} strokeWidth={1.2} />
       <line x1={ox - (!faces.includes('lat1') ? 29 : 21)} y1={oy + ch} x2={ox - (!faces.includes('lat1') ? 19 : 11)} y2={oy + ch} stroke={GOLD} strokeWidth={1.2} />
-      <text x={ox - (!faces.includes('lat1') ? 38 : 30)} y={oy + ch / 2} textAnchor="middle" fontSize={11.5} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - (!faces.includes('lat1') ? 38 : 30)},${oy + ch / 2})`}>h = {h} cm</text>
+      <text x={ox - (!faces.includes('lat1') ? 38 : 30)} y={oy + ch / 2} textAnchor="middle" fontSize={12} fill={GOLD} fontWeight="700" transform={`rotate(-90,${ox - (!faces.includes('lat1') ? 38 : 30)},${oy + ch / 2})`}>h = {h} cm</text>
     </svg>
   );
 }

@@ -117,9 +117,11 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
   const [ferramenta, setFerramenta] = useState<FerramentaMalha>('addH');
   const [espRapido, setEspRapido] = useState(20);
   const [barraSelId, setBarraSelId] = useState<string | null>(null);
+  const [faceEmFoco, setFaceEmFoco] = useState<string | null>(null);
   const cobInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
 
   const faces = getFacesDaOpcao(tipo, opcao);
+  const faceAtivaPreview = faceEmFoco && faces.includes(faceEmFoco) ? faceEmFoco : (faces[0] ?? null);
   const isCirc = tipo === 'pilar' && opcao === 'E';
   const isLaje = tipo === 'laje';
   const isViga = tipo === 'viga';
@@ -311,7 +313,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
     const colsLong = Math.min(Math.max(1, nBarras - 1), 4);
 
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 14, alignItems: 'start' }}>
+      <div className="pac-grid-etapa3">
         {/* BLOCO 1: ESTRIBOS (CAMADA EXTERNA — DEFINE COBRIMENTO) */}
         <div style={{ border: `1px solid ${BORDER_PANEL}`, borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
           <div style={{ padding: '6px 12px', background: HEADER_SUB, borderBottom: `1px solid ${BORDER_PANEL}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -628,18 +630,171 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.52)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
-      <div style={{ background: BG, borderRadius: 10, border: `1px solid ${BORDER_PANEL}`, width: '100%', maxWidth: 920, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(15,23,42,0.28)' }}>
+    <div className="pac-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.52)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+      <style>{`
+        .pac-modal-header {
+          padding: 14px 20px;
+          border-bottom: 1px solid ${BORDER_PANEL};
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          position: sticky;
+          top: 0;
+          background: #fff;
+          z-index: 20;
+        }
+        .pac-modal-header-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .pac-modal-close-mobile { display: none; }
+        .pac-modal-close-desktop { display: flex; }
+        .pac-grid-tipos {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .pac-grid-opcoes-5 {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .pac-grid-opcoes-3 {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .pac-grid-4 {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+        .pac-grid-faces {
+          display: grid;
+          grid-template-columns: repeat(var(--pac-faces-cols, 2), minmax(0, 1fr));
+        }
+        .pac-grid-etapa3 {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 14px;
+          align-items: start;
+        }
+        @media (max-width: 640px) {
+          .pac-modal-backdrop {
+            padding: 6px !important;
+          }
+          .pac-modal-dialog {
+            max-height: 96vh !important;
+            border-radius: 10px !important;
+          }
+          .pac-modal-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 12px 14px !important;
+            gap: 10px !important;
+          }
+          .pac-modal-close-mobile { display: flex !important; }
+          .pac-modal-close-desktop { display: none !important; }
+          .pac-modal-stepper {
+            justify-content: center !important;
+            padding-top: 8px;
+            border-top: 1px solid ${BORDER_CELL};
+          }
+          .pac-modal-body {
+            padding: 14px 12px !important;
+          }
+          .pac-modal-footer {
+            padding: 12px 14px !important;
+          }
+          .pac-modal-title {
+            font-size: 16px !important;
+          }
+          .pac-modal-subtitle {
+            font-size: 12.5px !important;
+          }
+          .pac-step-label {
+            font-size: 12.5px !important;
+          }
+          .pac-grid-tipos {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+          .pac-tipo-titulo {
+            font-size: 14.5px !important;
+          }
+          .pac-tipo-sub {
+            font-size: 12.5px !important;
+          }
+          .pac-grid-opcoes-5 {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+          .pac-grid-opcoes-3 {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+          .pac-opcao-label {
+            font-size: 12.5px !important;
+          }
+          .pac-opcao-desc {
+            font-size: 11.5px !important;
+          }
+          .pac-grid-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .pac-grid-faces {
+            grid-template-columns: 1fr !important;
+          }
+          .pac-face-cell {
+            border-right: none !important;
+            border-bottom: 1px solid ${BORDER_CELL} !important;
+          }
+          .pac-face-cell:last-child {
+            border-bottom: none !important;
+          }
+          .pac-grid-etapa3 {
+            grid-template-columns: 1fr !important;
+          }
+          .pac-modal-dialog label {
+            font-size: 11.5px !important;
+          }
+          .pac-modal-dialog th {
+            font-size: 11px !important;
+            padding: 8px 6px !important;
+          }
+          .pac-modal-dialog td {
+            font-size: 14px !important;
+          }
+          .pac-modal-footer button {
+            font-size: 14px !important;
+            padding: 10px 18px !important;
+          }
+        }
+      `}</style>
+      <div className="pac-modal-dialog" style={{ background: BG, borderRadius: 10, border: `1px solid ${BORDER_PANEL}`, width: '100%', maxWidth: 920, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(15,23,42,0.28)' }}>
         {/* Header modal */}
-        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${BORDER_PANEL}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 20 }}>
-          <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 10 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: PRIMARY }}>
-              {amostraInicial ? 'Editar amostra' : 'Nova amostra'}
-            </p>
-            <p style={{ margin: '1px 0 0', fontSize: 11, color: SUBTEXT }}>Item {amostraInicial?.item ?? itemNum}</p>
+        <div className="pac-modal-header">
+          <div className="pac-modal-header-top">
+            <div style={{ borderLeft: `4px solid ${GOLD}`, paddingLeft: 10 }}>
+              <p className="pac-modal-title" style={{ margin: 0, fontSize: 14, fontWeight: 800, color: PRIMARY }}>
+                {amostraInicial ? 'Editar amostra' : 'Nova amostra'}
+              </p>
+              <p className="pac-modal-subtitle" style={{ margin: '1px 0 0', fontSize: 11, color: SUBTEXT }}>Item {amostraInicial?.item ?? itemNum}</p>
+            </div>
+            <button
+              type="button"
+              className="pac-modal-close-mobile"
+              onClick={onFechar}
+              aria-label="Fechar modal"
+              style={{ width: 34, height: 34, borderRadius: 6, border: `1px solid ${BORDER_PANEL}`, background: '#fff', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', color: SUBTEXT, flexShrink: 0 }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
           {/* Step indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="pac-modal-stepper" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {([
               { s: 1 as const, label: 'Tipo' },
               { s: 2 as const, label: isLaje ? 'Malha' : 'Geometria' },
@@ -650,23 +805,24 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                   <div style={{ width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, background: etapa > s ? SUCCESS : etapa === s ? PRIMARY : '#E2E8F0', color: etapa >= s ? '#fff' : SUBTEXT }}>
                     {etapa > s ? '✓' : s}
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: etapa === s ? PRIMARY : SUBTEXT }}>{label}</span>
+                  <span className="pac-step-label" style={{ fontSize: 11, fontWeight: 700, color: etapa === s ? PRIMARY : SUBTEXT }}>{label}</span>
                 </div>
-                {i < 2 && <div style={{ width: 18, height: 1, background: '#CBD5E1' }} />}
+                {i < 2 && <div style={{ width: 16, height: 1, background: '#CBD5E1' }} />}
               </div>
             ))}
           </div>
           <button
             type="button"
+            className="pac-modal-close-desktop"
             onClick={onFechar}
             aria-label="Fechar modal"
-            style={{ width: 30, height: 30, borderRadius: 6, border: `1px solid ${BORDER_PANEL}`, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUBTEXT }}
+            style={{ width: 30, height: 30, borderRadius: 6, border: `1px solid ${BORDER_PANEL}`, background: '#fff', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', color: SUBTEXT, flexShrink: 0 }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
 
-        <div style={{ padding: '18px 20px' }}>
+        <div className="pac-modal-body" style={{ padding: '18px 20px' }}>
           {/* ── ETAPA 1: IDENTIFICAÇÃO, TIPO E CONFIGURAÇÃO ── */}
           {etapa === 1 && (
             <div>
@@ -684,7 +840,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                   <div style={{ fontSize: 9.5, fontWeight: 800, color: SUBTEXT, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
                     Tipo de elemento estrutural
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+                  <div className="pac-grid-tipos">
                     {([
                       {
                         id: 'pilar' as const,
@@ -752,8 +908,8 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                             {item.icon}
                           </div>
                           <div>
-                            <div style={{ fontSize: 12.5, fontWeight: 800, color: ativo ? PRIMARY : TEXT }}>{item.titulo}</div>
-                            <div style={{ fontSize: 10.5, color: SUBTEXT, marginTop: 1, lineHeight: 1.25 }}>{item.subtitulo}</div>
+                            <div className="pac-tipo-titulo" style={{ fontSize: 12.5, fontWeight: 800, color: ativo ? PRIMARY : TEXT }}>{item.titulo}</div>
+                            <div className="pac-tipo-sub" style={{ fontSize: 10.5, color: SUBTEXT, marginTop: 1, lineHeight: 1.25 }}>{item.subtitulo}</div>
                           </div>
                         </button>
                       );
@@ -774,7 +930,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
               >
                 <div style={{ padding: 12 }}>
                   {tipo === 'pilar' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8 }}>
+                    <div className="pac-grid-opcoes-5">
                       {(Object.keys(OPCOES_PILAR) as OpcaoPilar[]).map(id => (
                         <button
                           key={id}
@@ -794,7 +950,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                           }}
                         >
                           <div dangerouslySetInnerHTML={{ __html: svgOpcaoPilar(id) }} style={{ lineHeight: 0 }} />
-                          <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>
+                          <span className="pac-opcao-label" style={{ fontSize: 10.5, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>
                             {id} — {OPCOES_PILAR[id].label}
                           </span>
                         </button>
@@ -803,7 +959,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                   )}
 
                   {tipo === 'viga' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8 }}>
+                    <div className="pac-grid-opcoes-5">
                       {(Object.keys(OPCOES_VIGA) as OpcaoViga[]).map(id => (
                         <button
                           key={id}
@@ -823,7 +979,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                           }}
                         >
                           <div dangerouslySetInnerHTML={{ __html: svgOpcaoViga(id) }} style={{ lineHeight: 0 }} />
-                          <span style={{ fontSize: 10, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>
+                          <span className="pac-opcao-label" style={{ fontSize: 10.5, fontWeight: 700, color: opcao === id ? PRIMARY : SUBTEXT, textAlign: 'center', lineHeight: 1.3 }}>
                             {OPCOES_VIGA[id].codigo} — {OPCOES_VIGA[id].label}
                           </span>
                         </button>
@@ -832,7 +988,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                   )}
 
                   {tipo === 'laje' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+                    <div className="pac-grid-opcoes-3">
                       {(Object.keys(OPCOES_LAJE) as OpcaoLaje[]).map(id => (
                         <button
                           key={id}
@@ -852,10 +1008,10 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                           }}
                         >
                           <div dangerouslySetInnerHTML={{ __html: svgOpcaoLaje(id) }} style={{ lineHeight: 0 }} />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: opcao === id ? PRIMARY : TEXT, textAlign: 'center', lineHeight: 1.3 }}>
+                          <span className="pac-opcao-label" style={{ fontSize: 11.5, fontWeight: 700, color: opcao === id ? PRIMARY : TEXT, textAlign: 'center', lineHeight: 1.3 }}>
                             {OPCOES_LAJE[id].label}
                           </span>
-                          <span style={{ fontSize: 10, color: SUBTEXT, textAlign: 'center' }}>
+                          <span className="pac-opcao-desc" style={{ fontSize: 10.5, color: SUBTEXT, textAlign: 'center' }}>
                             {OPCOES_LAJE[id].desc}
                           </span>
                         </button>
@@ -890,36 +1046,81 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                         <InteiroInput id="geom-y" style={fichaInputStyle} value={Y} min={5} onChange={setY} />
                       </CelulaFicha>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${faces.length}, minmax(0, 1fr))` }}>
-                      {faces.map((f, idx) => (
-                        <CelulaFicha
-                          key={f}
-                          label={`● Barras — ${FACE_LABELS[f]}`}
-                          htmlFor={`geom-b${f}`}
-                          borderRight={idx < faces.length - 1}
-                          borderBottom={false}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ width: 9, height: 9, borderRadius: '50%', background: FACE_COLORS[f] || PRIMARY, flexShrink: 0 }} />
+                    <div
+                      className="pac-grid-faces"
+                      style={{ '--pac-faces-cols': faces.length } as React.CSSProperties}
+                    >
+                      {faces.map((f, idx) => {
+                        const col = FACE_COLORS[f] || PRIMARY;
+                        const focada = faceAtivaPreview === f;
+                        return (
+                          <div
+                            key={f}
+                            className="pac-face-cell"
+                            onClick={() => setFaceEmFoco(f)}
+                            onFocus={() => setFaceEmFoco(f)}
+                            style={{
+                              padding: '9px 12px',
+                              borderRight: idx < faces.length - 1 ? `1px solid ${BORDER_CELL}` : undefined,
+                              borderLeft: `4px solid ${col}`,
+                              background: focada ? `${col}12` : '#fff',
+                              transition: 'background 0.15s',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
+                              <label
+                                htmlFor={`geom-b${f}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  color: col,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.03em',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <span style={{ width: 9, height: 9, borderRadius: '50%', background: col, flexShrink: 0 }} />
+                                Barras — {FACE_LABELS[f]}
+                              </label>
+                              {focada && (
+                                <span style={{ fontSize: 9.5, fontWeight: 800, color: '#fff', background: col, borderRadius: 4, padding: '1px 6px' }}>
+                                  ATIVA
+                                </span>
+                              )}
+                            </div>
                             <InteiroInput
                               id={`geom-b${f}`}
-                              style={fichaInputStyle}
+                              style={{ ...fichaInputStyle, fontWeight: 800, fontSize: 15, color: TEXT }}
                               value={barras[f] ?? 2}
                               min={1}
-                              onChange={n => setBarras(p => ({ ...p, [f]: n }))}
+                              onChange={n => { setFaceEmFoco(f); setBarras(p => ({ ...p, [f]: n })); }}
                             />
                           </div>
-                        </CelulaFicha>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 )}
               </PainelPlanilha>
 
-              <PainelPlanilha titulo="Pré-visualização da Seção Transversal" marginBottom={0}>
+              <PainelPlanilha
+                titulo="Pré-visualização da Seção Transversal"
+                marginBottom={0}
+                direita={
+                  !isCirc && faceAtivaPreview ? (
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: '#fff', background: FACE_COLORS[faceAtivaPreview] || GOLD, borderRadius: 4, padding: '2px 8px' }}>
+                      Editando: {FACE_LABELS[faceAtivaPreview]}
+                    </span>
+                  ) : undefined
+                }
+              >
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 8px', background: '#fff' }}>
                   {isCirc ? (
-                    <svg width={200} height={180} viewBox="0 0 200 180">
+                    <svg width={200} height={180} viewBox="0 0 200 180" style={{ maxWidth: '100%', height: 'auto' }}>
                       {(() => {
                         const r = Math.min(62, Math.max(36, D * 1.1)), cx = 100, cy = 80;
                         const nb = barras['circ'] || 6;
@@ -938,13 +1139,13 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                                 </g>
                               );
                             })}
-                            <text x={cx} y={cy + r + 20} textAnchor="middle" fontSize={10} fill="#B8890E" fontWeight="700">⌀ {D} cm</text>
+                            <text x={cx} y={cy + r + 20} textAnchor="middle" fontSize={11.5} fill="#B8890E" fontWeight="700">⌀ {D} cm</text>
                           </g>
                         );
                       })()}
                     </svg>
                   ) : (
-                    <SvgSecaoPilar X={X} Y={Y} C1={C1} C2={C2} faces={faces} barras={barras} />
+                    <SvgSecaoPilar X={X} Y={Y} C1={C1} C2={C2} faces={faces} barras={barras} faceDestaque={faceAtivaPreview} />
                   )}
                 </div>
               </PainelPlanilha>
@@ -962,33 +1163,78 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                     <InteiroInput id="viga-h" style={fichaInputStyle} value={Y} min={5} onChange={setY} />
                   </CelulaFicha>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${faces.length}, minmax(0, 1fr))` }}>
-                  {faces.map((f, idx) => (
-                    <CelulaFicha
-                      key={f}
-                      label={`● Barras — ${FACE_LABELS[f]}`}
-                      htmlFor={`viga-b-${f}`}
-                      borderRight={idx < faces.length - 1}
-                      borderBottom={false}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: FACE_COLORS[f] || PRIMARY, flexShrink: 0 }} />
+                <div
+                  className="pac-grid-faces"
+                  style={{ '--pac-faces-cols': faces.length } as React.CSSProperties}
+                >
+                  {faces.map((f, idx) => {
+                    const col = FACE_COLORS[f] || PRIMARY;
+                    const focada = faceAtivaPreview === f;
+                    return (
+                      <div
+                        key={f}
+                        className="pac-face-cell"
+                        onClick={() => setFaceEmFoco(f)}
+                        onFocus={() => setFaceEmFoco(f)}
+                        style={{
+                          padding: '9px 12px',
+                          borderRight: idx < faces.length - 1 ? `1px solid ${BORDER_CELL}` : undefined,
+                          borderLeft: `4px solid ${col}`,
+                          background: focada ? `${col}12` : '#fff',
+                          transition: 'background 0.15s',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
+                          <label
+                            htmlFor={`viga-b-${f}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontSize: 10,
+                              fontWeight: 800,
+                              color: col,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.03em',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span style={{ width: 9, height: 9, borderRadius: '50%', background: col, flexShrink: 0 }} />
+                            Barras — {FACE_LABELS[f]}
+                          </label>
+                          {focada && (
+                            <span style={{ fontSize: 9.5, fontWeight: 800, color: '#fff', background: col, borderRadius: 4, padding: '1px 6px' }}>
+                              ATIVA
+                            </span>
+                          )}
+                        </div>
                         <InteiroInput
                           id={`viga-b-${f}`}
-                          style={fichaInputStyle}
+                          style={{ ...fichaInputStyle, fontWeight: 800, fontSize: 15, color: TEXT }}
                           value={barras[f] ?? 2}
                           min={1}
-                          onChange={n => setBarras(p => ({ ...p, [f]: n }))}
+                          onChange={n => { setFaceEmFoco(f); setBarras(p => ({ ...p, [f]: n })); }}
                         />
                       </div>
-                    </CelulaFicha>
-                  ))}
+                    );
+                  })}
                 </div>
               </PainelPlanilha>
 
-              <PainelPlanilha titulo="Pré-visualização da Seção Transversal" marginBottom={0}>
+              <PainelPlanilha
+                titulo="Pré-visualização da Seção Transversal"
+                marginBottom={0}
+                direita={
+                  faceAtivaPreview ? (
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: '#fff', background: FACE_COLORS[faceAtivaPreview] || GOLD, borderRadius: 4, padding: '2px 8px' }}>
+                      Editando: {FACE_LABELS[faceAtivaPreview]}
+                    </span>
+                  ) : undefined
+                }
+              >
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 8px', background: '#fff' }}>
-                  <SvgSecaoViga b={X} h={Y} C1={C1} C2={C2} faces={faces} barras={barras} />
+                  <SvgSecaoViga b={X} h={Y} C1={C1} C2={C2} faces={faces} barras={barras} faceDestaque={faceAtivaPreview} />
                 </div>
               </PainelPlanilha>
             </div>
@@ -997,7 +1243,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
           {etapa === 2 && isLaje && (
             <div>
               <PainelPlanilha titulo="Parâmetros da Malha Quadrada" marginBottom={14}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+                <div className="pac-grid-4">
                   <CelulaFicha label="Largura Lx (cm)" htmlFor="laje-lx" borderRight borderBottom={false}>
                     <InteiroInput
                       id="laje-lx"
@@ -1238,7 +1484,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                           facesLivres={faces}
                         />
                       </div>
-                      <div style={{ flex: '1 1 320px', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ flex: '1 1 280px', minWidth: 0, width: '100%', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
                         {isViga ? (
                           <SvgPerfilHorizontal face={face} nBarras={nBarras} fd={fd} />
                         ) : (
@@ -1302,7 +1548,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
                       camadaExterna={lajeData.camadaExterna ?? (barrasHOrd.length > 0 ? 'H' : 'V')}
                     />
                   </div>
-                  <div style={{ flex: '1 1 340px', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
+                  <div style={{ flex: '1 1 280px', minWidth: 0, width: '100%', overflow: 'auto', maxHeight: 420, display: 'flex', justifyContent: 'center' }}>
                     <SvgMalhaLaje
                       lajeData={lajeData}
                       modo="leitura"
@@ -1320,7 +1566,7 @@ export function ModalAmostra({ amostraInicial, onSalvar, onFechar, itemNum }: Mo
         </div>
 
         {/* Footer modal */}
-        <div style={{ padding: '12px 20px', borderTop: `1px solid ${BORDER_PANEL}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', bottom: 0, background: '#fff', zIndex: 20 }}>
+        <div className="pac-modal-footer" style={{ padding: '12px 20px', borderTop: `1px solid ${BORDER_PANEL}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', bottom: 0, background: '#fff', zIndex: 20 }}>
           <button
             type="button"
             onClick={etapa === 1 ? onFechar : () => setEtapa(e => (e - 1) as 1 | 2 | 3)}
