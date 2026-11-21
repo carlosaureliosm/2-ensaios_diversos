@@ -15,6 +15,11 @@ As frases **"registra no contexto"**, **"registra no AGENTS.md"**, **"registra n
 
 Commit e push só quando o usuário pedir explicitamente (e **sempre** validar com `npm run test` e `npx next build` antes de qualquer push).
 
+## Economia de contexto e execução
+- **Leitura e edição cirúrgicas:** em arquivos >400 linhas, localizar por busca e ler apenas o intervalo alvo; editar por trecho, sem reescrever arquivos inteiros.
+- **Validação incremental:** durante ajustes, rodar só os testes afetados (`npx vitest run <arquivo>`); rodar `npm run test` e `npx next build` apenas no fechamento da tarefa ou antes de push.
+- **Respostas enxutas:** não repetir no chat blocos de código já aplicados; resumir mudanças em bullets curtos.
+
 ## Notas técnicas (`docs/tecnico/`) — ler antes de mexer na área
 | Assunto | Nota |
 |---|---|
