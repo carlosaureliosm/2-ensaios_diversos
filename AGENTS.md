@@ -28,6 +28,7 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 | Padrão DOCX: página 1, header/margens, assinatura dupla, templates e scripts | `relatorios-docx.md` |
 | Módulo Aderência (RAAC): modelos de camadas, SVG/gráfico, cálculo Ra, Storage, DOCX | `modulo-aderencia.md` |
 | Módulo Esclerometria: croqui N imagens, impactos/bigorna, memorial 8×6 cm | `modulo-esclerometria.md` |
+| Módulo Pacometria: Pilar/Viga/Laje (malha), cobrimento NBR 6118, SVGs dinâmicos | `modulo-pacometria.md` |
 | Pendências manuais de segurança, infra e QA pós-módulos | `pendencias.md` |
 
 ## Stack e deploy
@@ -86,7 +87,7 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 - **Build no Next 15:** `npm run dev` ignora erros de tipo que quebram `npx next build` na Vercel.
 
 ## Testes e build
-- Suíte Vitest: `npm run test` (alias `@` em `vitest.config.ts`). Principais: `src/lib/auth.test.ts`, `src/lib/esclerometria/calcularAmostra.test.ts`, `src/modules/aderencia/calculos.test.ts`, `src/modules/aderencia/svgGraficoResultado.test.ts`, `src/app/api/ensaios/aderencia/docx/route.test.ts`.
+- Suíte Vitest: `npm run test` (alias `@` em `vitest.config.ts`). Principais: `src/lib/auth.test.ts`, `src/lib/esclerometria/calcularAmostra.test.ts`, `src/modules/aderencia/calculos.test.ts`, `src/modules/aderencia/svgGraficoResultado.test.ts`, `src/modules/pacometria/calculos.test.ts`, `src/app/api/ensaios/aderencia/docx/route.test.ts`.
 - Validação de build: `npx next build`.
 
 ## Pendências abertas (detalhe em `docs/tecnico/pendencias.md`)
