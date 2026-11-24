@@ -63,55 +63,55 @@ function gerarSvgPilar(a: AmostraRow): string {
     `<line x1="0" y1="0" x2="0" y2="8" stroke="#94A3B8" stroke-width="1.5"/></pattern></defs>`;
 
   if (op === 'E') {
-    const cx = 108, cy = 120, r = 68, rb = 50;
+    const cx = 92, cy = 116, r = 62, rb = 45;
     const nb = Math.max(4, a.barras?.circ ?? 8);
     let barras = '';
     for (let i = 0; i < nb; i++) {
       const ang = (2 * Math.PI / nb) * i - Math.PI / 2;
       const bx = (cx + rb * Math.cos(ang)).toFixed(1);
       const by = (cy + rb * Math.sin(ang)).toFixed(1);
-      barras += `<circle cx="${bx}" cy="${by}" r="4.8" fill="${PRIMARY}"/>`;
+      barras += `<circle cx="${bx}" cy="${by}" r="4.6" fill="${PRIMARY}"/>`;
     }
     const st = statsCobrimentosFace(a.facesData?.circ?.cob ?? []);
     const info = [
       `Circular — Ø ${a.D || 0} cm`,
       `Barras long.: ${nb}`,
-      `Estribos medidos: ${a.facesData?.circ?.nEstribos ?? 0}`,
-      st ? `Cob. médio: ${st.media} mm` : 'Sem leituras de cobrimento',
-      ...(st ? [`Mín: ${st.min} mm | Máx: ${st.max} mm`] : []),
+      `Estribos: ${a.facesData?.circ?.nEstribos ?? 0}`,
+      st ? `Cob. médio: ${st.media} mm` : 'Sem leituras',
+      ...(st ? [`Mín: ${st.min} | Máx: ${st.max} mm`] : []),
     ];
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
       <rect width="${W}" height="${H}" fill="#FFFFFF"/>
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="#E8EDF5" stroke="${NAVY}" stroke-width="2.4"/>
       <circle cx="${cx}" cy="${cy}" r="${rb}" fill="none" stroke="${ESTRIBO_COLOR}" stroke-width="1.6" stroke-dasharray="5,3"/>
       ${barras}
-      <line x1="${cx - r}" y1="${cy + r + 18}" x2="${cx + r}" y2="${cy + r + 18}" stroke="${PRIMARY}" stroke-width="1.2"/>
-      <text x="${cx}" y="${cy + r + 39}" text-anchor="middle" font-size="18.5" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">Ø = ${a.D || 0} cm</text>
-      <text x="198" y="38" font-size="20" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Resumo da Seção</text>
-      ${info.map((t, idx) => `<text x="198" y="${74 + idx * 35}" font-size="18" font-weight="${idx === 0 || idx === 4 ? '700' : '400'}" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(t)}</text>`).join('')}
+      <line x1="${cx - r}" y1="${cy + r + 16}" x2="${cx + r}" y2="${cy + r + 16}" stroke="${PRIMARY}" stroke-width="1.4"/>
+      <text x="${cx}" y="${cy + r + 40}" text-anchor="middle" font-size="21" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">Ø = ${a.D || 0} cm</text>
+      <text x="176" y="34" font-size="22" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Resumo da Seção</text>
+      ${info.map((t, idx) => `<text x="176" y="${74 + idx * 38}" font-size="20.5" font-weight="${idx === 0 || idx === 4 ? '700' : '400'}" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(t)}</text>`).join('')}
     </svg>`;
   }
 
-  const maxW = 132, maxH = 118;
+  const maxW = 114, maxH = 112;
   const rx = Math.max(10, a.X || 30);
   const ry = Math.max(10, a.Y || 30);
   const esc = Math.min(maxW / rx, maxH / ry);
-  const ew = Math.max(68, Math.round(rx * esc));
-  const eh = Math.max(60, Math.round(ry * esc));
-  const ex = Math.round(112 - ew / 2);
-  const ey = Math.round(122 - eh / 2);
-  const cv = 12;
+  const ew = Math.max(60, Math.round(rx * esc));
+  const eh = Math.max(56, Math.round(ry * esc));
+  const ex = Math.round(98 - ew / 2);
+  const ey = Math.round(118 - eh / 2);
+  const cv = 11;
 
   let obs = '';
   if (op === 'B' || op === 'C' || op === 'D') {
-    obs += `<rect x="${ex}" y="${ey - 22}" width="${ew}" height="22" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex}" y="${ey - 20}" width="${ew}" height="20" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'B') {
-    obs += `<rect x="${ex - 22}" y="${ey}" width="22" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
-    obs += `<rect x="${ex + ew}" y="${ey}" width="22" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex - 20}" y="${ey}" width="20" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex + ew}" y="${ey}" width="20" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'C') {
-    obs += `<rect x="${ex + ew}" y="${ey}" width="22" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex + ew}" y="${ey}" width="20" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
 
   const pts: Array<[number, number]> = [];
@@ -133,7 +133,7 @@ function gerarSvgPilar(a: AmostraRow): string {
     if (!uniq.some(q => Math.hypot(p[0] - q[0], p[1] - q[1]) < 4)) uniq.push(p);
   }
   const barrasXml = uniq
-    .map(([bx, by]) => `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="4.4" fill="${PRIMARY}"/>`)
+    .map(([bx, by]) => `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="4.2" fill="${PRIMARY}"/>`)
     .join('');
 
   let arestas = '';
@@ -142,8 +142,8 @@ function gerarSvgPilar(a: AmostraRow): string {
   if (faces.includes('1Y')) arestas += `<line x1="${ex}" y1="${ey}" x2="${ex}" y2="${ey + eh}" stroke="${FACE_COLORS['1Y']}" stroke-width="3.8"/>`;
   if (faces.includes('2Y')) arestas += `<line x1="${ex + ew}" y1="${ey}" x2="${ex + ew}" y2="${ey + eh}" stroke="${FACE_COLORS['2Y']}" stroke-width="3.8"/>`;
 
-  const stepY = faces.length > 3 ? 53 : 60;
-  const startY = faces.length > 3 ? 58 : 70;
+  const stepY = faces.length > 3 ? 55 : 64;
+  const startY = faces.length > 3 ? 58 : 74;
   const legenda = faces.map((f, idx) => {
     const cor = FACE_COLORS[f] ?? NAVY;
     const nome = FACE_LABELS[f] ?? f;
@@ -151,11 +151,11 @@ function gerarSvgPilar(a: AmostraRow): string {
     const nEst = a.facesData?.[f]?.nEstribos ?? a.facesData?.[f]?.cob?.length ?? 0;
     const y = startY + idx * stepY;
     const linhaCob = st
-      ? `Méd:${st.media} | Mín:${st.min} | Máx:${st.max} mm`
-      : 'Sem leituras de cobrimento';
-    return `<rect x="198" y="${y - 14}" width="14" height="14" rx="2.5" fill="${cor}"/>` +
-      `<text x="218" y="${y}" font-size="17.5" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(nome)} (${a.barras?.[f] ?? 0}B/${nEst}E)</text>` +
-      `<text x="218" y="${y + 21}" font-size="16.5" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(linhaCob)}</text>`;
+      ? `Méd:${st.media} | Mín:${st.min} | Máx:${st.max}mm`
+      : 'Sem leituras';
+    return `<rect x="180" y="${y - 15}" width="14" height="14" rx="2.5" fill="${cor}"/>` +
+      `<text x="200" y="${y}" font-size="19.5" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(nome)} (${a.barras?.[f] ?? 0}B/${nEst}E)</text>` +
+      `<text x="200" y="${y + 23}" font-size="18.5" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(linhaCob)}</text>`;
   }).join('');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -166,9 +166,9 @@ function gerarSvgPilar(a: AmostraRow): string {
     <rect x="${ex + cv}" y="${ey + cv}" width="${ew - 2 * cv}" height="${eh - 2 * cv}" fill="none" stroke="#64748B" stroke-width="1.3" stroke-dasharray="4,2.5"/>
     ${arestas}
     ${barrasXml}
-    <text x="${ex + ew / 2}" y="${ey + eh + 28}" text-anchor="middle" font-size="18" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">X = ${a.X || 0} cm</text>
-    ${op !== 'B' ? `<text x="${ex - 8}" y="${ey + eh / 2 + 6}" text-anchor="end" font-size="18" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">Y = ${a.Y || 0} cm</text>` : ''}
-    <text x="198" y="32" font-size="19.5" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Faces — Cobrimentos</text>
+    <text x="${ex + ew / 2}" y="${ey + eh + 30}" text-anchor="middle" font-size="20" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">X = ${a.X || 0} cm</text>
+    ${op !== 'B' ? `<text x="${ex - 6}" y="${ey + eh / 2 + 7}" text-anchor="end" font-size="19" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">Y=${a.Y || 0}</text>` : ''}
+    <text x="180" y="32" font-size="22" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Faces — Cobrimentos</text>
     ${legenda}
   </svg>`;
 }
@@ -184,25 +184,25 @@ function gerarSvgViga(a: AmostraRow): string {
 
   const rb = Math.max(10, a.X || 20);
   const rh = Math.max(15, a.Y || 45);
-  const esc = Math.min(110 / rb, 122 / rh);
-  const ew = Math.max(58, Math.round(rb * esc));
-  const eh = Math.max(72, Math.round(rh * esc));
-  const ex = Math.round(112 - ew / 2);
-  const ey = Math.round(124 - eh / 2);
-  const cv = 11;
+  const esc = Math.min(96 / rb, 114 / rh);
+  const ew = Math.max(54, Math.round(rb * esc));
+  const eh = Math.max(68, Math.round(rh * esc));
+  const ex = Math.round(98 - ew / 2);
+  const ey = Math.round(120 - eh / 2);
+  const cv = 10;
 
   let obs = '';
   if (op !== 'VE') {
-    obs += `<rect x="${ex - 30}" y="${ey - 22}" width="${ew + 60}" height="22" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex - 26}" y="${ey - 20}" width="${ew + 52}" height="20" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'VB' || op === 'VC' || op === 'VD') {
-    obs += `<rect x="${ex + ew}" y="${ey}" width="22" height="${eh}" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex + ew}" y="${ey}" width="20" height="${eh}" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'VD') {
-    obs += `<rect x="${ex - 22}" y="${ey}" width="22" height="${eh}" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex - 20}" y="${ey}" width="20" height="${eh}" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'VC') {
-    obs += `<rect x="${ex}" y="${ey + eh}" width="${ew}" height="20" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex}" y="${ey + eh}" width="${ew}" height="18" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
 
   let arestas = '';
@@ -216,15 +216,15 @@ function gerarSvgViga(a: AmostraRow): string {
   let barrasXml = '';
   for (let i = 0; i < nInf; i++) {
     const x = ex + cv + ((ew - 2 * cv) * i) / (nInf - 1);
-    barrasXml += `<circle cx="${x.toFixed(1)}" cy="${ey + eh - cv}" r="4.2" fill="${PRIMARY}"/>`;
+    barrasXml += `<circle cx="${x.toFixed(1)}" cy="${ey + eh - cv}" r="4.0" fill="${PRIMARY}"/>`;
   }
   for (let i = 0; i < nSup; i++) {
     const x = ex + cv + ((ew - 2 * cv) * i) / (nSup - 1);
-    barrasXml += `<circle cx="${x.toFixed(1)}" cy="${ey + cv}" r="4.2" fill="${PRIMARY}"/>`;
+    barrasXml += `<circle cx="${x.toFixed(1)}" cy="${ey + cv}" r="4.0" fill="${PRIMARY}"/>`;
   }
 
-  const stepY = faces.length > 3 ? 53 : 60;
-  const startY = faces.length > 3 ? 58 : 70;
+  const stepY = faces.length > 3 ? 55 : 64;
+  const startY = faces.length > 3 ? 58 : 74;
   const legenda = faces.map((f, idx) => {
     const cor = FACE_COLORS[f] ?? NAVY;
     const nome = FACE_LABELS[f] ?? f;
@@ -232,11 +232,11 @@ function gerarSvgViga(a: AmostraRow): string {
     const nEst = a.facesData?.[f]?.nEstribos ?? a.facesData?.[f]?.cob?.length ?? 0;
     const y = startY + idx * stepY;
     const linhaCob = st
-      ? `Méd:${st.media} | Mín:${st.min} | Máx:${st.max} mm`
-      : 'Sem leituras de cobrimento';
-    return `<rect x="198" y="${y - 14}" width="14" height="14" rx="2.5" fill="${cor}"/>` +
-      `<text x="218" y="${y}" font-size="17.5" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(nome)} (${a.barras?.[f] ?? 0}B/${nEst}E)</text>` +
-      `<text x="218" y="${y + 21}" font-size="16.5" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(linhaCob)}</text>`;
+      ? `Méd:${st.media} | Mín:${st.min} | Máx:${st.max}mm`
+      : 'Sem leituras';
+    return `<rect x="180" y="${y - 15}" width="14" height="14" rx="2.5" fill="${cor}"/>` +
+      `<text x="200" y="${y}" font-size="19.5" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(nome)} (${a.barras?.[f] ?? 0}B/${nEst}E)</text>` +
+      `<text x="200" y="${y + 23}" font-size="18.5" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(linhaCob)}</text>`;
   }).join('');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -247,9 +247,9 @@ function gerarSvgViga(a: AmostraRow): string {
     <rect x="${ex + cv}" y="${ey + cv}" width="${ew - 2 * cv}" height="${eh - 2 * cv}" fill="none" stroke="#64748B" stroke-width="1.3" stroke-dasharray="4,2.5"/>
     ${arestas}
     ${barrasXml}
-    <text x="${ex + ew / 2}" y="${ey + eh + 28}" text-anchor="middle" font-size="18" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">b = ${a.X || 0} cm</text>
-    <text x="${ex - 8}" y="${ey + eh / 2 + 6}" text-anchor="end" font-size="18" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">h = ${a.Y || 0} cm</text>
-    <text x="198" y="32" font-size="19.5" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Faces — Cobrimentos</text>
+    <text x="${ex + ew / 2}" y="${ey + eh + 30}" text-anchor="middle" font-size="20" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">b = ${a.X || 0} cm</text>
+    <text x="${ex - 6}" y="${ey + eh / 2 + 7}" text-anchor="end" font-size="19" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">h=${a.Y || 0}</text>
+    <text x="180" y="32" font-size="22" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Faces — Cobrimentos</text>
     ${legenda}
   </svg>`;
 }
@@ -341,17 +341,20 @@ function gerarSvgLaje(a: AmostraRow): string {
 //   - Estribos (E1..En) + cobrimentos: vermelho sóbrio (#A8383B)
 //   - Todas as linhas e cotas (espaçamentos e cobrimentos de borda): amarelo (#B8890E)
 
-function legendaCoresPerfilSvg(W: number, yBase: number): string {
-  const yMid = yBase + 13;
+function legendaCoresPerfilSvg(W: number, yBase: number, footerH: number, fSize: number): string {
+  const yMid = yBase + footerH / 2;
+  const x1 = 10;
+  const x2 = Math.round(W * 0.31);
+  const x3 = Math.round(W * 0.78);
   return (
     `<line x1="0" y1="${yBase}" x2="${W}" y2="${yBase}" stroke="#E2E8F0" stroke-width="1"/>` +
-    `<rect x="0" y="${yBase + 1}" width="${W}" height="24" fill="#FAFBFD"/>` +
-    `<line x1="10" y1="${yMid}" x2="24" y2="${yMid}" stroke="${BARRA_COLOR}" stroke-width="3"/>` +
-    `<text x="29" y="${yMid + 5}" font-size="14.5" font-weight="700" fill="${BARRA_COLOR}" font-family="Calibri, sans-serif">Barras (B)</text>` +
-    `<line x1="116" y1="${yMid}" x2="130" y2="${yMid}" stroke="${ESTRIBO_COLOR}" stroke-width="3.2"/>` +
-    `<text x="135" y="${yMid + 5}" font-size="14.5" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">Estribos / Cob. (E)</text>` +
-    `<line x1="288" y1="${yMid}" x2="302" y2="${yMid}" stroke="${GOLD}" stroke-width="2"/>` +
-    `<text x="307" y="${yMid + 5}" font-size="14.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">Cotas</text>`
+    `<rect x="0" y="${yBase + 1}" width="${W}" height="${footerH - 1}" fill="#FAFBFD"/>` +
+    `<line x1="${x1}" y1="${yMid}" x2="${x1 + 14}" y2="${yMid}" stroke="${BARRA_COLOR}" stroke-width="3.2"/>` +
+    `<text x="${x1 + 19}" y="${(yMid + fSize * 0.34).toFixed(1)}" font-size="${fSize}" font-weight="700" fill="${BARRA_COLOR}" font-family="Calibri, sans-serif">Barras (B)</text>` +
+    `<line x1="${x2}" y1="${yMid}" x2="${x2 + 14}" y2="${yMid}" stroke="${ESTRIBO_COLOR}" stroke-width="3.4"/>` +
+    `<text x="${x2 + 19}" y="${(yMid + fSize * 0.34).toFixed(1)}" font-size="${fSize}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">Estribos / Cob. (E)</text>` +
+    `<line x1="${x3}" y1="${yMid}" x2="${x3 + 14}" y2="${yMid}" stroke="${GOLD}" stroke-width="2.2"/>` +
+    `<text x="${x3 + 19}" y="${(yMid + fSize * 0.34).toFixed(1)}" font-size="${fSize}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">Cotas</text>`
   );
 }
 
@@ -376,28 +379,38 @@ function gerarSvgPerfilVerticalFace(face: string, nBarras: number, fd: FaceData)
   const faceNome = FACE_LABELS[face] ?? face;
   const faceAccent = FACE_COLORS[face] || NAVY;
 
-  const headerH = 46;
-  const footerH = 26;
-  const ML = 76;
-  const MR = 104;
-  const MT = headerH + 26;
-  const MB = 48 + footerH;
-
-  const minStepY = 40;
-  const minStepX = 56;
+  // Passo compacto para que perfis com 5–8 barras não fiquem excessivamente largos
+  const minStepY = 42;
+  const minStepX = nb >= 5 ? 48 : 56;
   const padY = 28;
-  const padX = cobPerpEsq || cobPerpDir ? 46 : 30;
+  const padX = cobPerpEsq || cobPerpDir ? 46 : 28;
 
   const rawGapY = espVals.map(v => v ?? 15);
   const rawGapX = espHVals.map(v => v ?? 12);
 
-  const scY = Math.max(minStepY / Math.max(Math.min(...(rawGapY.length ? rawGapY : [15])), 1), 2.6);
-  const gapYPx = rawGapY.map(v => Math.min(72, Math.max(minStepY, v * scY)));
-  const ch = Math.max(126, gapYPx.reduce((a, b) => a + b, 0) + 2 * padY);
+  const scY = Math.max(minStepY / Math.max(Math.min(...(rawGapY.length ? rawGapY : [15])), 1), 2.4);
+  const gapYPx = rawGapY.map(v => Math.min(68, Math.max(minStepY, v * scY)));
+  const ch = Math.max(122, gapYPx.reduce((a, b) => a + b, 0) + 2 * padY);
 
-  const scX = Math.max(minStepX / Math.max(Math.min(...(rawGapX.length ? rawGapX : [12])), 1), 3.4);
-  const gapXPx = rawGapX.map(v => Math.min(86, Math.max(minStepX, v * scX)));
+  const scX = Math.max(minStepX / Math.max(Math.min(...(rawGapX.length ? rawGapX : [12])), 1), 2.8);
+  const gapXPx = rawGapX.map(v => Math.min(72, Math.max(minStepX, v * scX)));
   const cw = Math.max(142, gapXPx.reduce((a, b) => a + b, 0) + 2 * padX);
+
+  // Escala dinâmica de fonte proporcional à largura W para manter leitura equivalente a ~10–11 pt no Word
+  const estW = Math.max(360, 82 + cw + 114);
+  const fK = Math.max(1, estW / 360);
+  const fTit = +(18.5 * fK).toFixed(1);
+  const fSub = +(16.5 * fK).toFixed(1);
+  const fLbl = +(18 * fK).toFixed(1);
+  const fCota = +(17 * fK).toFixed(1);
+  const fLeg = +(14.5 * fK).toFixed(1);
+
+  const headerH = Math.round(50 * fK);
+  const footerH = Math.round(30 * fK);
+  const ML = Math.round(82 * fK);
+  const MR = Math.round(114 * fK);
+  const MT = headerH + Math.round(30 * fK);
+  const MB = Math.round(50 * fK) + footerH;
 
   const W = Math.max(360, ML + cw + MR);
   const H = MT + ch + MB;
@@ -418,7 +431,7 @@ function gerarSvgPerfilVerticalFace(face: string, nBarras: number, fd: FaceData)
     for (let i = 0; i < ne - 1; i++) estrY.push(estrY[estrY.length - 1] + gapYPx[i]);
   }
 
-  const cotaBotY = oy + ch + 18;
+  const cotaBotY = oy + ch + Math.round(16 * fK);
   const subtitulo = st ? `Méd: ${st.media} | Mín: ${st.min} | Máx: ${st.max} mm` : `${nb}B / ${ne}E`;
 
   let inner = '';
@@ -426,63 +439,64 @@ function gerarSvgPerfilVerticalFace(face: string, nBarras: number, fd: FaceData)
   inner += `<rect x="0" y="0" width="${W}" height="${headerH}" fill="#F2F4F8"/>`;
   inner += `<rect x="0" y="0" width="5" height="${headerH}" fill="${faceAccent}"/>`;
   inner += `<line x1="0" y1="${headerH}" x2="${W}" y2="${headerH}" stroke="#CBD5E1" stroke-width="1"/>`;
-  inner += `<text x="14" y="20" font-size="18" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(faceNome)}</text>`;
-  inner += `<text x="14" y="40" font-size="16" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(subtitulo)}</text>`;
+  inner += `<text x="14" y="${Math.round(headerH * 0.44)}" font-size="${fTit}" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(faceNome)}</text>`;
+  inner += `<text x="14" y="${Math.round(headerH * 0.86)}" font-size="${fSub}" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(subtitulo)}</text>`;
 
   // Contorno do pilar
-  inner += `<rect x="${ox}" y="${oy}" width="${cw}" height="${ch}" fill="#EEF2F7" stroke="${PRIMARY}" stroke-width="2"/>`;
+  inner += `<rect x="${ox}" y="${oy}" width="${cw}" height="${ch}" fill="#EEF2F7" stroke="${PRIMARY}" stroke-width="2.2"/>`;
 
   // Barras longitudinais (verticais, AZUL) + nomes B1..Bn em AZUL
   barX.forEach((x, i) => {
-    inner += `<line x1="${x.toFixed(1)}" y1="${oy + 6}" x2="${x.toFixed(1)}" y2="${oy + ch - 6}" stroke="${BARRA_COLOR}" stroke-width="2.6" opacity="0.88"/>`;
-    inner += `<text x="${x.toFixed(1)}" y="${oy - 7}" text-anchor="middle" font-size="17.5" font-weight="700" fill="${BARRA_COLOR}" font-family="Calibri, sans-serif">B${i + 1}</text>`;
+    inner += `<line x1="${x.toFixed(1)}" y1="${oy + 6}" x2="${x.toFixed(1)}" y2="${oy + ch - 6}" stroke="${BARRA_COLOR}" stroke-width="2.8" opacity="0.9"/>`;
+    inner += `<text x="${x.toFixed(1)}" y="${oy - Math.round(7 * fK)}" text-anchor="middle" font-size="${fLbl}" font-weight="700" fill="${BARRA_COLOR}" font-family="Calibri, sans-serif">B${i + 1}</text>`;
   });
 
   // Estribos (horizontais, VERMELHO SÓBRIO) + nomes E1..En e cobrimentos em VERMELHO SÓBRIO
   estrY.forEach((y, i) => {
     const cobVal = fd.cob?.[i]?.trim() || '';
-    inner += `<line x1="${ox + 10}" y1="${y.toFixed(1)}" x2="${ox + cw - 10}" y2="${y.toFixed(1)}" stroke="${ESTRIBO_COLOR}" stroke-width="3.2"/>`;
-    inner += `<text x="${ox + cw + 7}" y="${(y + 6).toFixed(1)}" font-size="17.5" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">E${i + 1}</text>`;
+    inner += `<line x1="${ox + 10}" y1="${y.toFixed(1)}" x2="${ox + cw - 10}" y2="${y.toFixed(1)}" stroke="${ESTRIBO_COLOR}" stroke-width="3.4"/>`;
+    inner += `<text x="${ox + cw + Math.round(8 * fK)}" y="${(y + fLbl * 0.35).toFixed(1)}" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">E${i + 1}</text>`;
     if (cobVal) {
-      inner += `<text x="${ox + cw + 38}" y="${(y + 6).toFixed(1)}" font-size="17.5" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">${escSvg(cobVal.replace('.', ','))}mm</text>`;
+      inner += `<text x="${ox + cw + Math.round(40 * fK)}" y="${(y + fLbl * 0.35).toFixed(1)}" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">${escSvg(cobVal.replace('.', ','))}mm</text>`;
     }
   });
 
   // Cotas de espaçamento entre estribos (esquerda, AMARELO/GOLD)
   for (let i = 0; i < estrY.length - 1; i++) {
     const y1 = estrY[i], y2 = estrY[i + 1];
-    inner += `<line x1="${ox - 10}" y1="${y1.toFixed(1)}" x2="${ox - 10}" y2="${y2.toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${ox - 15}" y1="${y1.toFixed(1)}" x2="${ox - 5}" y2="${y1.toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${ox - 15}" y1="${y2.toFixed(1)}" x2="${ox - 5}" y2="${y2.toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
+    inner += `<line x1="${ox - 10}" y1="${y1.toFixed(1)}" x2="${ox - 10}" y2="${y2.toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${ox - 15}" y1="${y1.toFixed(1)}" x2="${ox - 5}" y2="${y1.toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${ox - 15}" y1="${y2.toFixed(1)}" x2="${ox - 5}" y2="${y2.toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
     const lbl = espVals[i] !== null ? `${fmtComma(espVals[i]!, Number.isInteger(espVals[i]!) ? 0 : 1)}cm` : '—';
-    inner += `<text x="${ox - 18}" y="${((y1 + y2) / 2 + 6).toFixed(1)}" text-anchor="end" font-size="16.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(lbl)}</text>`;
+    inner += `<text x="${ox - 18}" y="${((y1 + y2) / 2 + fCota * 0.35).toFixed(1)}" text-anchor="end" font-size="${fCota}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(lbl)}</text>`;
   }
 
   // Linha de cota inferior: cobPerpEsq + espH + cobPerpDir (TODAS em AMARELO/GOLD)
+  const yCotaTxt = cotaBotY + Math.round(22 * fK);
   if (cobPerpEsq) {
-    inner += `<line x1="${ox}" y1="${cotaBotY}" x2="${barX[0].toFixed(1)}" y2="${cotaBotY}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${ox}" y1="${cotaBotY - 5}" x2="${ox}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${barX[0].toFixed(1)}" y1="${cotaBotY - 5}" x2="${barX[0].toFixed(1)}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<text x="${((ox + barX[0]) / 2).toFixed(1)}" y="${cotaBotY + 23}" text-anchor="middle" font-size="16.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(cobPerpEsq.replace('.', ','))}mm</text>`;
+    inner += `<line x1="${ox}" y1="${cotaBotY}" x2="${barX[0].toFixed(1)}" y2="${cotaBotY}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${ox}" y1="${cotaBotY - 5}" x2="${ox}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${barX[0].toFixed(1)}" y1="${cotaBotY - 5}" x2="${barX[0].toFixed(1)}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<text x="${((ox + barX[0]) / 2).toFixed(1)}" y="${yCotaTxt}" text-anchor="middle" font-size="${fCota}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(cobPerpEsq.replace('.', ','))}mm</text>`;
   }
   for (let i = 0; i < barX.length - 1; i++) {
     const x1 = barX[i], x2 = barX[i + 1];
-    inner += `<line x1="${x1.toFixed(1)}" y1="${cotaBotY}" x2="${x2.toFixed(1)}" y2="${cotaBotY}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${x1.toFixed(1)}" y1="${cotaBotY - 5}" x2="${x1.toFixed(1)}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${x2.toFixed(1)}" y1="${cotaBotY - 5}" x2="${x2.toFixed(1)}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.5"/>`;
+    inner += `<line x1="${x1.toFixed(1)}" y1="${cotaBotY}" x2="${x2.toFixed(1)}" y2="${cotaBotY}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${x1.toFixed(1)}" y1="${cotaBotY - 5}" x2="${x1.toFixed(1)}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${x2.toFixed(1)}" y1="${cotaBotY - 5}" x2="${x2.toFixed(1)}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.6"/>`;
     const lbl = espHVals[i] !== null ? `${fmtComma(espHVals[i]!, Number.isInteger(espHVals[i]!) ? 0 : 1)}cm` : '—';
-    inner += `<text x="${((x1 + x2) / 2).toFixed(1)}" y="${cotaBotY + 23}" text-anchor="middle" font-size="16.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(lbl)}</text>`;
+    inner += `<text x="${((x1 + x2) / 2).toFixed(1)}" y="${yCotaTxt}" text-anchor="middle" font-size="${fCota}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(lbl)}</text>`;
   }
   if (cobPerpDir) {
     const xLast = barX[nb - 1];
-    inner += `<line x1="${xLast.toFixed(1)}" y1="${cotaBotY}" x2="${ox + cw}" y2="${cotaBotY}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${xLast.toFixed(1)}" y1="${cotaBotY - 5}" x2="${xLast.toFixed(1)}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${ox + cw}" y1="${cotaBotY - 5}" x2="${ox + cw}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<text x="${((xLast + ox + cw) / 2).toFixed(1)}" y="${cotaBotY + 23}" text-anchor="middle" font-size="16.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(cobPerpDir.replace('.', ','))}mm</text>`;
+    inner += `<line x1="${xLast.toFixed(1)}" y1="${cotaBotY}" x2="${ox + cw}" y2="${cotaBotY}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${xLast.toFixed(1)}" y1="${cotaBotY - 5}" x2="${xLast.toFixed(1)}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${ox + cw}" y1="${cotaBotY - 5}" x2="${ox + cw}" y2="${cotaBotY + 5}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<text x="${((xLast + ox + cw) / 2).toFixed(1)}" y="${yCotaTxt}" text-anchor="middle" font-size="${fCota}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(cobPerpDir.replace('.', ','))}mm</text>`;
   }
 
   // Legenda de cores no rodapé do card
-  inner += legendaCoresPerfilSvg(W, H - footerH);
+  inner += legendaCoresPerfilSvg(W, H - footerH, footerH, fLeg);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
     <rect width="${W}" height="${H}" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2"/>
@@ -511,28 +525,36 @@ function gerarSvgPerfilHorizontalFace(face: string, nBarras: number, fd: FaceDat
   const faceNome = FACE_LABELS[face] ?? face;
   const faceAccent = FACE_COLORS[face] || NAVY;
 
-  const headerH = 46;
-  const footerH = 26;
-  const ML = 82;
-  const MR = 48;
-  const MT = headerH + 42;
-  const MB = 46 + footerH;
-
-  const minStepX = 66;
+  const minStepX = ne >= 5 ? 56 : 64;
   const minStepY = 44;
-  const padX = 38;
+  const padX = 36;
   const padY = cobPerpSup || cobPerpInf ? 38 : 28;
 
   const rawGapX = espEstr.map(v => v ?? 15);
   const rawGapY = espLong.map(v => v ?? 10);
 
-  const scX = Math.max(minStepX / Math.max(Math.min(...(rawGapX.length ? rawGapX : [15])), 1), 3.4);
-  const gapXPx = rawGapX.map(v => Math.min(92, Math.max(minStepX, v * scX)));
-  const cw = Math.max(210, gapXPx.reduce((a, b) => a + b, 0) + 2 * padX);
+  const scX = Math.max(minStepX / Math.max(Math.min(...(rawGapX.length ? rawGapX : [15])), 1), 3.0);
+  const gapXPx = rawGapX.map(v => Math.min(82, Math.max(minStepX, v * scX)));
+  const cw = Math.max(200, gapXPx.reduce((a, b) => a + b, 0) + 2 * padX);
 
-  const scY = Math.max(minStepY / Math.max(Math.min(...(rawGapY.length ? rawGapY : [10])), 1), 3.2);
-  const gapYPx = rawGapY.map(v => Math.min(72, Math.max(minStepY, v * scY)));
+  const scY = Math.max(minStepY / Math.max(Math.min(...(rawGapY.length ? rawGapY : [10])), 1), 3.0);
+  const gapYPx = rawGapY.map(v => Math.min(68, Math.max(minStepY, v * scY)));
   const ch = Math.max(108, gapYPx.reduce((a, b) => a + b, 0) + 2 * padY);
+
+  const estW = Math.max(380, 86 + cw + 52);
+  const fK = Math.max(1, estW / 380);
+  const fTit = +(18.5 * fK).toFixed(1);
+  const fSub = +(16.5 * fK).toFixed(1);
+  const fLbl = +(17.5 * fK).toFixed(1);
+  const fCota = +(17 * fK).toFixed(1);
+  const fLeg = +(14.5 * fK).toFixed(1);
+
+  const headerH = Math.round(50 * fK);
+  const footerH = Math.round(30 * fK);
+  const ML = Math.round(86 * fK);
+  const MR = Math.round(52 * fK);
+  const MT = headerH + Math.round(48 * fK);
+  const MB = Math.round(50 * fK) + footerH;
 
   const W = Math.max(380, ML + cw + MR);
   const H = MT + ch + MB;
@@ -561,65 +583,66 @@ function gerarSvgPerfilHorizontalFace(face: string, nBarras: number, fd: FaceDat
   inner += `<rect x="0" y="0" width="${W}" height="${headerH}" fill="#F2F4F8"/>`;
   inner += `<rect x="0" y="0" width="5" height="${headerH}" fill="${faceAccent}"/>`;
   inner += `<line x1="0" y1="${headerH}" x2="${W}" y2="${headerH}" stroke="#CBD5E1" stroke-width="1"/>`;
-  inner += `<text x="14" y="20" font-size="18" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(faceNome)}</text>`;
-  inner += `<text x="14" y="40" font-size="16" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(subtitulo)}</text>`;
+  inner += `<text x="14" y="${Math.round(headerH * 0.44)}" font-size="${fTit}" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(faceNome)}</text>`;
+  inner += `<text x="14" y="${Math.round(headerH * 0.86)}" font-size="${fSub}" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(subtitulo)}</text>`;
 
   // Contorno horizontal da viga
-  inner += `<rect x="${ox}" y="${oy}" width="${cw}" height="${ch}" fill="#EEF2F7" stroke="${PRIMARY}" stroke-width="2"/>`;
+  inner += `<rect x="${ox}" y="${oy}" width="${cw}" height="${ch}" fill="#EEF2F7" stroke="${PRIMARY}" stroke-width="2.2"/>`;
   inner += `<line x1="${ox}" y1="${oy - 3}" x2="${ox}" y2="${oy + ch + 3}" stroke="${PRIMARY}" stroke-width="1.6" stroke-dasharray="3,2"/>`;
   inner += `<line x1="${ox + cw}" y1="${oy - 3}" x2="${ox + cw}" y2="${oy + ch + 3}" stroke="${PRIMARY}" stroke-width="1.6" stroke-dasharray="3,2"/>`;
 
   // Barras longitudinais (horizontais, AZUL) + nomes B1..Bn em AZUL
   barY.forEach((y, i) => {
-    inner += `<line x1="${ox + 6}" y1="${y.toFixed(1)}" x2="${ox + cw - 6}" y2="${y.toFixed(1)}" stroke="${BARRA_COLOR}" stroke-width="2.6" opacity="0.88"/>`;
-    inner += `<text x="${ox + cw + 7}" y="${(y + 6).toFixed(1)}" font-size="17.5" font-weight="700" fill="${BARRA_COLOR}" font-family="Calibri, sans-serif">B${i + 1}</text>`;
+    inner += `<line x1="${ox + 6}" y1="${y.toFixed(1)}" x2="${ox + cw - 6}" y2="${y.toFixed(1)}" stroke="${BARRA_COLOR}" stroke-width="2.8" opacity="0.9"/>`;
+    inner += `<text x="${ox + cw + Math.round(7 * fK)}" y="${(y + fLbl * 0.35).toFixed(1)}" font-size="${fLbl}" font-weight="700" fill="${BARRA_COLOR}" font-family="Calibri, sans-serif">B${i + 1}</text>`;
   });
 
   // Estribos (verticais, VERMELHO SÓBRIO) + nomes E1..En e cobrimentos em VERMELHO SÓBRIO
   estrX.forEach((x, i) => {
     const cobVal = fd.cob?.[i]?.trim() || '';
-    inner += `<line x1="${x.toFixed(1)}" y1="${oy + 9}" x2="${x.toFixed(1)}" y2="${oy + ch - 9}" stroke="${ESTRIBO_COLOR}" stroke-width="3.2"/>`;
-    inner += `<text x="${x.toFixed(1)}" y="${oy - 25}" text-anchor="middle" font-size="16.5" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">E${i + 1}</text>`;
+    inner += `<line x1="${x.toFixed(1)}" y1="${oy + 9}" x2="${x.toFixed(1)}" y2="${oy + ch - 9}" stroke="${ESTRIBO_COLOR}" stroke-width="3.4"/>`;
+    inner += `<text x="${x.toFixed(1)}" y="${oy - Math.round(28 * fK)}" text-anchor="middle" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">E${i + 1}</text>`;
     if (cobVal) {
-      inner += `<text x="${x.toFixed(1)}" y="${oy - 7}" text-anchor="middle" font-size="16.5" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">${escSvg(cobVal.replace('.', ','))}mm</text>`;
+      inner += `<text x="${x.toFixed(1)}" y="${oy - Math.round(8 * fK)}" text-anchor="middle" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">${escSvg(cobVal.replace('.', ','))}mm</text>`;
     }
   });
 
   // Cotas de espaçamento entre estribos (embaixo, AMARELO/GOLD)
   for (let i = 0; i < estrX.length - 1; i++) {
     const x1 = estrX[i], x2 = estrX[i + 1];
-    inner += `<line x1="${x1.toFixed(1)}" y1="${oy + ch + 14}" x2="${x2.toFixed(1)}" y2="${oy + ch + 14}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${x1.toFixed(1)}" y1="${oy + ch + 9}" x2="${x1.toFixed(1)}" y2="${oy + ch + 19}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${x2.toFixed(1)}" y1="${oy + ch + 9}" x2="${x2.toFixed(1)}" y2="${oy + ch + 19}" stroke="${GOLD}" stroke-width="1.5"/>`;
+    const yLine = oy + ch + Math.round(14 * fK);
+    inner += `<line x1="${x1.toFixed(1)}" y1="${yLine}" x2="${x2.toFixed(1)}" y2="${yLine}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${x1.toFixed(1)}" y1="${yLine - 5}" x2="${x1.toFixed(1)}" y2="${yLine + 5}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${x2.toFixed(1)}" y1="${yLine - 5}" x2="${x2.toFixed(1)}" y2="${yLine + 5}" stroke="${GOLD}" stroke-width="1.6"/>`;
     const lbl = espEstr[i] !== null ? `${fmtComma(espEstr[i]!, Number.isInteger(espEstr[i]!) ? 0 : 1)}cm` : '—';
-    inner += `<text x="${((x1 + x2) / 2).toFixed(1)}" y="${oy + ch + 38}" text-anchor="middle" font-size="16.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(lbl)}</text>`;
+    inner += `<text x="${((x1 + x2) / 2).toFixed(1)}" y="${yLine + Math.round(22 * fK)}" text-anchor="middle" font-size="${fCota}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(lbl)}</text>`;
   }
 
   // Linha de cota esquerda: cobPerpSup + espLong + cobPerpInf (TODAS em AMARELO/GOLD)
   if (cobPerpSup) {
-    inner += `<line x1="${cotaEsqX}" y1="${oy}" x2="${cotaEsqX}" y2="${barY[0].toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${cotaEsqX - 5}" y1="${oy}" x2="${cotaEsqX + 5}" y2="${oy}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${cotaEsqX - 5}" y1="${barY[0].toFixed(1)}" x2="${cotaEsqX + 5}" y2="${barY[0].toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<text x="${cotaEsqX - 7}" y="${((oy + barY[0]) / 2 + 6).toFixed(1)}" text-anchor="end" font-size="16.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(cobPerpSup.replace('.', ','))}mm</text>`;
+    inner += `<line x1="${cotaEsqX}" y1="${oy}" x2="${cotaEsqX}" y2="${barY[0].toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${cotaEsqX - 5}" y1="${oy}" x2="${cotaEsqX + 5}" y2="${oy}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${cotaEsqX - 5}" y1="${barY[0].toFixed(1)}" x2="${cotaEsqX + 5}" y2="${barY[0].toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<text x="${cotaEsqX - 7}" y="${((oy + barY[0]) / 2 + fCota * 0.35).toFixed(1)}" text-anchor="end" font-size="${fCota}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(cobPerpSup.replace('.', ','))}mm</text>`;
   }
   for (let i = 0; i < barY.length - 1; i++) {
     const y1 = barY[i], y2 = barY[i + 1];
-    inner += `<line x1="${cotaEsqX}" y1="${y1.toFixed(1)}" x2="${cotaEsqX}" y2="${y2.toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${cotaEsqX - 5}" y1="${y1.toFixed(1)}" x2="${cotaEsqX + 5}" y2="${y1.toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${cotaEsqX - 5}" y1="${y2.toFixed(1)}" x2="${cotaEsqX + 5}" y2="${y2.toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
+    inner += `<line x1="${cotaEsqX}" y1="${y1.toFixed(1)}" x2="${cotaEsqX}" y2="${y2.toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${cotaEsqX - 5}" y1="${y1.toFixed(1)}" x2="${cotaEsqX + 5}" y2="${y1.toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${cotaEsqX - 5}" y1="${y2.toFixed(1)}" x2="${cotaEsqX + 5}" y2="${y2.toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
     const lbl = espLong[i] !== null ? `${fmtComma(espLong[i]!, Number.isInteger(espLong[i]!) ? 0 : 1)}cm` : '—';
-    inner += `<text x="${cotaEsqX - 7}" y="${((y1 + y2) / 2 + 6).toFixed(1)}" text-anchor="end" font-size="16.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(lbl)}</text>`;
+    inner += `<text x="${cotaEsqX - 7}" y="${((y1 + y2) / 2 + fCota * 0.35).toFixed(1)}" text-anchor="end" font-size="${fCota}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(lbl)}</text>`;
   }
   if (cobPerpInf) {
     const yLast = barY[nb - 1];
-    inner += `<line x1="${cotaEsqX}" y1="${yLast.toFixed(1)}" x2="${cotaEsqX}" y2="${oy + ch}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${cotaEsqX - 5}" y1="${yLast.toFixed(1)}" x2="${cotaEsqX + 5}" y2="${yLast.toFixed(1)}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<line x1="${cotaEsqX - 5}" y1="${oy + ch}" x2="${cotaEsqX + 5}" y2="${oy + ch}" stroke="${GOLD}" stroke-width="1.5"/>`;
-    inner += `<text x="${cotaEsqX - 7}" y="${((yLast + oy + ch) / 2 + 6).toFixed(1)}" text-anchor="end" font-size="16.5" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(cobPerpInf.replace('.', ','))}mm</text>`;
+    inner += `<line x1="${cotaEsqX}" y1="${yLast.toFixed(1)}" x2="${cotaEsqX}" y2="${oy + ch}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${cotaEsqX - 5}" y1="${yLast.toFixed(1)}" x2="${cotaEsqX + 5}" y2="${yLast.toFixed(1)}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<line x1="${cotaEsqX - 5}" y1="${oy + ch}" x2="${cotaEsqX + 5}" y2="${oy + ch}" stroke="${GOLD}" stroke-width="1.6"/>`;
+    inner += `<text x="${cotaEsqX - 7}" y="${((yLast + oy + ch) / 2 + fCota * 0.35).toFixed(1)}" text-anchor="end" font-size="${fCota}" font-weight="700" fill="${GOLD}" font-family="Calibri, sans-serif">${escSvg(cobPerpInf.replace('.', ','))}mm</text>`;
   }
 
   // Legenda de cores no rodapé do card
-  inner += legendaCoresPerfilSvg(W, H - footerH);
+  inner += legendaCoresPerfilSvg(W, H - footerH, footerH, fLeg);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
     <rect width="${W}" height="${H}" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2"/>
