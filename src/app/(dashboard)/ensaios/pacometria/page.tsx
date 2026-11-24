@@ -276,7 +276,7 @@ export default function PacometriaPage() {
         let esquema = null;
         try {
           const svg = gerarSvgEsquemaPacometria(a);
-          esquema = await svgParaPng(svg, 2);
+          esquema = await svgParaPng(svg, 3);
         } catch {
           esquema = null;
         }
@@ -288,7 +288,7 @@ export default function PacometriaPage() {
         }> = [];
         for (const p of perfisSvgs) {
           try {
-            const imagem = await svgParaPng(p.svg, 2);
+            const imagem = await svgParaPng(p.svg, 3);
             perfis.push({ face: p.face, faceLabel: p.faceLabel, imagem });
           } catch {
             // ignora perfil se falhar rasterização

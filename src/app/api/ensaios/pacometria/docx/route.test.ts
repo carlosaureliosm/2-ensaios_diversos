@@ -317,16 +317,19 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(xml).not.toContain('MEMORIAL FOTOGRÁFICO');
     expect(xml).toContain('Registro fotográfico');
 
-    // Múltiplos croquis + numeração sequencial de figuras e tabelas
+    // Múltiplos croquis + numeração sequencial de figuras e tabelas (sem tabela Leituras por face)
     expect(xml).toContain('Figura 1 — Vista geral da estrutura ensaiada.');
     expect(xml).toContain('Figura 2 — Croqui de localização dos elementos ensaiados (1/2).');
     expect(xml).toContain('Figura 3 — Croqui de localização dos elementos ensaiados (2/2).');
     expect(xml).toContain('Tabela 1 — Resumo estatístico');
-    expect(xml).toContain('Tabela 2 — Leituras por face — Pilar P-01 (Térreo).');
-    expect(xml).toContain('Tabela 3 — Leituras por face — Pilar Circular PC-02.');
-    expect(xml).toContain('Tabela 4 — Leituras por face — Viga V-104 &amp; Balanço.');
-    expect(xml).toContain('Tabela 5 — Leituras da malha — Laje L-05 &lt;Garagem&gt;.');
-    expect(xml).toContain('Tabela 6 — Síntese global dos resultados de pacometria.');
+    expect(xml).not.toContain('Leituras por face');
+    expect(xml).toContain('Tabela 2 — Leituras da malha — Laje L-05 &lt;Garagem&gt;.');
+    expect(xml).toContain('Tabela 3 — Síntese global dos resultados de pacometria.');
+
+    // Corpo de texto em 11 pt (w:sz w:val="22") e títulos de seção em 12 pt (w:sz w:val="24")
+    expect(xml).toContain('<w:sz w:val="22"/>');
+    expect(xml).toContain('<w:sz w:val="24"/>');
+    expect(xml).not.toContain('<w:sz w:val="19"/>');
 
     // Controle de paginação por elemento (3 quebras para os 3 elementos após o 1º)
     expect((xml.match(/<w:pageBreakBefore\/>/g) ?? []).length).toBe(3);
@@ -358,7 +361,18 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(18);
   });
 
-  it('compacta colunas vazias e omite seções opcionais quando vazias', async () => {
+  it('compacta colunas vazias em Laje e omite seções opcionais quando vazias', async () => {
+    const lajeSemEspECob: AmostraRow = {
+      ...amostraLaje,
+      lajeData: {
+        larguraX: 100,
+        alturaY: 100,
+        passoGrid: 10,
+        camadaExterna: 'H',
+        barrasH: [{ id: 'h1', pos: 30, cob: '' }],
+        barrasV: [],
+      },
+    };
     const body = {
       cab: {
         rlt: '7',
@@ -369,8 +383,7 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
         endereco: '',
         notas: '',
       },
-      // Pilar circular sem espH e sem cobPerp -> deve omitir essas 2 colunas!
-      amostras: [amostraPilarCirc],
+      amostras: [lajeSemEspECob],
       quebraPaginaPorElemento: false,
       usaConclusao: false,
       respNome: 'Eng. Carlos',
@@ -388,16 +401,17 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(xml).not.toContain('5. RESUMO EXECUTIVO E CONCLUSÃO');
     expect(xml).not.toContain('NOTAS:');
     expect(xml).not.toContain('<w:pageBreakBefore/>');
-    // Colunas vazias omitidas na tabela do Pilar Circular
-    expect(xml).toContain('ESP. ESTRIBOS (cm)');
-    expect(xml).not.toContain('ESP. BARRAS (cm)');
-    expect(xml).not.toContain('COB. PERP. BORDAS (mm)');
+    // Colunas vazias omitidas na tabela da laje
+    expect(xml).toContain('POSIÇÃO (cm)');
+    expect(xml).not.toContain('ESPAÇAMENTO (cm)');
+    expect(xml).not.toContain('COBRIMENTO (mm)');
+    expect(xml).not.toContain('Cobrimentos às bordas');
     expect(xml).toContain('João Ribeiro de Carvalho');
     expect(xml).toContain('Eng. Carlos');
     validarXmlBemFormado(xml);
   });
 
-  it('gera SVGs de seção com Mín/Máx e perfis de elevação por face para Pilar e Viga', () => {
+  it('gera SVGs de seção com Mín/Máx e perfis com cores padronizadas (azul/vermelho sóbrio/amarelo) + legenda', () => {
     for (const a of [amostraPilar, amostraPilarCirc, amostraViga, amostraLaje]) {
       const svg = gerarSvgEsquemaPacometria(a);
       expect(svg).toContain('<svg');
@@ -412,11 +426,20 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(perfisPilar).toHaveLength(2);
     expect(perfisPilar[0].faceLabel).toBe('Face Inferior');
     expect(perfisPilar[0].svg).toContain('18mm');
+    expect(perfisPilar[0].svg).toContain('#2563EB'); // barras + B1..Bn em azul
+    expect(perfisPilar[0].svg).toContain('#A8383B'); // estribos + E1..En em vermelho sóbrio
+    expect(perfisPilar[0].svg).toContain('#B8890E'); // todas as cotas (espaçamentos e cobrimentos de borda) em amarelo
+    expect(perfisPilar[0].svg).not.toContain('#0F766E'); // sem verde-azulado antigo nas cotas de borda
+    expect(perfisPilar[0].svg).toContain('Barras (B)');
+    expect(perfisPilar[0].svg).toContain('Estribos / Cob. (E)');
 
     const perfisViga = gerarSvgsPerfisPacometria(amostraViga);
     expect(perfisViga).toHaveLength(3);
     expect(perfisViga[0].faceLabel).toBe('Face Inferior (Fundo)');
     expect(perfisViga[0].svg).toContain('28mm');
+    expect(perfisViga[0].svg).toContain('#2563EB');
+    expect(perfisViga[0].svg).toContain('#A8383B');
+    expect(perfisViga[0].svg).not.toContain('#0F766E');
 
     expect(gerarSvgsPerfisPacometria(amostraLaje)).toHaveLength(0);
   });

@@ -9,7 +9,8 @@ A página 1 e o estilo do módulo **Aderência** são o padrão oficial para tod
 - **Margens (`<w:pgMar>`):** `top="1020" right="720" bottom="900" left="720" header="284" footer="227"`.
 - **Footer:** paginação `X/Y` (em aderência inclui também revisão `RAAC - REV. 09 (02-01-26)` e endereço da TECOMAT).
 - **Página 1:** tabela `CLIENTE / OBRA / ATT. + DATA DE EMISSÃO / ENDEREÇO` → quadro `NORMA(S) DE REFERÊNCIA` → faixa cinza `ENSAIO DE [[nome_ensaio]]` → conteúdo (`1. INTRODUÇÃO`, etc.) sem quebra de página. A linha antiga `[[segunda_data]]` ("Recife, ...") não é mais usada.
-- **Fonte em runs injetados:** sempre definir `w:rFonts` explícito (`asciiTheme`/`hAnsiTheme="minorHAnsi"`, Calibri Corpo no template), senão estilos como `Legenda` caem em Times New Roman.
+- **Fonte em runs injetados:** sempre definir `w:rFonts` explícito (`asciiTheme`/`hAnsiTheme="minorHAnsi"` ou `Calibri`), senão estilos como `Legenda` caem em Times New Roman.
+- **Tamanho de texto padrão (corpo):** **11 pt (`w:sz="22"`)** em todos os parágrafos de texto corrido dos laudos (títulos de seção em 12 pt / `w:sz="24"`). Já aplicado em Pacometria; demais módulos (`aderencia`, `esclerometria`, `resistividade`) devem ser migrados para 11 pt.
 
 ## Assinatura dupla padronizada
 Todos os laudos encerram com o quadro final `NOTAS` + 2 assinaturas lado a lado (tabela `[2500, 2500]`, bordas externas médias e internas finas):
@@ -27,4 +28,5 @@ Todos os laudos encerram com o quadro final `NOTAS` + 2 assinaturas lado a lado 
 - **Aderência:** `public/modelo_aderencia.docx` (`rId13 -> image6.jpeg`), rota `api/ensaios/aderencia/docx/route.ts` (ainda sem `export const maxDuration` — avaliar).
 - **Esclerometria:** `public/modelo_esclerometria.docx` (`rId13 -> image6.jpeg`), rota `api/ensaios/esclerometria/docx/route.ts`.
 - **Resistividade:** `public/modelo_resistividade.docx` (`rId11 -> image6.jpeg`), rota `api/ensaios/resistividade/docx/route.ts` (`maxDuration = 60`). Reutiliza `injetarCroqui` (imagem única) de `src/lib/docx/esclerometria.ts` — **não alterar a assinatura de `injetarCroqui`** sem migrar resistividade.
-- **Pacometria e futuros** (`carbonatacao`, `ultrassom`, `potencial-corrosao`): ainda sem rota DOCX; ao implementar, iniciar já no padrão acima.
+- **Pacometria:** `public/modelo_pacometria.docx` (`rId13 -> image6.jpeg`, gerado por `scripts/build-modelo-pacometria.js`), rota `api/ensaios/pacometria/docx/route.ts` (`maxDuration = 60`). Já utiliza corpo de texto 11 pt (`w:sz="22"`), sem quadro de normas e sem tabela `Leituras por face` (dados exibidos nos perfis visuais).
+- **Futuros** (`carbonatacao`, `ultrassom`, `potencial-corrosao`): ainda sem rota DOCX; ao implementar, iniciar já no padrão acima com corpo de texto em 11 pt.

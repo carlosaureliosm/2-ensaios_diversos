@@ -12,7 +12,8 @@
 ## Técnicas / Infra
 3. **Vercel `maxDuration` em Aderência:** avaliar adicionar `export const maxDuration` em `src/app/api/ensaios/aderencia/docx/route.ts` (resistividade usa `60`), verificando o limite atual do plano Hobby, já que aderência baixa várias fotos do Storage.
 4. **Atualização `NBR 7584:2026` na tela de Esclerometria:** o DOCX já foi atualizado para `NBR 7584:2026`, mas o texto de tela/PDF client-side em `src/app/(dashboard)/ensaios/esclerometria/page.tsx` ainda exibe `NBR 7584:2012`.
-5. **Dependência `postcss` (Next 15):** vulnerabilidade residual só usada no build local com o CSS próprio; correção definitiva exige migração para Next 16 (sem urgência).
+5. **Padronizar corpo de texto DOCX em 11 pt (`w:sz="22"`):** atualizar os templates/scripts dos módulos `aderencia`, `esclerometria` e `resistividade` para usar tamanho 11 pt no corpo de texto (Pacometria já está em 11 pt).
+6. **Dependência `postcss` (Next 15):** vulnerabilidade residual só usada no build local com o CSS próprio; correção definitiva exige migração para Next 16 (sem urgência).
 
 ## QA pós-módulos
 6. **Teste ponta a ponta completo do site:** quando todos os módulos estiverem prontos (`pacometria`, `carbonatacao`, `potencial-corrosao`, `ultrassom`), rodar bateria completa cobrindo login, permissões, usuários/assinatura, autosave e geração/abertura real dos DOCX de todos os ensaios.

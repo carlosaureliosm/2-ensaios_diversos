@@ -62,7 +62,7 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 5. **Assinatura sob demanda (1h):** nunca persistir URL assinada longa; usar `GET /api/users/[id]/assinatura` via `src/lib/assinatura.ts`.
 6. **Troca da própria senha (`isSelf`) exige `currentPassword`** validado por `senhaAtualValida`. Usuário comum não altera próprio e-mail em `PATCH /api/users/[id]`.
 7. **Padrão visual obrigatório:** todo módulo (pronto ou futuro) usa `PlanilhaUI.tsx` (Planilha Técnica Compacta) e `ResponsavelTecnicoPanel.tsx` (detalhes em `padrao-visual.md`).
-8. **Padrão DOCX obrigatório:** página 1 compacta (sem capa nem sumário), header/margens padrão, fonte Calibri (`minorHAnsi`) em runs injetados e quadro final `NOTAS` + assinatura dupla (João Ribeiro de Carvalho + Engenheiro do ensaio).
+8. **Padrão DOCX obrigatório:** página 1 compacta (sem capa nem sumário), header/margens padrão, fonte Calibri em **11 pt (`w:sz="22"`)** no corpo de texto e quadro final `NOTAS` + assinatura dupla (João Ribeiro de Carvalho + Engenheiro do ensaio).
 9. **Nunca editar `public/modelo_aderencia.docx` à mão no Word** — editar `scripts/build-modelo-aderencia.js` e regenerar via Node.
 10. **Fotos não são salvas no `localStorage`** (removidas no save e zeradas no load). Em Aderência, fotos sobem para o bucket `aderencia-fotos` para respeitar o limite de 4,5 MB da Vercel.
 11. **Campos inteiros com mínimo/fallback (`InteiroInput`):** permitir apagar completamente no `onChange` e aplicar mínimo apenas no `onBlur`.
@@ -95,4 +95,5 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 - Confirmar no Supabase que "Allow new users to sign up" está desligado.
 - Avaliar `export const maxDuration` em `api/ensaios/aderencia/docx/route.ts` no plano Hobby.
 - Atualizar menção `NBR 7584:2012` → `2026` na tela/PDF client-side de `esclerometria/page.tsx` (DOCX já está em 2026).
+- Padronizar corpo de texto DOCX em **11 pt (`w:sz="22"`)** nos modelos de `aderencia`, `esclerometria` e `resistividade` (Pacometria já atualizado).
 - Teste ponta a ponta completo do site após concluir os módulos restantes (`pacometria`, `carbonatacao`, `potencial-corrosao`, `ultrassom`).

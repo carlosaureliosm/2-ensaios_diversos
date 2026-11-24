@@ -71,7 +71,7 @@ function espaco(line = 80, before = 20, after = 20) {
 }
 
 function tituloSecao(texto, { pageBreakBefore = false } = {}) {
-  return para(run(texto, { bold: true, size: 22, color: NAVY_TITLE }), {
+  return para(run(texto, { bold: true, size: 24, color: NAVY_TITLE }), {
     jc: 'left',
     before: pageBreakBefore ? 0 : 140,
     after: 70,
@@ -230,16 +230,16 @@ parts.push(tbl([5000], [
 parts.push(tituloSecao('1. INTRODUÇÃO'));
 
 parts.push(paragrafoCorpo([
-  run('O presente relatório apresenta os resultados do ensaio não destrutivo de pacometria realizado em elementos estruturais de concreto armado da obra ', { size: 19 }),
-  run('[[obra_intro]]', { bold: true, size: 19 }),
-  run(', localizada em ', { size: 19 }),
-  run('[[endereco_intro]]', { size: 19 }),
-  run('. O ensaio tem por objetivo localizar a posição das armaduras, estimar os espaçamentos entre barras e determinar a espessura do cobrimento de concreto existente.', { size: 19 }),
+  run('O presente relatório apresenta os resultados do ensaio não destrutivo de pacometria realizado em elementos estruturais de concreto armado da obra ', { size: 22 }),
+  run('[[obra_intro]]', { bold: true, size: 22 }),
+  run(', localizada em ', { size: 22 }),
+  run('[[endereco_intro]]', { size: 22 }),
+  run('. O ensaio tem por objetivo localizar a posição das armaduras, estimar os espaçamentos entre barras e determinar a espessura do cobrimento de concreto existente.', { size: 22 }),
 ]));
 
 // Motivação (opcional)
 parts.push(tagLinha('[[#temMotivacao]]'));
-parts.push(paragrafoCorpo(run('[[motivacao]]', { size: 19 })));
+parts.push(paragrafoCorpo(run('[[motivacao]]', { size: 22 })));
 parts.push(tagLinha('[[/temMotivacao]]'));
 
 // Mapa de localização (opcional)
@@ -266,24 +266,24 @@ parts.push(tagLinha('[[/temCroquis]]'));
 parts.push(tituloSecao('2. METODOLOGIA DE ENSAIO'));
 
 parts.push(paragrafoCorpo([
-  run('O ensaio de pacometria consiste na detecção eletromagnética de armaduras de aço imersas no concreto por meio de pacômetro digital calibrado, permitindo identificar de forma não destrutiva o posicionamento das barras, seus espaçamentos e a espessura de cobrimento de concreto.', { size: 19 }),
+  run('O ensaio de pacometria consiste na detecção eletromagnética de armaduras de aço imersas no concreto por meio de pacômetro digital calibrado, permitindo identificar de forma não destrutiva o posicionamento das barras, seus espaçamentos e a espessura de cobrimento de concreto.', { size: 22 }),
 ]));
 
 parts.push(paragrafoCorpo([
-  run('O cobrimento de concreto de um elemento estrutural é definido pela armadura mais próxima da face exposta: os ', { size: 19 }),
-  run('estribos', { bold: true, size: 19 }),
-  run(' em pilares e vigas, e a ', { size: 19 }),
-  run('camada externa de armadura', { bold: true, size: 19 }),
-  run(' em lajes e áreas livres.', { size: 19 }),
+  run('O cobrimento de concreto de um elemento estrutural é definido pela armadura mais próxima da face exposta: os ', { size: 22 }),
+  run('estribos', { bold: true, size: 22 }),
+  run(' em pilares e vigas, e a ', { size: 22 }),
+  run('camada externa de armadura', { bold: true, size: 22 }),
+  run(' em lajes e áreas livres.', { size: 22 }),
 ]));
 
 // ── 3. RESULTADOS DO ENSAIO (TABELA CONSOLIDADA) ──────────────
 parts.push(tituloSecao('3. RESULTADOS DO ENSAIO'));
 
 parts.push(paragrafoCorpo([
-  run('A Tabela 1 apresenta o resumo estatístico dos cobrimentos medidos nos ', { size: 19 }),
-  run('[[total_elementos]]', { bold: true, size: 19 }),
-  run(' elemento(s) estrutural(is) inspecionado(s).', { size: 19 }),
+  run('A Tabela 1 apresenta o resumo estatístico dos cobrimentos medidos nos ', { size: 22 }),
+  run('[[total_elementos]]', { bold: true, size: 22 }),
+  run(' elemento(s) estrutural(is) inspecionado(s).', { size: 22 }),
 ]));
 
 // Colunas: Item(340) | Elemento(1060) | Tipo/Seção(1060) | Médio(440) | Mín(420) | Máx(420) | DP(420) | CV(420) | Moda(420) = 5000
@@ -345,7 +345,7 @@ parts.push(tbl([1250, 1250, 1250, 1250], [
 ], { borders: 'navy', marTop: 22, marBottom: 22, marLeft: 40, marRight: 40 }));
 
 parts.push(espaco(80, 30, 20));
-parts.push(paragrafoCorpo(run('[[conclusao]]', { size: 19 })));
+parts.push(paragrafoCorpo(run('[[conclusao]]', { size: 22 })));
 parts.push(tagLinha('[[/temConclusao]]'));
 
 // ── 6. QUADRO FINAL: NOTAS (OPCIONAL) + ASSINATURA DUPLA ──────

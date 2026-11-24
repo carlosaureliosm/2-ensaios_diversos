@@ -14,7 +14,6 @@ import {
 import {
   AmostraRow,
   Cabecalho,
-  FACE_LABELS,
   OPCOES_LAJE,
   OPCOES_PILAR,
   OPCOES_VIGA,
@@ -25,7 +24,6 @@ import {
   calcularCobrimentos,
   calcularCobrimentosLaje,
   calcularEspacamentos,
-  getFacesDaOpcao,
   ordenarBarras,
 } from '@/modules/pacometria/types';
 
@@ -284,17 +282,6 @@ function resumoTipoCurto(a: AmostraPacometriaPayload): string {
   const lx = a.lajeData?.larguraX ?? 100;
   const ly = a.lajeData?.alturaY ?? 100;
   return `${tipo} (${lx}×${ly} cm)`;
-}
-
-function formatarCobPerp(tipo: 'pilar' | 'viga', ini?: string, fim?: string): string {
-  const a = fmtValorBruto(ini);
-  const b = fmtValorBruto(fim);
-  if (!a && !b) return '—';
-  const [rotIni, rotFim] = tipo === 'viga' ? ['Sup', 'Inf'] : ['Esq', 'Dir'];
-  const partes: string[] = [];
-  if (a) partes.push(`${rotIni}: ${a}`);
-  if (b) partes.push(`${rotFim}: ${b}`);
-  return partes.join(' | ');
 }
 
 function formatarCobBordasLaje(ld: NonNullable<AmostraPacometriaPayload['lajeData']>): string {
@@ -562,11 +549,11 @@ export function montarDadosPacometria(
 
     blocosElementos.push(headerElemTbl);
 
-    // 2) Esquema + Foto integrados à ficha do elemento
+    // 2) Esquema em largura total (maior legibilidade) + Foto integrada à ficha do elemento
     const temEsquema = imagemValida(a.esquema);
     const temFoto = imagemValida(a.foto);
 
-    if (temEsquema && temFoto) {
+    if (temEsquema) {
       figNum += 1;
       const figEsq = figNum;
       const esqMarc = `ESQUEMA_PAC_${itemNum}_END`;
@@ -576,52 +563,8 @@ export function montarDadosPacometria(
         contentType: a.esquema!.contentType || 'image/png',
         width: a.esquema!.width,
         height: a.esquema!.height,
-        maxLarguraCm: 8.4,
-        maxAlturaCm: 5.8,
-      });
-
-      figNum += 1;
-      const figFoto = figNum;
-      const fotoMarc = `FOTO_ELEM_PAC_${itemNum}_END`;
-      imagens.push({
-        marcador: fotoMarc,
-        buffer: bufferDeBase64(a.foto!.base64),
-        contentType: a.foto!.contentType || 'image/jpeg',
-        width: a.foto!.width,
-        height: a.foto!.height,
-        maxLarguraCm: 7.4,
-        maxAlturaCm: 5.6,
-      });
-
-      const descEsquema = a.tipo === 'laje' ? 'Malha ensaiada' : 'Esquema da seção transversal';
-      blocosElementos.push(xmlTbl([2650, 2350], [
-        xmlTrow([
-          xmlTc(2650, [
-            xmlPara(xmlRun(esqMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figEsq} — ${descEsquema} (${elemNome}).`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
-          ], {
-            borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_LIGHT },
-          }),
-          xmlTc(2350, [
-            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico (${elemNome}).`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
-          ], {
-            borders: { top: B_NONE, bottom: B_LIGHT, left: B_LIGHT, right: B_NAVY },
-          }),
-        ]),
-      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
-    } else if (temEsquema) {
-      figNum += 1;
-      const figEsq = figNum;
-      const esqMarc = `ESQUEMA_PAC_${itemNum}_END`;
-      imagens.push({
-        marcador: esqMarc,
-        buffer: bufferDeBase64(a.esquema!.base64),
-        contentType: a.esquema!.contentType || 'image/png',
-        width: a.esquema!.width,
-        height: a.esquema!.height,
-        maxLarguraCm: 13.5,
-        maxAlturaCm: 6.8,
+        maxLarguraCm: 15.2,
+        maxAlturaCm: 8.2,
       });
       const descEsquema = a.tipo === 'laje' ? 'Malha ensaiada' : 'Esquema da seção transversal';
       blocosElementos.push(xmlTbl([5000], [
@@ -633,8 +576,10 @@ export function montarDadosPacometria(
             borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
           }),
         ]),
-      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 36, marRight: 36 }));
-    } else if (temFoto) {
+      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
+    }
+
+    if (temFoto) {
       figNum += 1;
       const figFoto = figNum;
       const fotoMarc = `FOTO_ELEM_PAC_${itemNum}_END`;
@@ -644,19 +589,19 @@ export function montarDadosPacometria(
         contentType: a.foto!.contentType || 'image/jpeg',
         width: a.foto!.width,
         height: a.foto!.height,
-        maxLarguraCm: 10.5,
-        maxAlturaCm: 7.0,
+        maxLarguraCm: 11.0,
+        maxAlturaCm: 7.4,
       });
       blocosElementos.push(xmlTbl([5000], [
         xmlTrow([
           xmlTc(5000, [
-            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico — ${elemNome}.`, { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
+            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 22, after: 14, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico — ${elemNome}.`, { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 14 }),
           ], {
             borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
           }),
         ]),
-      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 36, marRight: 36 }));
+      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
     }
 
     // 3) Perfis de elevação por face (Pilar / Viga)
@@ -672,24 +617,26 @@ export function montarDadosPacometria(
           contentType: p.imagem.contentType || 'image/png',
           width: p.imagem.width,
           height: p.imagem.height,
-          maxLarguraCm: 13.0,
-          maxAlturaCm: 7.0,
+          maxLarguraCm: 14.5,
+          maxAlturaCm: 8.5,
         });
         blocosElementos.push(xmlTbl([5000], [
           xmlTrow([
             xmlTc(5000, [
               xmlPara(xmlRun(marc), { jc: 'center', before: 20, after: 14, keepNext: true }),
-              xmlPara(xmlRun(`Figura ${figNum} — Perfil de elevação — ${p.faceLabel} (${elemNome}).`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 12, keepNext: true }),
+              xmlPara(xmlRun(`Figura ${figNum} — Perfil de elevação — ${p.faceLabel} (${elemNome}).`, { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 12 }),
             ], {
-              borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
+              borders: { top: B_NONE, bottom: B_NAVY, left: B_NAVY, right: B_NAVY },
             }),
           ]),
-        ], { borders: 'none', marTop: 10, marBottom: 10, marLeft: 28, marRight: 28 }));
+        ], { borders: 'none', marTop: 10, marBottom: 10, marLeft: 24, marRight: 24 }));
       } else {
         const linhasPerfis: string[] = [];
         for (let pi = 0; pi < perfisValidos.length; pi += 2) {
           const pEsq = perfisValidos[pi];
           const pDir = perfisValidos[pi + 1];
+          const ultimaLinha = pi + 2 >= perfisValidos.length;
+          const bBot = ultimaLinha ? B_NAVY : B_LIGHT;
 
           figNum += 1;
           const figEsq = figNum;
@@ -700,15 +647,15 @@ export function montarDadosPacometria(
             contentType: pEsq.imagem.contentType || 'image/png',
             width: pEsq.imagem.width,
             height: pEsq.imagem.height,
-            maxLarguraCm: 7.8,
-            maxAlturaCm: 6.2,
+            maxLarguraCm: 8.4,
+            maxAlturaCm: 7.5,
           });
 
           const cellEsq = xmlTc(2500, [
             xmlPara(xmlRun(marcEsq), { jc: 'center', before: 18, after: 12, keepNext: true }),
             xmlPara(xmlRun(`Figura ${figEsq} — Perfil — ${pEsq.faceLabel}.`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
           ], {
-            borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_LIGHT },
+            borders: { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_LIGHT },
           });
 
           let cellDir: string;
@@ -722,118 +669,31 @@ export function montarDadosPacometria(
               contentType: pDir.imagem.contentType || 'image/png',
               width: pDir.imagem.width,
               height: pDir.imagem.height,
-              maxLarguraCm: 7.8,
-              maxAlturaCm: 6.2,
+              maxLarguraCm: 8.4,
+              maxAlturaCm: 7.5,
             });
             cellDir = xmlTc(2500, [
               xmlPara(xmlRun(marcDir), { jc: 'center', before: 18, after: 12, keepNext: true }),
               xmlPara(xmlRun(`Figura ${figDir} — Perfil — ${pDir.faceLabel}.`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
             ], {
-              borders: { top: B_NONE, bottom: B_LIGHT, left: B_LIGHT, right: B_NAVY },
+              borders: { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY },
             });
           } else {
             cellDir = xmlTc(2500, '', {
-              borders: { top: B_NONE, bottom: B_LIGHT, left: B_LIGHT, right: B_NAVY },
+              borders: { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY },
             });
           }
 
           linhasPerfis.push(xmlTrow([cellEsq, cellDir]));
         }
-        blocosElementos.push(xmlTbl([2500, 2500], linhasPerfis, { borders: 'none', marTop: 10, marBottom: 10, marLeft: 24, marRight: 24 }));
+        blocosElementos.push(xmlTbl([2500, 2500], linhasPerfis, { borders: 'none', marTop: 10, marBottom: 10, marLeft: 20, marRight: 20 }));
       }
     }
 
-    // 4) Tabela de leituras compactada (omissão de colunas vazias) + numeração automática
-    tabNum += 1;
-    const tabAtual = tabNum;
-
-    if (a.tipo !== 'laje') {
-      const chaves = getFacesDaOpcao(a.tipo, a.opcao);
-      const chavesEfetivas = chaves.length > 0 ? chaves : Object.keys(a.facesData ?? {});
-      const facesRows = chavesEfetivas.map(f => {
-        const fd = a.facesData?.[f];
-        const nBarras = a.barras?.[f] ?? 0;
-        const nEstribos = fd?.nEstribos ?? fd?.cob?.length ?? 0;
-
-        const cobs = (fd?.cob ?? [])
-          .map((v, i) => { const s = fmtValorBruto(v); return s ? `E${i + 1}: ${s}` : null; })
-          .filter(Boolean);
-        const espV = (fd?.espV ?? [])
-          .map((v, i) => { const s = fmtValorBruto(v); return s ? `E${i + 1}–E${i + 2}: ${s}` : null; })
-          .filter(Boolean);
-        const espH = (fd?.espH ?? [])
-          .map((v, i) => { const s = fmtValorBruto(v); return s ? `B${i + 1}–B${i + 2}: ${s}` : null; })
-          .filter(Boolean);
-
-        return {
-          faceNome: FACE_LABELS[f] ?? f,
-          armaduraResumo: `${nBarras}B / ${nEstribos}E`,
-          cobrimentosStr: cobs.length > 0 ? cobs.join('  |  ') : '—',
-          espEstribosStr: espV.length > 0 ? espV.join('; ') : '—',
-          espBarrasStr: espH.length > 0 ? espH.join('; ') : '—',
-          cobPerpStr: formatarCobPerp(a.tipo === 'viga' ? 'viga' : 'pilar', fd?.cobPerpIni, fd?.cobPerpFim),
-        };
-      });
-
-      if (facesRows.length === 0) {
-        facesRows.push({
-          faceNome: '—',
-          armaduraResumo: '—',
-          cobrimentosStr: '—',
-          espEstribosStr: '—',
-          espBarrasStr: '—',
-          cobPerpStr: '—',
-        });
-      }
-
-      const temEspEstribos = facesRows.some(r => r.espEstribosStr !== '—');
-      const temEspBarras = facesRows.some(r => r.espBarrasStr !== '—');
-      const temCobPerp = facesRows.some(r => r.cobPerpStr !== '—');
-
-      type ColDef = {
-        titulo: string;
-        peso: number;
-        align: 'left' | 'center';
-        bold?: boolean;
-        val: (r: typeof facesRows[number]) => string;
-      };
-      const cols: ColDef[] = [
-        { titulo: 'FACE ENSAIADA', peso: 18, align: 'left', bold: true, val: r => r.faceNome },
-        { titulo: 'BARRAS / ESTRIBOS', peso: 13, align: 'center', val: r => r.armaduraResumo },
-        { titulo: 'COBRIMENTO ESTRIBOS (mm)', peso: 28, align: 'left', val: r => r.cobrimentosStr },
-      ];
-      if (temEspEstribos) cols.push({ titulo: 'ESP. ESTRIBOS (cm)', peso: 14, align: 'center', val: r => r.espEstribosStr });
-      if (temEspBarras) cols.push({ titulo: 'ESP. BARRAS (cm)', peso: 14, align: 'center', val: r => r.espBarrasStr });
-      if (temCobPerp) cols.push({ titulo: 'COB. PERP. BORDAS (mm)', peso: 13, align: 'center', val: r => r.cobPerpStr });
-
-      const larguras = distribuirLargurasPct(cols.map(c => c.peso), 5000, 2);
-
-      blocosElementos.push(
-        xmlPara(
-          xmlRun(`Tabela ${tabAtual} — Leituras por face — ${elemNome}.`, { bold: true, size: 14, color: NAVY_TITLE }),
-          { jc: 'left', before: 50, after: 20, keepNext: true },
-        ),
-      );
-
-      const headerRow = xmlTrow(
-        cols.map((c, ci) => xmlTc(larguras[ci], c.titulo, { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG })),
-        { header: true },
-      );
-      const dataRows = facesRows.map((r, ri) =>
-        xmlTrow(
-          cols.map((c, ci) =>
-            xmlTc(larguras[ci], c.val(r), {
-              align: c.align,
-              bold: c.bold,
-              size: 14,
-              shade: ri % 2 === 1 ? ROW_ALT : undefined,
-            }),
-          ),
-        ),
-      );
-
-      blocosElementos.push(xmlTbl(larguras, [headerRow, ...dataRows], { borders: 'navy', marTop: 18, marBottom: 18, marLeft: 34, marRight: 34 }));
-    } else if (a.lajeData) {
+    // 4) Tabela de leituras compactada apenas para LAJE (Pilar/Viga já apresentam os dados nos perfis visuais)
+    if (a.tipo === 'laje' && a.lajeData) {
+      tabNum += 1;
+      const tabAtual = tabNum;
       const ld = a.lajeData;
       const ext: 'H' | 'V' = ld.camadaExterna ?? (ld.barrasH.length > 0 ? 'H' : 'V');
       const camadaExternaLabel = ext === 'H' ? 'Horizontal (H)' : 'Vertical (V)';
