@@ -155,10 +155,11 @@ function xmlTc(
     align = 'center',
     vAlign = 'center',
     shade,
+    gridSpan,
     borders,
     bold = false,
     italic = false,
-    size = 14,
+    size = 22,
     color = BLACK,
     keepNext = false,
     pageBreakBefore = false,
@@ -166,6 +167,7 @@ function xmlTc(
     align?: string;
     vAlign?: string;
     shade?: string;
+    gridSpan?: number;
     borders?: { top?: string | null; bottom?: string | null; left?: string | null; right?: string | null };
     bold?: boolean;
     italic?: boolean;
@@ -176,6 +178,7 @@ function xmlTc(
   } = {},
 ): string {
   let tcPr = `<w:tcPr><w:tcW w:w="${pctWidth}" w:type="pct"/>`;
+  if (gridSpan && gridSpan > 1) tcPr += `<w:gridSpan w:val="${gridSpan}"/>`;
   if (borders) tcPr += xmlTcBorders(borders);
   if (shade) tcPr += `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>`;
   tcPr += `<w:vAlign w:val="${vAlign}"/></w:tcPr>`;
@@ -469,6 +472,15 @@ export function montarDadosPacometria(
   const blocosElementos: string[] = [];
   const resumo: Array<Record<string, string>> = [];
 
+  // Título da Seção 4 inicia em nova página quando controle de paginação está ativo,
+  // mantendo-se sempre colado (keepNext) à ficha do 1º elemento (4.1).
+  blocosElementos.push(
+    xmlPara(
+      xmlRun('4. DETALHAMENTO POR ELEMENTO ENSAIADO', { bold: true, size: 24, color: NAVY_TITLE }),
+      { jc: 'left', before: quebraPagina ? 0 : 140, after: 70, line: 240, pageBreakBefore: quebraPagina, keepNext: true },
+    ),
+  );
+
   payload.amostras.forEach((a, idx) => {
     const itemNum = a.item || idx + 1;
     const elemNome = a.elemento || `Elemento ${itemNum}`;
@@ -507,11 +519,26 @@ export function montarDadosPacometria(
       cobModa: cobModaNum,
     });
 
-    // Controle de paginação por elemento (quebra limpa a partir do 2º elemento quando ativado)
+    // Controle de paginação por elemento (quebra limpa a partir do 2º elemento; o 1º já fica junto ao título da Seção 4)
     const usarQuebra = quebraPagina && idx > 0;
 
-    // 1) Cabeçalho + faixa de estatísticas do elemento
-    const headerElemTbl = xmlTbl([5000], [
+    const temEsquema = imagemValida(a.esquema);
+    const perfisValidos = (a.perfis ?? []).filter(p => imagemValida(p?.imagem));
+    const nPerfis = perfisValidos.length;
+    const temFoto = imagemValida(a.foto);
+
+    // Ficha unificada em 1 única tabela [2500, 2500] com gridSpan=2 nas linhas de largura total:
+    //   - Evita bordas duplicadas e facilita manter cabeçalho + 1ª linha visual colados
+    //   - Layout adaptativo para N perfis (0, 1, 2, 3, 4+):
+    //       * N=1 com esquema: [Esquema | Perfil 1] lado a lado + Foto abaixo (cabe em 1 página, inclusive no 4.1!)
+    //       * N=3 com esquema: grade 2×2 [Esquema | Perfil 1] + [Perfil 2 | Perfil 3] + Foto abaixo (cabe em 1 página!)
+    //       * N=2: Esquema largura total + [Perfil 1 | Perfil 2] + Foto abaixo (cabe em 1 página!)
+    //       * N=4+: Esquema largura total + pares [Perfil i | Perfil i+1] + Foto abaixo
+    //       * N=0 (Laje / sem perfil): Esquema largura total + Foto abaixo
+    const cardRows: string[] = [];
+
+    // Linha 1: Cabeçalho do elemento
+    cardRows.push(
       xmlTrow([
         xmlTc(5000, [
           xmlRun(`4.${itemNum}  ${elemNome}`, { bold: true, size: 22, color: WHITE }),
@@ -519,11 +546,16 @@ export function montarDadosPacometria(
         ], {
           align: 'left',
           shade: NAVY_HEADER,
+          gridSpan: 2,
           borders: { top: B_NAVY, bottom: B_NAVY, left: B_NAVY, right: B_NAVY },
           keepNext: true,
           pageBreakBefore: usarQuebra,
         }),
       ]),
+    );
+
+    // Linha 2: Faixa de estatísticas
+    cardRows.push(
       xmlTrow([
         xmlTc(5000, [
           xmlRun('Médio: ', { bold: true, size: 22, color: NAVY_TITLE }),
@@ -541,21 +573,52 @@ export function montarDadosPacometria(
         ], {
           align: 'left',
           shade: ROW_ALT,
+          gridSpan: 2,
           borders: { top: B_LIGHT, bottom: B_NAVY, left: B_NAVY, right: B_NAVY },
-          keepNext: true,
+          keepNext: temEsquema || nPerfis > 0 || temFoto,
         }),
       ]),
-    ], { borders: 'none', marTop: 22, marBottom: 22, marLeft: 60, marRight: 60 });
+    );
 
-    blocosElementos.push(headerElemTbl);
+    const descEsquema = a.tipo === 'laje' ? 'Malha ensaiada' : 'Esquema da seção transversal';
 
-    const temEsquema = imagemValida(a.esquema);
-    const perfisValidos = (a.perfis ?? []).filter(p => imagemValida(p?.imagem));
-    const temPerfis = perfisValidos.length > 0;
-    const temFoto = imagemValida(a.foto);
+    // Helper para célula de perfil
+    const criarCelulaPerfil = (
+      p: PerfilFacePayload,
+      perfilIdx: number,
+      maxLarguraCm: number,
+      maxAlturaCm: number,
+      borders: { top?: string | null; bottom?: string | null; left?: string | null; right?: string | null },
+      gridSpan?: number,
+    ): string => {
+      figNum += 1;
+      const figP = figNum;
+      const marc = `PERFIL_PAC_${itemNum}_${perfilIdx}_END`;
+      imagens.push({
+        marcador: marc,
+        buffer: bufferDeBase64(p.imagem.base64),
+        contentType: p.imagem.contentType || 'image/png',
+        width: p.imagem.width,
+        height: p.imagem.height,
+        maxLarguraCm,
+        maxAlturaCm,
+      });
+      const legenda = gridSpan === 2
+        ? `Figura ${figP} — Perfil de elevação — ${p.faceLabel} (${elemNome}).`
+        : `Figura ${figP} — Perfil — ${p.faceLabel}.`;
+      return xmlTc(gridSpan === 2 ? 5000 : 2500, [
+        xmlPara(xmlRun(marc), { jc: 'center', before: 16, after: 10, keepNext: true }),
+        xmlPara(xmlRun(legenda, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
+      ], { gridSpan, borders });
+    };
 
-    // 2) Esquema da seção transversal / malha (1º na ordem da ficha)
-    if (temEsquema) {
+    // Linhas de Esquema + Perfis (ordem: Esquema -> Perfis -> Foto)
+    if (temEsquema && (nPerfis === 1 || nPerfis === 3)) {
+      // N=1 -> [Esquema | Perfil 1] em 1 linha
+      // N=3 -> [Esquema | Perfil 1] + [Perfil 2 | Perfil 3] em grade 2×2 perfeita
+      const maxH = nPerfis === 1 ? 6.8 : 5.4;
+      const maxW = nPerfis === 1 ? 8.6 : 8.4;
+
       figNum += 1;
       const figEsq = figNum;
       const esqMarc = `ESQUEMA_PAC_${itemNum}_END`;
@@ -565,135 +628,155 @@ export function montarDadosPacometria(
         contentType: a.esquema!.contentType || 'image/png',
         width: a.esquema!.width,
         height: a.esquema!.height,
-        maxLarguraCm: 15.2,
-        maxAlturaCm: 8.2,
+        maxLarguraCm: maxW,
+        maxAlturaCm: maxH,
       });
-      const descEsquema = a.tipo === 'laje' ? 'Malha ensaiada' : 'Esquema da seção transversal';
-      const bBotEsq = !temPerfis && !temFoto && a.tipo !== 'laje' ? B_NAVY : B_LIGHT;
-      blocosElementos.push(xmlTbl([5000], [
-        xmlTrow([
-          xmlTc(5000, [
-            xmlPara(xmlRun(esqMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figEsq} — ${descEsquema} — ${elemNome} (${resumoGeometria}).`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
-          ], {
-            borders: { top: B_NONE, bottom: bBotEsq, left: B_NAVY, right: B_NAVY },
-          }),
-        ]),
-      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
-    }
 
-    // 3) Perfis de elevação por face (2º na ordem da ficha — Pilar / Viga)
-    if (temPerfis) {
-      const bBotPerfisFinal = temFoto ? B_LIGHT : B_NAVY;
-      if (perfisValidos.length === 1) {
-        const p = perfisValidos[0];
+      const bBotLinha1 = nPerfis === 1 && !temFoto ? B_NAVY : B_LIGHT;
+      const cellEsq = xmlTc(2500, [
+        xmlPara(xmlRun(esqMarc), { jc: 'center', before: 16, after: 10, keepNext: true }),
+        xmlPara(xmlRun(`Figura ${figEsq} — ${descEsquema} — ${elemNome}.`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
+      ], {
+        borders: { top: B_NONE, bottom: bBotLinha1, left: B_NAVY, right: B_LIGHT },
+      });
+
+      const cellP1 = criarCelulaPerfil(
+        perfisValidos[0],
+        1,
+        maxW,
+        maxH,
+        { top: B_NONE, bottom: bBotLinha1, left: B_LIGHT, right: B_NAVY },
+      );
+
+      cardRows.push(xmlTrow([cellEsq, cellP1]));
+
+      if (nPerfis === 3) {
+        const bBotLinha2 = temFoto ? B_LIGHT : B_NAVY;
+        const cellP2 = criarCelulaPerfil(
+          perfisValidos[1],
+          2,
+          maxW,
+          maxH,
+          { top: B_NONE, bottom: bBotLinha2, left: B_NAVY, right: B_LIGHT },
+        );
+        const cellP3 = criarCelulaPerfil(
+          perfisValidos[2],
+          3,
+          maxW,
+          maxH,
+          { top: B_NONE, bottom: bBotLinha2, left: B_LIGHT, right: B_NAVY },
+        );
+        cardRows.push(xmlTrow([cellP2, cellP3]));
+      }
+    } else {
+      // N=0, N=2, N=4+ ou sem esquema
+      if (temEsquema) {
         figNum += 1;
-        const marc = `PERFIL_PAC_${itemNum}_1_END`;
+        const figEsq = figNum;
+        const esqMarc = `ESQUEMA_PAC_${itemNum}_END`;
+        const maxHEsq = nPerfis >= 4 ? 5.0 : nPerfis === 2 ? 5.4 : 7.0;
+        const maxWEsq = nPerfis >= 2 ? 13.5 : 14.5;
         imagens.push({
-          marcador: marc,
-          buffer: bufferDeBase64(p.imagem.base64),
-          contentType: p.imagem.contentType || 'image/png',
-          width: p.imagem.width,
-          height: p.imagem.height,
-          maxLarguraCm: 14.5,
-          maxAlturaCm: 8.5,
+          marcador: esqMarc,
+          buffer: bufferDeBase64(a.esquema!.base64),
+          contentType: a.esquema!.contentType || 'image/png',
+          width: a.esquema!.width,
+          height: a.esquema!.height,
+          maxLarguraCm: maxWEsq,
+          maxAlturaCm: maxHEsq,
         });
-        blocosElementos.push(xmlTbl([5000], [
+        const bBotEsq = nPerfis === 0 && !temFoto && a.tipo !== 'laje' ? B_NAVY : B_LIGHT;
+        cardRows.push(
           xmlTrow([
             xmlTc(5000, [
-              xmlPara(xmlRun(marc), { jc: 'center', before: 20, after: 14, keepNext: true }),
-              xmlPara(xmlRun(`Figura ${figNum} — Perfil de elevação — ${p.faceLabel} (${elemNome}).`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 12 }),
+              xmlPara(xmlRun(esqMarc), { jc: 'center', before: 16, after: 10, keepNext: true }),
+              xmlPara(xmlRun(`Figura ${figEsq} — ${descEsquema} — ${elemNome} (${resumoGeometria}).`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
             ], {
-              borders: { top: B_NONE, bottom: bBotPerfisFinal, left: B_NAVY, right: B_NAVY },
+              gridSpan: 2,
+              borders: { top: B_NONE, bottom: bBotEsq, left: B_NAVY, right: B_NAVY },
             }),
           ]),
-        ], { borders: 'none', marTop: 10, marBottom: 10, marLeft: 24, marRight: 24 }));
-      } else {
-        const linhasPerfis: string[] = [];
-        for (let pi = 0; pi < perfisValidos.length; pi += 2) {
+        );
+      }
+
+      if (nPerfis === 1) {
+        const bBot = temFoto ? B_LIGHT : B_NAVY;
+        cardRows.push(
+          xmlTrow([
+            criarCelulaPerfil(
+              perfisValidos[0],
+              1,
+              14.0,
+              7.5,
+              { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_NAVY },
+              2,
+            ),
+          ]),
+        );
+      } else if (nPerfis >= 2) {
+        const maxHPerfil = nPerfis >= 4 ? 5.2 : 5.6;
+        for (let pi = 0; pi < nPerfis; pi += 2) {
           const pEsq = perfisValidos[pi];
           const pDir = perfisValidos[pi + 1];
-          const ultimaLinha = pi + 2 >= perfisValidos.length;
-          const bBot = ultimaLinha ? bBotPerfisFinal : B_LIGHT;
+          const ultimaLinha = pi + 2 >= nPerfis;
+          const bBot = ultimaLinha && !temFoto ? B_NAVY : B_LIGHT;
 
-          figNum += 1;
-          const figEsq = figNum;
-          const marcEsq = `PERFIL_PAC_${itemNum}_${pi + 1}_END`;
-          imagens.push({
-            marcador: marcEsq,
-            buffer: bufferDeBase64(pEsq.imagem.base64),
-            contentType: pEsq.imagem.contentType || 'image/png',
-            width: pEsq.imagem.width,
-            height: pEsq.imagem.height,
-            maxLarguraCm: 8.4,
-            maxAlturaCm: 7.5,
-          });
+          const cellEsq = criarCelulaPerfil(
+            pEsq,
+            pi + 1,
+            8.4,
+            maxHPerfil,
+            { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_LIGHT },
+          );
 
-          const cellEsq = xmlTc(2500, [
-            xmlPara(xmlRun(marcEsq), { jc: 'center', before: 18, after: 12, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figEsq} — Perfil — ${pEsq.faceLabel}.`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
-          ], {
-            borders: { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_LIGHT },
-          });
+          const cellDir = pDir
+            ? criarCelulaPerfil(
+                pDir,
+                pi + 2,
+                8.4,
+                maxHPerfil,
+                { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY },
+              )
+            : xmlTc(2500, '', { borders: { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY } });
 
-          let cellDir: string;
-          if (pDir) {
-            figNum += 1;
-            const figDir = figNum;
-            const marcDir = `PERFIL_PAC_${itemNum}_${pi + 2}_END`;
-            imagens.push({
-              marcador: marcDir,
-              buffer: bufferDeBase64(pDir.imagem.base64),
-              contentType: pDir.imagem.contentType || 'image/png',
-              width: pDir.imagem.width,
-              height: pDir.imagem.height,
-              maxLarguraCm: 8.4,
-              maxAlturaCm: 7.5,
-            });
-            cellDir = xmlTc(2500, [
-              xmlPara(xmlRun(marcDir), { jc: 'center', before: 18, after: 12, keepNext: true }),
-              xmlPara(xmlRun(`Figura ${figDir} — Perfil — ${pDir.faceLabel}.`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
-            ], {
-              borders: { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY },
-            });
-          } else {
-            cellDir = xmlTc(2500, '', {
-              borders: { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY },
-            });
-          }
-
-          linhasPerfis.push(xmlTrow([cellEsq, cellDir]));
+          cardRows.push(xmlTrow([cellEsq, cellDir]));
         }
-        blocosElementos.push(xmlTbl([2500, 2500], linhasPerfis, { borders: 'none', marTop: 10, marBottom: 10, marLeft: 20, marRight: 20 }));
       }
     }
 
-    // 4) Foto do elemento integrada à ficha (por último na ordem da ficha)
+    // Última linha da ficha: Foto do elemento (quando presente)
     if (temFoto) {
       figNum += 1;
       const figFoto = figNum;
       const fotoMarc = `FOTO_ELEM_PAC_${itemNum}_END`;
+      const maxHFoto = nPerfis === 2 || nPerfis === 3 ? 5.4 : nPerfis >= 4 ? 6.0 : 6.8;
+      const maxWFoto = nPerfis === 2 || nPerfis === 3 ? 10.0 : 11.0;
       imagens.push({
         marcador: fotoMarc,
         buffer: bufferDeBase64(a.foto!.base64),
         contentType: a.foto!.contentType || 'image/jpeg',
         width: a.foto!.width,
         height: a.foto!.height,
-        maxLarguraCm: 11.0,
-        maxAlturaCm: 7.4,
+        maxLarguraCm: maxWFoto,
+        maxAlturaCm: maxHFoto,
       });
       const bBotFoto = a.tipo === 'laje' ? B_LIGHT : B_NAVY;
-      blocosElementos.push(xmlTbl([5000], [
+      cardRows.push(
         xmlTrow([
           xmlTc(5000, [
-            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 22, after: 14, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico — ${elemNome}.`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 14 }),
+            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 16, after: 10, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico — ${elemNome}.`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
           ], {
+            gridSpan: 2,
             borders: { top: B_NONE, bottom: bBotFoto, left: B_NAVY, right: B_NAVY },
           }),
         ]),
-      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
+      );
     }
+
+    blocosElementos.push(
+      xmlTbl([2500, 2500], cardRows, { borders: 'none', marTop: 14, marBottom: 14, marLeft: 32, marRight: 32 }),
+    );
 
     // 5) Tabela de leituras compactada apenas para LAJE (Pilar/Viga já apresentam os dados nos perfis visuais)
     if (a.tipo === 'laje' && a.lajeData) {

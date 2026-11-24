@@ -54,8 +54,8 @@ function statsCobrimentosFace(cob: string[]): { media: string; min: string; max:
 }
 
 function gerarSvgPilar(a: AmostraRow): string {
-  const W = 560;
-  const H = 280;
+  const W = 490;
+  const H = 262;
   const op = a.opcao as OpcaoPilar;
   const faces = getFacesDaOpcao('pilar', op);
   const hatch =
@@ -63,7 +63,7 @@ function gerarSvgPilar(a: AmostraRow): string {
     `<line x1="0" y1="0" x2="0" y2="8" stroke="#94A3B8" stroke-width="1.5"/></pattern></defs>`;
 
   if (op === 'E') {
-    const cx = 175, cy = 132, r = 78, rb = 60;
+    const cx = 128, cy = 124, r = 74, rb = 56;
     const nb = Math.max(4, a.barras?.circ ?? 8);
     let barras = '';
     for (let i = 0; i < nb; i++) {
@@ -85,33 +85,33 @@ function gerarSvgPilar(a: AmostraRow): string {
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="#E8EDF5" stroke="${NAVY}" stroke-width="2.4"/>
       <circle cx="${cx}" cy="${cy}" r="${rb}" fill="none" stroke="${ESTRIBO_COLOR}" stroke-width="1.6" stroke-dasharray="5,3"/>
       ${barras}
-      <line x1="${cx - r}" y1="${cy + r + 20}" x2="${cx + r}" y2="${cy + r + 20}" stroke="${PRIMARY}" stroke-width="1.2"/>
-      <text x="${cx}" y="${cy + r + 36}" text-anchor="middle" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">Ø = ${a.D || 0} cm</text>
-      <text x="292" y="48" font-size="14" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Resumo da Seção</text>
-      ${info.map((t, idx) => `<text x="292" y="${80 + idx * 28}" font-size="13" font-weight="${idx === 0 || idx === 4 ? '700' : '400'}" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(t)}</text>`).join('')}
+      <line x1="${cx - r}" y1="${cy + r + 18}" x2="${cx + r}" y2="${cy + r + 18}" stroke="${PRIMARY}" stroke-width="1.2"/>
+      <text x="${cx}" y="${cy + r + 34}" text-anchor="middle" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">Ø = ${a.D || 0} cm</text>
+      <text x="234" y="42" font-size="14" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Resumo da Seção</text>
+      ${info.map((t, idx) => `<text x="234" y="${74 + idx * 28}" font-size="13" font-weight="${idx === 0 || idx === 4 ? '700' : '400'}" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(t)}</text>`).join('')}
     </svg>`;
   }
 
-  const maxW = 164, maxH = 132;
+  const maxW = 148, maxH = 126;
   const rx = Math.max(10, a.X || 30);
   const ry = Math.max(10, a.Y || 30);
   const esc = Math.min(maxW / rx, maxH / ry);
-  const ew = Math.max(76, Math.round(rx * esc));
-  const eh = Math.max(66, Math.round(ry * esc));
-  const ex = Math.round(168 - ew / 2);
-  const ey = Math.round(134 - eh / 2);
-  const cv = 13;
+  const ew = Math.max(72, Math.round(rx * esc));
+  const eh = Math.max(64, Math.round(ry * esc));
+  const ex = Math.round(126 - ew / 2);
+  const ey = Math.round(126 - eh / 2);
+  const cv = 12;
 
   let obs = '';
   if (op === 'B' || op === 'C' || op === 'D') {
-    obs += `<rect x="${ex}" y="${ey - 26}" width="${ew}" height="26" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex}" y="${ey - 24}" width="${ew}" height="24" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'B') {
-    obs += `<rect x="${ex - 26}" y="${ey}" width="26" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
-    obs += `<rect x="${ex + ew}" y="${ey}" width="26" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex - 24}" y="${ey}" width="24" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex + ew}" y="${ey}" width="24" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'C') {
-    obs += `<rect x="${ex + ew}" y="${ey}" width="26" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex + ew}" y="${ey}" width="24" height="${eh}" fill="url(#hp)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
 
   const pts: Array<[number, number]> = [];
@@ -142,8 +142,8 @@ function gerarSvgPilar(a: AmostraRow): string {
   if (faces.includes('1Y')) arestas += `<line x1="${ex}" y1="${ey}" x2="${ex}" y2="${ey + eh}" stroke="${FACE_COLORS['1Y']}" stroke-width="3.8"/>`;
   if (faces.includes('2Y')) arestas += `<line x1="${ex + ew}" y1="${ey}" x2="${ex + ew}" y2="${ey + eh}" stroke="${FACE_COLORS['2Y']}" stroke-width="3.8"/>`;
 
-  const stepY = faces.length > 3 ? 50 : 56;
-  const startY = faces.length > 3 ? 64 : 74;
+  const stepY = faces.length > 3 ? 48 : 54;
+  const startY = faces.length > 3 ? 58 : 68;
   const legenda = faces.map((f, idx) => {
     const cor = FACE_COLORS[f] ?? NAVY;
     const nome = FACE_LABELS[f] ?? f;
@@ -153,9 +153,9 @@ function gerarSvgPilar(a: AmostraRow): string {
     const linhaCob = st
       ? `Méd: ${st.media} | Mín: ${st.min} | Máx: ${st.max} mm`
       : 'Sem leituras de cobrimento';
-    return `<rect x="292" y="${y - 11}" width="12" height="12" rx="2.5" fill="${cor}"/>` +
-      `<text x="311" y="${y}" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(nome)} (${a.barras?.[f] ?? 0}B / ${nEst}E)</text>` +
-      `<text x="311" y="${y + 16}" font-size="12" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(linhaCob)}</text>`;
+    return `<rect x="234" y="${y - 11}" width="12" height="12" rx="2.5" fill="${cor}"/>` +
+      `<text x="252" y="${y}" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(nome)} (${a.barras?.[f] ?? 0}B / ${nEst}E)</text>` +
+      `<text x="252" y="${y + 16}" font-size="12" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(linhaCob)}</text>`;
   }).join('');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -167,15 +167,15 @@ function gerarSvgPilar(a: AmostraRow): string {
     ${arestas}
     ${barrasXml}
     <text x="${ex + ew / 2}" y="${ey + eh + 24}" text-anchor="middle" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">X = ${a.X || 0} cm</text>
-    ${op !== 'B' ? `<text x="${ex - 16}" y="${ey + eh / 2 + 5}" text-anchor="end" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">Y = ${a.Y || 0} cm</text>` : ''}
-    <text x="292" y="36" font-size="14" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Faces Ensaiadas — Cobrimentos</text>
+    ${op !== 'B' ? `<text x="${ex - 12}" y="${ey + eh / 2 + 5}" text-anchor="end" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">Y = ${a.Y || 0} cm</text>` : ''}
+    <text x="234" y="32" font-size="14" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Faces Ensaiadas — Cobrimentos</text>
     ${legenda}
   </svg>`;
 }
 
 function gerarSvgViga(a: AmostraRow): string {
-  const W = 560;
-  const H = 280;
+  const W = 490;
+  const H = 262;
   const op = a.opcao as OpcaoViga;
   const faces = getFacesDaOpcao('viga', op);
   const hatch =
@@ -184,25 +184,25 @@ function gerarSvgViga(a: AmostraRow): string {
 
   const rb = Math.max(10, a.X || 20);
   const rh = Math.max(15, a.Y || 45);
-  const esc = Math.min(128 / rb, 138 / rh);
-  const ew = Math.max(64, Math.round(rb * esc));
-  const eh = Math.max(80, Math.round(rh * esc));
-  const ex = Math.round(162 - ew / 2);
-  const ey = Math.round(136 - eh / 2);
-  const cv = 12;
+  const esc = Math.min(118 / rb, 130 / rh);
+  const ew = Math.max(60, Math.round(rb * esc));
+  const eh = Math.max(76, Math.round(rh * esc));
+  const ex = Math.round(126 - ew / 2);
+  const ey = Math.round(128 - eh / 2);
+  const cv = 11;
 
   let obs = '';
   if (op !== 'VE') {
-    obs += `<rect x="${ex - 38}" y="${ey - 26}" width="${ew + 76}" height="26" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex - 34}" y="${ey - 24}" width="${ew + 68}" height="24" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'VB' || op === 'VC' || op === 'VD') {
-    obs += `<rect x="${ex + ew}" y="${ey}" width="26" height="${eh}" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex + ew}" y="${ey}" width="24" height="${eh}" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'VD') {
-    obs += `<rect x="${ex - 26}" y="${ey}" width="26" height="${eh}" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex - 24}" y="${ey}" width="24" height="${eh}" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
   if (op === 'VC') {
-    obs += `<rect x="${ex}" y="${ey + eh}" width="${ew}" height="24" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
+    obs += `<rect x="${ex}" y="${ey + eh}" width="${ew}" height="22" fill="url(#hv)" stroke="#94A3B8" stroke-width="0.8"/>`;
   }
 
   let arestas = '';
@@ -223,8 +223,8 @@ function gerarSvgViga(a: AmostraRow): string {
     barrasXml += `<circle cx="${x.toFixed(1)}" cy="${ey + cv}" r="4.2" fill="${PRIMARY}"/>`;
   }
 
-  const stepY = faces.length > 3 ? 50 : 56;
-  const startY = faces.length > 3 ? 64 : 74;
+  const stepY = faces.length > 3 ? 48 : 54;
+  const startY = faces.length > 3 ? 58 : 68;
   const legenda = faces.map((f, idx) => {
     const cor = FACE_COLORS[f] ?? NAVY;
     const nome = FACE_LABELS[f] ?? f;
@@ -234,9 +234,9 @@ function gerarSvgViga(a: AmostraRow): string {
     const linhaCob = st
       ? `Méd: ${st.media} | Mín: ${st.min} | Máx: ${st.max} mm`
       : 'Sem leituras de cobrimento';
-    return `<rect x="286" y="${y - 11}" width="12" height="12" rx="2.5" fill="${cor}"/>` +
-      `<text x="305" y="${y}" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(nome)} (${a.barras?.[f] ?? 0}B / ${nEst}E)</text>` +
-      `<text x="305" y="${y + 16}" font-size="12" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(linhaCob)}</text>`;
+    return `<rect x="234" y="${y - 11}" width="12" height="12" rx="2.5" fill="${cor}"/>` +
+      `<text x="252" y="${y}" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">${escSvg(nome)} (${a.barras?.[f] ?? 0}B / ${nEst}E)</text>` +
+      `<text x="252" y="${y + 16}" font-size="12" font-weight="600" fill="${SUBTEXT}" font-family="Calibri, sans-serif">${escSvg(linhaCob)}</text>`;
   }).join('');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -247,9 +247,9 @@ function gerarSvgViga(a: AmostraRow): string {
     <rect x="${ex + cv}" y="${ey + cv}" width="${ew - 2 * cv}" height="${eh - 2 * cv}" fill="none" stroke="#64748B" stroke-width="1.3" stroke-dasharray="4,2.5"/>
     ${arestas}
     ${barrasXml}
-    <text x="${ex + ew / 2}" y="${ey + eh + 28}" text-anchor="middle" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">b = ${a.X || 0} cm</text>
-    <text x="${ex - 16}" y="${ey + eh / 2 + 5}" text-anchor="end" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">h = ${a.Y || 0} cm</text>
-    <text x="286" y="36" font-size="14" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Faces Ensaiadas — Cobrimentos</text>
+    <text x="${ex + ew / 2}" y="${ey + eh + 24}" text-anchor="middle" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">b = ${a.X || 0} cm</text>
+    <text x="${ex - 12}" y="${ey + eh / 2 + 5}" text-anchor="end" font-size="13" font-weight="700" fill="${PRIMARY}" font-family="Calibri, sans-serif">h = ${a.Y || 0} cm</text>
+    <text x="234" y="32" font-size="14" font-weight="700" fill="${NAVY}" font-family="Calibri, sans-serif">Faces Ensaiadas — Cobrimentos</text>
     ${legenda}
   </svg>`;
 }

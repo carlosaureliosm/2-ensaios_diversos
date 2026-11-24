@@ -326,11 +326,18 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(xml).toContain('Tabela 2 — Leituras da malha — Laje L-05 &lt;Garagem&gt;.');
     expect(xml).toContain('Tabela 3 — Síntese global dos resultados de pacometria.');
 
-    // Corpo de texto, tabela de cabeçalho, tabelas e legendas em 11 pt (w:sz="22"); títulos de seção em 12 pt (w:sz="24")
+    // Cabeçalho do Word (ENSAIO DE PACOMETRIA + RLT) em 11 pt (w:sz="22")
+    expect(hdr).toContain('<w:sz w:val="22"/>');
+    expect(hdr).not.toContain('<w:sz w:val="21"/>');
+    expect(hdr).not.toContain('<w:sz w:val="17"/>');
+
+    // Corpo, tabela de identificação, tabelas, legendas e assinaturas em 11 pt (w:sz="22"); títulos de seção em 12 pt (w:sz="24")
     expect(xml).toContain('<w:sz w:val="22"/>');
     expect(xml).toContain('<w:sz w:val="24"/>');
     expect(xml).not.toContain('<w:sz w:val="19"/>');
     expect(xml).not.toContain('<w:sz w:val="16"/>');
+    expect(xml).not.toContain('<w:sz w:val="15"/>');
+    expect(xml).not.toContain('<w:sz w:val="14"/>');
 
     // Ordem da ficha do elemento: Esquema da seção transversal -> Perfis -> Foto do elemento
     const idxEsquemaP1 = xml.indexOf('Esquema da seção transversal — Pilar P-01');
@@ -340,8 +347,8 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(idxPerfilP1).toBeGreaterThan(idxEsquemaP1);
     expect(idxFotoP1).toBeGreaterThan(idxPerfilP1);
 
-    // Controle de paginação por elemento (3 quebras para os 3 elementos após o 1º)
-    expect((xml.match(/<w:pageBreakBefore\/>/g) ?? []).length).toBe(3);
+    // Controle de paginação: 1 quebra na Seção 4 (mantendo 4.1 na mesma página) + 3 quebras para 4.2, 4.3 e 4.4 = 4
+    expect((xml.match(/<w:pageBreakBefore\/>/g) ?? []).length).toBe(4);
 
     // Seção 5 — Resumo Executivo e Conclusão com texto automático
     expect(xml).toContain('5. RESUMO EXECUTIVO E CONCLUSÃO');
@@ -451,5 +458,111 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(perfisViga[0].svg).not.toContain('#0F766E');
 
     expect(gerarSvgsPerfisPacometria(amostraLaje)).toHaveLength(0);
+  });
+
+  it('valida layout unificado de tabela para todas as quantidades de perfis (N = 0, 1, 2, 3 e 4)', async () => {
+    const pilar4Faces: AmostraRow = {
+      ...amostraPilar,
+      id: 'p4',
+      item: 5,
+      elemento: 'Pilar 4 Faces P-04',
+      opcao: 'A',
+      barras: { '1X': 3, '2X': 3, '1Y': 4, '2Y': 4 },
+      facesData: {
+        '1X': amostraPilar.facesData['1X'],
+        '2X': amostraPilar.facesData['1X'],
+        '1Y': amostraPilar.facesData['1Y'],
+        '2Y': amostraPilar.facesData['1Y'],
+      },
+    };
+
+    const body = {
+      cab: {
+        rlt: '99',
+        data: '24/11/2026',
+        cliente: 'Teste Multi-N',
+        obra: 'Obra Teste N Perfis',
+        att: 'Eng. Teste',
+        endereco: '',
+        notas: '',
+      },
+      quebraPaginaPorElemento: true,
+      usaConclusao: true,
+      respNome: 'Eng. Teste',
+      respCrea: '99999-PE',
+      amostras: [
+        // N = 1 (lado a lado: Esquema | Perfil 1 + Foto abaixo)
+        {
+          ...amostraPilarCirc,
+          item: 1,
+          esquema: imgMock(490, 262),
+          foto: imgMock(800, 600),
+          perfis: [{ face: 'circ', faceLabel: 'Face Externa (Circular)', imagem: imgMock(360, 260) }],
+        },
+        // N = 2 (Esquema largura total + [Perfil 1 | Perfil 2] + Foto abaixo)
+        {
+          ...amostraPilar,
+          item: 2,
+          esquema: imgMock(490, 262),
+          foto: imgMock(800, 600),
+          perfis: [
+            { face: '1X', faceLabel: 'Face Inferior', imagem: imgMock(360, 260) },
+            { face: '1Y', faceLabel: 'Face Esquerda', imagem: imgMock(360, 260) },
+          ],
+        },
+        // N = 3 (grade 2×2: [Esquema | Perfil 1] + [Perfil 2 | Perfil 3] + Foto abaixo)
+        {
+          ...amostraViga,
+          item: 3,
+          esquema: imgMock(490, 262),
+          foto: imgMock(800, 600),
+          perfis: [
+            { face: 'fundo', faceLabel: 'Face Inferior (Fundo)', imagem: imgMock(380, 240) },
+            { face: 'lat1', faceLabel: 'Face Lateral Esquerda', imagem: imgMock(380, 240) },
+            { face: 'lat2', faceLabel: 'Face Lateral Direita', imagem: imgMock(380, 240) },
+          ],
+        },
+        // N = 4 (Esquema largura total + 2 pares de perfis + Foto abaixo)
+        {
+          ...pilar4Faces,
+          item: 4,
+          esquema: imgMock(490, 262),
+          foto: imgMock(800, 600),
+          perfis: [
+            { face: '1X', faceLabel: 'Face Inferior', imagem: imgMock(360, 260) },
+            { face: '2X', faceLabel: 'Face Superior', imagem: imgMock(360, 260) },
+            { face: '1Y', faceLabel: 'Face Esquerda', imagem: imgMock(360, 260) },
+            { face: '2Y', faceLabel: 'Face Direita', imagem: imgMock(360, 260) },
+          ],
+        },
+        // N = 0 (Laje: Malha largura total + Foto abaixo + Tabela de malha)
+        {
+          ...amostraLaje,
+          item: 5,
+          esquema: imgMock(560, 285),
+          foto: imgMock(800, 600),
+          perfis: [],
+        },
+      ],
+    };
+
+    const res = await POST(new NextRequest('http://localhost/api/ensaios/pacometria/docx', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }));
+    expect(res.status).toBe(200);
+    const xml = new PizZip(Buffer.from(await res.arrayBuffer())).file('word/document.xml')!.asText();
+
+    validarXmlBemFormado(xml);
+    expect(xml).not.toMatch(/\[\[|\]\]/);
+    expect(xml).not.toMatch(/_PH_|PLACEHOLDER|BLOCO_ELEMENTOS_PAC_END/);
+
+    // 1 quebra na Seção 4 + 4 quebras para 4.2..4.5 = 5
+    expect((xml.match(/<w:pageBreakBefore\/>/g) ?? []).length).toBe(5);
+    // Total de drawings: 5 esquemas + (1+2+3+4+0=10) perfis + 5 fotos + 1 João = 21
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(21);
+    // Confirma que todas as figuras (1 a 20) foram numeradas sequencialmente
+    expect(xml).toContain('Figura 1 —');
+    expect(xml).toContain('Figura 20 —');
   });
 });

@@ -321,7 +321,6 @@ parts.push(para(
 ));
 
 // ── 4. DETALHAMENTO POR ELEMENTO ENSAIADO (INJEÇÃO DINÂMICA) ──
-parts.push(tituloSecao('4. DETALHAMENTO POR ELEMENTO ENSAIADO'));
 parts.push(para(run('BLOCO_ELEMENTOS_PAC_END', { size: 22 }), { before: 0, after: 0 }));
 
 // ── 5. RESUMO EXECUTIVO E CONCLUSÃO (OPCIONAL) ────────────────
@@ -369,20 +368,20 @@ function celulasAssinatura(docPrId, topBorder) {
   return [
     tc(2500, [
       para(joaoAssinaturaDrawing(docPrId), { jc: 'center', before: 20, after: 10 }),
-      para(run('___________________________________', { size: 14 }), { jc: 'center' }),
-      para(run('João Ribeiro de Carvalho', { bold: true, italic: true, size: 15 }), { jc: 'center' }),
-      para(run('Engenheiro Civil', { size: 14 }), { jc: 'center' }),
-      para(run('CREA Nº49780 – PE', { size: 14 }), { jc: 'center' }),
+      para(run('____________________________', { size: 22 }), { jc: 'center' }),
+      para(run('João Ribeiro de Carvalho', { bold: true, italic: true, size: 22 }), { jc: 'center' }),
+      para(run('Engenheiro Civil', { size: 22 }), { jc: 'center' }),
+      para(run('CREA Nº49780 – PE', { size: 22 }), { jc: 'center' }),
     ], {
       vAlign: 'bottom',
       borders: { top: topBorder, bottom: B_MED, left: B_MED, right: B_THIN },
     }),
     tc(2500, [
-      para(run('[[resp_assinatura]]', { size: 14 }), { jc: 'center', before: 20, after: 10 }),
-      para(run('___________________________________', { size: 14 }), { jc: 'center' }),
-      para(run('[[resp_nome]]', { bold: true, italic: true, size: 15 }), { jc: 'center' }),
-      para(run('Engenheiro Civil', { size: 14 }), { jc: 'center' }),
-      para(run('CREA Nº [[resp_crea]]', { size: 14 }), { jc: 'center' }),
+      para(run('[[resp_assinatura]]', { size: 22 }), { jc: 'center', before: 20, after: 10 }),
+      para(run('____________________________', { size: 22 }), { jc: 'center' }),
+      para(run('[[resp_nome]]', { bold: true, italic: true, size: 22 }), { jc: 'center' }),
+      para(run('Engenheiro Civil', { size: 22 }), { jc: 'center' }),
+      para(run('CREA Nº [[resp_crea]]', { size: 22 }), { jc: 'center' }),
     ], {
       vAlign: 'bottom',
       borders: { top: topBorder, bottom: B_MED, left: B_THIN, right: B_MED },
@@ -444,9 +443,9 @@ const logoPara =
 
 const tituloHeaderPara =
   '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="000000"/></w:pBdr>' +
-  `<w:spacing w:before="0" w:after="20"/><w:jc w:val="right"/></w:pPr>${run('ENSAIO DE PACOMETRIA', { bold: true, size: 21 })}</w:p>`;
+  `<w:spacing w:before="0" w:after="20"/><w:jc w:val="right"/></w:pPr>${run('ENSAIO DE PACOMETRIA', { bold: true, size: 22 })}</w:p>`;
 
-const rltHeaderPara = para(run('[[num_rlt]]', { size: 17 }), { jc: 'right', before: 10, after: 0 });
+const rltHeaderPara = para(run('[[num_rlt]]', { size: 22 }), { jc: 'right', before: 10, after: 0 });
 const headerBottom = { top: B_NONE, bottom: B_MED, left: B_NONE, right: B_NONE };
 
 const headerXml =

@@ -10,7 +10,7 @@ A página 1 e o estilo do módulo **Aderência** são o padrão oficial para tod
 - **Footer:** paginação `X/Y` (em aderência inclui também revisão `RAAC - REV. 09 (02-01-26)` e endereço da TECOMAT).
 - **Página 1:** tabela `CLIENTE / OBRA / ATT. + DATA DE EMISSÃO / ENDEREÇO` → quadro `NORMA(S) DE REFERÊNCIA` → faixa cinza `ENSAIO DE [[nome_ensaio]]` → conteúdo (`1. INTRODUÇÃO`, etc.) sem quebra de página. A linha antiga `[[segunda_data]]` ("Recife, ...") não é mais usada.
 - **Fonte em runs injetados:** sempre definir `w:rFonts` explícito (`asciiTheme`/`hAnsiTheme="minorHAnsi"` ou `Calibri`), senão estilos como `Legenda` caem em Times New Roman.
-- **Tamanho de texto padrão:** **11 pt (`w:sz="22"`)** no corpo de texto, tabela de cabeçalho/identificação, textos de tabelas e legendas de imagens (títulos de seção em 12 pt / `w:sz="24"`). Já aplicado em Pacometria; demais módulos (`aderencia`, `esclerometria`, `resistividade`) devem ser migrados para 11 pt.
+- **Tamanho de texto padrão:** **11 pt (`w:sz="22"`)** em todo o documento — cabeçalho do Word (título + RLT), tabela de identificação, corpo de texto, textos de tabelas, legendas de imagens e quadro de notas/assinaturas (títulos de seção em 12 pt / `w:sz="24"`). Já aplicado em Pacometria; demais módulos (`aderencia`, `esclerometria`, `resistividade`) devem ser migrados para 11 pt.
 
 ## Assinatura dupla padronizada
 Todos os laudos encerram com o quadro final `NOTAS` + 2 assinaturas lado a lado (tabela `[2500, 2500]`, bordas externas médias e internas finas):
