@@ -64,7 +64,7 @@ export type PacometriaDocxPayload = {
   croqui?: ImagemBase64Payload | null;
   /** Croqui com múltiplas imagens */
   croquis?: ImagemBase64Payload[] | null;
-  /** Inicia cada elemento da Seção 4 (a partir do 2º) em nova página (padrão: true) */
+  /** Inicia cada elemento da Seção 4 em nova página (padrão: false — tabelas contínuas uma abaixo da outra) */
   quebraPaginaPorElemento?: boolean;
   /** Inclui Seção 5 — Resumo Executivo e Conclusão */
   usaConclusao?: boolean;
@@ -468,7 +468,7 @@ export function montarDadosPacometria(
   });
 
   // ── Seção 3 (Resumo) + Seção 4 (Detalhamento dinâmico) ───────
-  const quebraPagina = payload.quebraPaginaPorElemento !== false; // padrão true
+  const quebraPagina = payload.quebraPaginaPorElemento === true; // padrão false (uma tabela abaixo da outra)
   const blocosElementos: string[] = [];
   const resumo: Array<Record<string, string>> = [];
 

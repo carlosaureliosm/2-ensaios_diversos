@@ -459,26 +459,26 @@ const headerXml =
   ], { borders: 'none', marTop: 0, marBottom: 20, marLeft: 0, marRight: 0 }) +
   '</w:hdr>';
 
-// ── Footer padrão oficial (endereço + paginação X/Y) ──────────
+// ── Footer padrão oficial (endereço + paginação X/Y em 11 pt) ─
 const bNoBox = { top: B_NONE, bottom: B_NONE, left: B_NONE, right: B_NONE };
 const footerXml =
   `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
   `<w:ftr ${NS}>` +
   tbl([4400, 600], [
     trow([
-      tc(4400, 'Rua Serra da Canastra, 391 Cordeiro CEP 50.640-310 Recife PE PABX 55 81 3366 6444 tecomat@tecomat.com.br www.tecomat.com.br', { align: 'left', size: 14, borders: bNoBox }),
+      tc(4400, 'Rua Serra da Canastra, 391 Cordeiro CEP 50.640-310 Recife PE PABX 55 81 3366 6444 tecomat@tecomat.com.br www.tecomat.com.br', { align: 'left', size: 22, borders: bNoBox }),
       tc(600, '<w:p><w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="0"/></w:pPr>' +
-        `<w:r>${rpr({ size: 14 })}<w:fldChar w:fldCharType="begin"/></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:fldChar w:fldCharType="separate"/></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:t>1</w:t></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:fldChar w:fldCharType="end"/></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:t>/</w:t></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:fldChar w:fldCharType="begin"/></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:instrText xml:space="preserve"> NUMPAGES </w:instrText></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:fldChar w:fldCharType="separate"/></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:t>1</w:t></w:r>` +
-        `<w:r>${rpr({ size: 14 })}<w:fldChar w:fldCharType="end"/></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:fldChar w:fldCharType="begin"/></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:fldChar w:fldCharType="separate"/></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:t>1</w:t></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:fldChar w:fldCharType="end"/></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:t>/</w:t></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:fldChar w:fldCharType="begin"/></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:instrText xml:space="preserve"> NUMPAGES </w:instrText></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:fldChar w:fldCharType="separate"/></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:t>1</w:t></w:r>` +
+        `<w:r>${rpr({ size: 22 })}<w:fldChar w:fldCharType="end"/></w:r>` +
         '</w:p>', { align: 'right', borders: bNoBox }),
     ]),
   ], { borders: 'none', marTop: 4, marBottom: 4, marLeft: 0, marRight: 0 }) +

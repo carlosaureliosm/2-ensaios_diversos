@@ -279,6 +279,7 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     const zip = new PizZip(buf);
     const xml = zip.file('word/document.xml')!.asText();
     const hdr = zip.file('word/header1.xml')!.asText();
+    const ftr = zip.file('word/footer1.xml')!.asText();
     const rels = zip.file('word/_rels/document.xml.rels')!.asText();
 
     // Sem marcadores/tags sobrando
@@ -326,10 +327,12 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(xml).toContain('Tabela 2 — Leituras da malha — Laje L-05 &lt;Garagem&gt;.');
     expect(xml).toContain('Tabela 3 — Síntese global dos resultados de pacometria.');
 
-    // Cabeçalho do Word (ENSAIO DE PACOMETRIA + RLT) em 11 pt (w:sz="22")
+    // Cabeçalho e rodapé do Word (ENSAIO DE PACOMETRIA + RLT + endereço/paginação) em 11 pt (w:sz="22")
     expect(hdr).toContain('<w:sz w:val="22"/>');
     expect(hdr).not.toContain('<w:sz w:val="21"/>');
     expect(hdr).not.toContain('<w:sz w:val="17"/>');
+    expect(ftr).toContain('<w:sz w:val="22"/>');
+    expect(ftr).not.toContain('<w:sz w:val="14"/>');
 
     // Corpo, tabela de identificação, tabelas, legendas e assinaturas em 11 pt (w:sz="22"); títulos de seção em 12 pt (w:sz="24")
     expect(xml).toContain('<w:sz w:val="22"/>');

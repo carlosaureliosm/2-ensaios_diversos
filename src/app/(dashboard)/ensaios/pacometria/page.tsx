@@ -154,7 +154,7 @@ export default function PacometriaPage() {
   const [fotoGeralFile, setFotoGeralFile] = useState<File | null>(null);
   const [usaCroquiGeral, setUsaCroquiGeral] = useState(false);
   const [croquiFiles, setCroquiFiles]     = useState<File[]>([]);
-  const [quebraPaginaPorElemento, setQuebraPaginaPorElemento] = useState(true);
+  const [quebraPaginaPorElemento, setQuebraPaginaPorElemento] = useState(false);
   const [usaConclusao, setUsaConclusao]   = useState(true);
   const [conclusao, setConclusao]         = useState('');
 
@@ -210,7 +210,7 @@ export default function PacometriaPage() {
     setUsaMotivacao(false); setMotivacao('');
     setUsaFotoGeral(false); setFotoGeralFile(null);
     setUsaCroquiGeral(false); setCroquiFiles([]);
-    setQuebraPaginaPorElemento(true);
+    setQuebraPaginaPorElemento(false);
     setUsaConclusao(true); setConclusao('');
     localStorage.removeItem(LS_KEY);
   };
