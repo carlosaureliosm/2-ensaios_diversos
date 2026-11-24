@@ -13,6 +13,8 @@ import {
 } from '@/lib/pacometriaObraStorage';
 import type { ObraGrupoPacometria } from '@/modules/pacometria/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const user = await usuarioAtual();
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });

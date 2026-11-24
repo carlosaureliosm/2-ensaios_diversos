@@ -50,23 +50,29 @@ export async function garantirBucketObra(
   bucketGarantido = true;
 }
 
-export async function lerGrupoObra(
-  admin: ReturnType<typeof createAdminClient>,
-  id: string,
-): Promise<ObraGrupoPacometria | null> {
-  if (!validarGrupoId(id)) return null;
-  const { data, error } = await admin.storage
-    .from(BUCKET_PACOMETRIA_OBRA)
-    .download(caminhoGrupo(id));
-  if (error || !data) return null;
+async function baixarGrupoPorUrl(signedUrl: string): Promise<ObraGrupoPacometria | null> {
   try {
-    const text = await data.text();
-    const parsed = JSON.parse(text) as ObraGrupoPacometria;
+    const res = await fetch(signedUrl, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const parsed = (await res.json()) as ObraGrupoPacometria;
     if (!parsed || typeof parsed.id !== 'string' || !Array.isArray(parsed.amostras)) return null;
     return parsed;
   } catch {
     return null;
   }
+}
+
+export async function lerGrupoObra(
+  admin: ReturnType<typeof createAdminClient>,
+  id: string,
+): Promise<ObraGrupoPacometria | null> {
+  if (!validarGrupoId(id)) return null;
+  // Signed URL única + cache: 'no-store' evita leitura defasada do CDN do Supabase Storage após upsert
+  const { data: signed, error } = await admin.storage
+    .from(BUCKET_PACOMETRIA_OBRA)
+    .createSignedUrl(caminhoGrupo(id), 60);
+  if (error || !signed?.signedUrl) return null;
+  return baixarGrupoPorUrl(signed.signedUrl);
 }
 
 export async function salvarGrupoObra(
@@ -84,6 +90,7 @@ export async function salvarGrupoObra(
     .from(BUCKET_PACOMETRIA_OBRA)
     .upload(caminhoGrupo(grupo.id), payload, {
       contentType: 'application/json',
+      cacheControl: '0',
       upsert: true,
     });
   if (error) throw new Error(error.message);
@@ -99,13 +106,25 @@ export async function listarGruposObra(
 
   if (error || !arquivos || arquivos.length === 0) return [];
 
-  const ids = arquivos
+  const paths = arquivos
     .map(f => f.name)
     .filter(name => name.endsWith('.json'))
     .map(name => name.slice(0, -5))
-    .filter(validarGrupoId);
+    .filter(validarGrupoId)
+    .map(caminhoGrupo);
 
-  const resultados = await Promise.all(ids.map(id => lerGrupoObra(admin, id)));
+  if (paths.length === 0) return [];
+
+  // Uma única chamada em lote para assinar todos os JSONs e baixar sempre a versão mais recente (sem cache)
+  const { data: signed } = await admin.storage
+    .from(BUCKET_PACOMETRIA_OBRA)
+    .createSignedUrls(paths, 60);
+
+  if (!Array.isArray(signed) || signed.length === 0) return [];
+
+  const resultados = await Promise.all(
+    signed.map(item => (item.signedUrl ? baixarGrupoPorUrl(item.signedUrl) : Promise.resolve(null))),
+  );
   return resultados
     .filter((g): g is ObraGrupoPacometria => g !== null)
     .sort((a, b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt));

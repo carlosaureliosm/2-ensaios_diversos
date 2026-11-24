@@ -18,6 +18,8 @@ import {
 } from '@/lib/pacometriaObraStorage';
 import type { AmostraObraSalva, ObraGrupoPacometria } from '@/modules/pacometria/types';
 
+export const dynamic = 'force-dynamic';
+
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, context: RouteContext) {

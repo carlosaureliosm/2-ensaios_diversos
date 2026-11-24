@@ -176,6 +176,22 @@ export default function PacometriaPage() {
 
   // Cache em memória de URLs assinadas por fotoPath para não invalidar o cache de imagem do navegador
   const signedUrlCacheRef = useRef<Map<string, { url: string; cachedAt: number }>>(new Map());
+  // Fila sequencial de escrita por obra para evitar corrida entre PATCH de amostra e POST de foto
+  const obraWriteQueueRef = useRef<Map<string, Promise<unknown>>>(new Map());
+  const obraGruposRef = useRef<ObraGrupoPacometria[]>([]);
+  obraGruposRef.current = obraGrupos;
+
+  const enfileirarEscritaGrupo = useCallback(<T,>(grupoId: string, tarefa: () => Promise<T>): Promise<T> => {
+    const anterior = obraWriteQueueRef.current.get(grupoId) ?? Promise.resolve();
+    const proxima = anterior.catch(() => {}).then(tarefa);
+    obraWriteQueueRef.current.set(grupoId, proxima);
+    proxima.finally(() => {
+      if (obraWriteQueueRef.current.get(grupoId) === proxima) {
+        obraWriteQueueRef.current.delete(grupoId);
+      }
+    });
+    return proxima;
+  }, []);
 
   const aplicarCacheUrls = useCallback((grupos: ObraGrupoPacometria[]): ObraGrupoPacometria[] => {
     const agora = Date.now();
@@ -201,6 +217,10 @@ export default function PacometriaPage() {
     if (!opts?.silencioso) setObraCarregando(true);
     setObraErro('');
     try {
+      // Se houver escrita pendente (ex.: upload de foto recém-enviado), aguarda concluir antes de recarregar
+      if (obraWriteQueueRef.current.size > 0) {
+        await Promise.allSettled(Array.from(obraWriteQueueRef.current.values()));
+      }
       const res = await fetch('/api/ensaios/pacometria/obra', { cache: 'no-store' });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
@@ -298,25 +318,40 @@ export default function PacometriaPage() {
     setObraGrupos(prev =>
       prev.map(g => (g.id === grupoId ? { ...g, amostras: novasAmostras, updatedAt: new Date().toISOString() } : g)),
     );
-    setObraSalvandoId(grupoId);
-    setObraErro('');
-    try {
-      const res = await fetch(`/api/ensaios/pacometria/obra/${grupoId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amostras: novasAmostras }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || 'Erro ao salvar alterações na obra.');
-      const [hidratado] = aplicarCacheUrls([data.grupo]);
-      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? hidratado : g)));
-    } catch (err) {
-      // Reverte estado em caso de erro no servidor
-      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? anterior : g)));
-      alert(err instanceof Error ? err.message : 'Erro ao salvar alterações na obra.');
-    } finally {
-      setObraSalvandoId(null);
-    }
+    await enfileirarEscritaGrupo(grupoId, async () => {
+      setObraSalvandoId(grupoId);
+      setObraErro('');
+      try {
+        // Garante que fotos já enviadas em paralelo não sejam perdidas ao salvar
+        const atualEmMemoria = obraGruposRef.current.find(g => g.id === grupoId);
+        const fotoPorId = new Map(
+          (atualEmMemoria?.amostras ?? []).map(a => [a.id, a]),
+        );
+        const mescladas = novasAmostras.map(a => {
+          const mem = fotoPorId.get(a.id);
+          if (!a.fotoPath && mem?.fotoPath) {
+            return { ...a, fotoPath: mem.fotoPath, fotoWidth: mem.fotoWidth, fotoHeight: mem.fotoHeight };
+          }
+          return a;
+        });
+
+        const res = await fetch(`/api/ensaios/pacometria/obra/${grupoId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amostras: mescladas }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.error || 'Erro ao salvar alterações na obra.');
+        const [hidratado] = aplicarCacheUrls([data.grupo]);
+        setObraGrupos(prev => prev.map(g => (g.id === grupoId ? hidratado : g)));
+      } catch (err) {
+        // Reverte estado em caso de erro no servidor
+        setObraGrupos(prev => prev.map(g => (g.id === grupoId ? anterior : g)));
+        alert(err instanceof Error ? err.message : 'Erro ao salvar alterações na obra.');
+      } finally {
+        setObraSalvandoId(null);
+      }
+    });
   };
 
   const criarGrupoObra = async () => {
@@ -461,11 +496,11 @@ export default function PacometriaPage() {
   };
 
   const anexarFotoObra = async (grupoId: string, amostraId: string, file: File) => {
-    const grupo = obraGrupos.find(g => g.id === grupoId);
-    if (!grupo) return;
+    const grupoInicial = obraGruposRef.current.find(g => g.id === grupoId);
+    if (!grupoInicial) return;
     const previewLocal = URL.createObjectURL(file);
 
-    // Prévia otimista instantânea (0 ms) enquanto envia em 1 única requisição
+    // Prévia otimista instantânea (0 ms) enquanto aguarda fila e envia em 1 única requisição
     setObraGrupos(prev =>
       prev.map(g =>
         g.id === grupoId
@@ -477,58 +512,94 @@ export default function PacometriaPage() {
       ),
     );
     setObraUploadingFotoId(amostraId);
+
+    // Comprime imediatamente (em paralelo a eventual PATCH pendente)
+    let comprimida: Awaited<ReturnType<typeof comprimirImagemParaFile>>;
     try {
-      const comprimida = await comprimirImagemParaFile(file);
-      const form = new FormData();
-      form.append('foto', comprimida.file);
-      form.append('amostraId', amostraId);
-      form.append('fotoWidth', String(comprimida.width));
-      form.append('fotoHeight', String(comprimida.height));
-
-      const res = await fetch(`/api/ensaios/pacometria/obra/${grupoId}/foto`, {
-        method: 'POST',
-        body: form,
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.path) throw new Error(data?.error || 'Erro ao enviar foto.');
-
-      const urlFinal = (data.url as string | null) ?? previewLocal;
-      if (data.url) {
-        signedUrlCacheRef.current.set(data.path as string, { url: data.url as string, cachedAt: Date.now() });
-        precarregarImagens([data.url as string]);
-      }
-
-      setObraGrupos(prev =>
-        prev.map(g =>
-          g.id === grupoId
-            ? {
-                ...g,
-                updatedAt: (data.updatedAt as string) || new Date().toISOString(),
-                amostras: g.amostras.map(a =>
-                  a.id === amostraId
-                    ? {
-                        ...a,
-                        fotoPath: data.path as string,
-                        fotoUrl: urlFinal,
-                        fotoWidth: comprimida.width,
-                        fotoHeight: comprimida.height,
-                      }
-                    : a,
-                ),
-              }
-            : g,
-        ),
-      );
-      if (data.url) {
-        setTimeout(() => revogarSeBlob(previewLocal), 2000);
-      }
+      comprimida = await comprimirImagemParaFile(file);
     } catch (err) {
       revogarSeBlob(previewLocal);
-      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? grupo : g)));
-      alert(err instanceof Error ? err.message : 'Erro ao enviar foto.');
-    } finally {
+      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? grupoInicial : g)));
       setObraUploadingFotoId(null);
+      alert(err instanceof Error ? err.message : 'Erro ao processar foto.');
+      return;
     }
+
+    await enfileirarEscritaGrupo(grupoId, async () => {
+      try {
+        const form = new FormData();
+        form.append('foto', comprimida.file);
+        form.append('amostraId', amostraId);
+        form.append('fotoWidth', String(comprimida.width));
+        form.append('fotoHeight', String(comprimida.height));
+
+        const res = await fetch(`/api/ensaios/pacometria/obra/${grupoId}/foto`, {
+          method: 'POST',
+          body: form,
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.path) throw new Error(data?.error || 'Erro ao enviar foto.');
+
+        const fotoPath = data.path as string;
+        const urlFinal = (data.url as string | null) ?? previewLocal;
+        if (data.url) {
+          signedUrlCacheRef.current.set(fotoPath, { url: data.url as string, cachedAt: Date.now() });
+          precarregarImagens([data.url as string]);
+        }
+
+        // Se o servidor não encontrou a amostra no JSON (fallback de segurança), persiste via PATCH agora
+        if (!data.savedInGroup) {
+          const grupoAtual = obraGruposRef.current.find(g => g.id === grupoId);
+          if (grupoAtual) {
+            const novas = grupoAtual.amostras.map(a =>
+              a.id === amostraId
+                ? { ...a, fotoPath, fotoWidth: comprimida.width, fotoHeight: comprimida.height }
+                : a,
+            );
+            const patchRes = await fetch(`/api/ensaios/pacometria/obra/${grupoId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amostras: novas }),
+            });
+            if (!patchRes.ok) {
+              const pj = await patchRes.json().catch(() => null);
+              throw new Error(pj?.error || 'Foto enviada, mas falhou ao vincular na obra.');
+            }
+          }
+        }
+
+        setObraGrupos(prev =>
+          prev.map(g =>
+            g.id === grupoId
+              ? {
+                  ...g,
+                  updatedAt: (data.updatedAt as string) || new Date().toISOString(),
+                  amostras: g.amostras.map(a =>
+                    a.id === amostraId
+                      ? {
+                          ...a,
+                          fotoPath,
+                          fotoUrl: urlFinal,
+                          fotoWidth: comprimida.width,
+                          fotoHeight: comprimida.height,
+                        }
+                      : a,
+                  ),
+                }
+              : g,
+          ),
+        );
+        if (data.url) {
+          setTimeout(() => revogarSeBlob(previewLocal), 2000);
+        }
+      } catch (err) {
+        revogarSeBlob(previewLocal);
+        setObraGrupos(prev => prev.map(g => (g.id === grupoId ? grupoInicial : g)));
+        alert(err instanceof Error ? err.message : 'Erro ao enviar foto.');
+      } finally {
+        setObraUploadingFotoId(null);
+      }
+    });
   };
 
   const removerFotoObra = async (grupoId: string, amostraId: string) => {

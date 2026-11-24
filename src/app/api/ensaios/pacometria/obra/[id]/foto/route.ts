@@ -18,6 +18,8 @@ import {
 const MAX_SIZE = 3 * 1024 * 1024;
 const ALLOWED = ['image/jpeg', 'image/png'];
 
+export const dynamic = 'force-dynamic';
+
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, context: RouteContext) {
@@ -75,6 +77,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     let updatedAt = existente.updatedAt;
     let fotoAnterior: string | null = null;
+    let savedInGroup = false;
 
     // Quando amostraId é informado, já persiste o fotoPath no JSON da obra em 1 única requisição
     if (typeof amostraId === 'string' && amostraId.trim()) {
@@ -92,6 +95,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           ),
         };
         await salvarGrupoObra(admin, atualizado);
+        savedInGroup = true;
       }
     }
 
@@ -102,7 +106,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         : Promise.resolve(),
     ]);
 
-    return NextResponse.json({ path, url: signed?.signedUrl ?? null, updatedAt });
+    return NextResponse.json({ path, url: signed?.signedUrl ?? null, updatedAt, savedInGroup });
   } catch (err) {
     console.error('[pacometria obra foto POST] Erro:', err);
     return NextResponse.json(
