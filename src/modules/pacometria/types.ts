@@ -70,8 +70,25 @@ export type AmostraRow = {
   // Foto
   fotoFile?: File | null;
   fotoPreview?: string | null;
+  fotoPath?: string | null;
   fotoWidth?: number;
   fotoHeight?: number;
+};
+
+export type AmostraObraSalva = Omit<AmostraRow, 'fotoFile' | 'fotoPreview'> & {
+  fotoPath?: string | null;
+  fotoUrl?: string | null; // URL assinada (1h) hidratada pelo servidor na leitura
+};
+
+export type ObraGrupoPacometria = {
+  id: string;
+  nome: string;
+  createdBy: string;
+  createdByNome: string;
+  createdByEmail: string;
+  createdAt: string;
+  updatedAt: string;
+  amostras: AmostraObraSalva[];
 };
 
 export type Cabecalho = {

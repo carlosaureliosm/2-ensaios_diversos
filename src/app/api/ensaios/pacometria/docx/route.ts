@@ -21,6 +21,7 @@ import {
   montarDadosPacometria,
   type PacometriaDocxPayload,
 } from '@/lib/docx/pacometria';
+import { baixarFotoObra } from '@/lib/pacometriaObraStorage';
 
 export const maxDuration = 60;
 
@@ -56,6 +57,25 @@ export async function POST(req: NextRequest) {
     const enderecoLimpo = body.cab.endereco?.trim() ?? '';
     const mapaResult = enderecoLimpo ? await buscarImagemMapa(enderecoLimpo) : null;
 
+    // ── Hidratar fotos vindas do Modo Obra (Storage privado, sem SSRF) ──
+    const amostrasHidratadas = await Promise.all(
+      body.amostras.map(async a => {
+        if (a.foto?.base64 || !a.fotoPath) return a;
+        const baixada = await baixarFotoObra(a.fotoPath);
+        if (!baixada) return a;
+        return {
+          ...a,
+          foto: {
+            base64: baixada.base64,
+            contentType: baixada.contentType,
+            width: a.fotoWidth || 800,
+            height: a.fotoHeight || 600,
+          },
+        };
+      }),
+    );
+    const bodyHidratado: PacometriaDocxPayload = { ...body, amostras: amostrasHidratadas };
+
     // ── Template ────────────────────────────────────────────────
     const templatePath = path.join(process.cwd(), 'public', 'modelo_pacometria.docx');
     if (!fs.existsSync(templatePath)) {
@@ -66,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
     const zip = new PizZip(fs.readFileSync(templatePath));
 
-    const { dados, blocoElementosXml, imagens } = montarDadosPacometria(body, mapaResult);
+    const { dados, blocoElementosXml, imagens } = montarDadosPacometria(bodyHidratado, mapaResult);
     dados.resp_assinatura = assinaturaBuffer ? 'ASSINATURA_PLACEHOLDER' : '';
 
     const doc = new Docxtemplater(zip, {

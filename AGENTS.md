@@ -48,8 +48,9 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 **Rotas de API (`src/app/api/`) — todas exigem `usuarioAtual()`:**
 | Rota | Função |
 |---|---|
-| `POST /api/ensaios/{aderencia,esclerometria,resistividade}/docx` | Gera laudo `.docx` do módulo |
+| `POST /api/ensaios/{aderencia,esclerometria,resistividade,pacometria}/docx` | Gera laudo `.docx` do módulo |
 | `POST / DELETE /api/ensaios/aderencia/foto` | Upload/remoção de foto no bucket `aderencia-fotos` |
+| `GET / POST /api/ensaios/pacometria/obra` · `PATCH / DELETE .../[id]` · `POST / DELETE .../[id]/foto` | Modo Obra multiusuário de pacometria (JSON + fotos no bucket `pacometria-obra`; só o criador edita/apaga) |
 | `GET /api/maps/static` | Proxy autenticado para Google Maps Static API |
 | `GET / POST /api/users` · `PATCH / DELETE /api/users/[id]` | Gestão de usuários (admin em `app_metadata.role`) |
 | `GET / POST / DELETE /api/users/[id]/assinatura` | Upload, remoção e URL assinada de 1h da assinatura |
@@ -62,8 +63,8 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 5. **Assinatura sob demanda (1h):** nunca persistir URL assinada longa; usar `GET /api/users/[id]/assinatura` via `src/lib/assinatura.ts`.
 6. **Troca da própria senha (`isSelf`) exige `currentPassword`** validado por `senhaAtualValida`. Usuário comum não altera próprio e-mail em `PATCH /api/users/[id]`.
 7. **Padrão visual obrigatório:** todo módulo (pronto ou futuro) usa `PlanilhaUI.tsx` (Planilha Técnica Compacta) e `ResponsavelTecnicoPanel.tsx` (detalhes em `padrao-visual.md`).
-8. **Padrão DOCX obrigatório:** página 1 compacta (sem capa nem sumário), header/margens padrão, fonte Calibri em **11 pt (`w:sz="22"`)** no corpo de texto e quadro final `NOTAS` + assinatura dupla (João Ribeiro de Carvalho + Engenheiro do ensaio).
-9. **Nunca editar `public/modelo_aderencia.docx` à mão no Word** — editar `scripts/build-modelo-aderencia.js` e regenerar via Node.
+8. **Padrão DOCX obrigatório:** página 1 compacta (sem capa nem sumário), header/margens padrão, fonte Calibri em **11 pt (`w:sz="22"`)** em todo o documento (header, footer, tabelas, legendas, corpo, notas/assinaturas; títulos de seção em 12 pt / `w:sz="24"`) e quadro final `NOTAS` + assinatura dupla (João Ribeiro de Carvalho + Engenheiro do ensaio).
+9. **Nunca editar `public/modelo_aderencia.docx` nem `public/modelo_pacometria.docx` à mão no Word** — editar `scripts/build-modelo-aderencia.js` / `scripts/build-modelo-pacometria.js` e regenerar via Node.
 10. **Fotos não são salvas no `localStorage`** (removidas no save e zeradas no load). Em Aderência, fotos sobem para o bucket `aderencia-fotos` para respeitar o limite de 4,5 MB da Vercel.
 11. **Campos inteiros com mínimo/fallback (`InteiroInput`):** permitir apagar completamente no `onChange` e aplicar mínimo apenas no `onBlur`.
 12. **Nunca logar URLs com `GOOGLE_MAPS_API_KEY`.**
@@ -76,7 +77,8 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 - `src/lib/assinatura.ts` — `buscarUrlAssinatura` (busca URL assinada de 1h para prévia no front).
 - `src/lib/aderenciaStorage.ts` — upload/download/exclusão no bucket privado `aderencia-fotos` com checagem de dono (`<userId>/`).
 - `src/lib/docx/esclerometria.ts` — `registrarImagem`, `buildDrawingXml`, `injetarAssinatura`, `injetarCroqui`, `injetarCroquiMultiplo`.
-- `src/modules/aderencia/svgParaPng.ts` — rasteriza SVG em PNG 3x no navegador (usado por esquema e gráfico de aderência).
+- `src/modules/aderencia/svgParaPng.ts` — rasteriza SVG em PNG 3x no navegador (usado por aderência e pacometria).
+- `src/modules/pacometria/svgRelatorio.ts` — gera SVGs puros da seção/malha e perfis de elevação por face (com divisão automática >8 estribos) para o laudo DOCX de pacometria.
 
 ## Armadilhas conhecidas
 - **Não alterar a assinatura de `injetarCroqui`** em `src/lib/docx/esclerometria.ts` — o módulo `resistividade` ainda a usa (imagem única).
@@ -87,7 +89,7 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 - **Build no Next 15:** `npm run dev` ignora erros de tipo que quebram `npx next build` na Vercel.
 
 ## Testes e build
-- Suíte Vitest: `npm run test` (alias `@` em `vitest.config.ts`). Principais: `src/lib/auth.test.ts`, `src/lib/esclerometria/calcularAmostra.test.ts`, `src/modules/aderencia/calculos.test.ts`, `src/modules/aderencia/svgGraficoResultado.test.ts`, `src/modules/pacometria/calculos.test.ts`, `src/app/api/ensaios/aderencia/docx/route.test.ts`.
+- Suíte Vitest: `npm run test` (alias `@` em `vitest.config.ts`). Principais: `src/lib/auth.test.ts`, `src/lib/esclerometria/calcularAmostra.test.ts`, `src/modules/aderencia/calculos.test.ts`, `src/modules/aderencia/svgGraficoResultado.test.ts`, `src/modules/pacometria/calculos.test.ts`, `src/app/api/ensaios/aderencia/docx/route.test.ts`, `src/app/api/ensaios/pacometria/docx/route.test.ts`.
 - Validação de build: `npx next build`.
 
 ## Pendências abertas (detalhe em `docs/tecnico/pendencias.md`)

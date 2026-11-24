@@ -1,7 +1,7 @@
 'use client';
 // src/app/(dashboard)/ensaios/pacometria/page.tsx
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { buscarUrlAssinatura } from '@/lib/assinatura';
@@ -12,17 +12,17 @@ import {
   EnsaioCabecalho,
   EnsaioTabs,
   fichaInputStyle,
-  tabelaHeaderStyle,
-  tabelaThTextStyle,
 } from '@/components/PlanilhaUI';
 import { ResponsavelTecnicoPanel } from '@/components/ResponsavelTecnicoPanel';
 import {
+  AmostraObraSalva,
   AmostraRow,
   Cabecalho,
-  TIPO_LABELS,
-  getResumoOpcao,
+  ObraGrupoPacometria,
 } from '@/modules/pacometria/types';
 import { ModalAmostra } from '@/modules/pacometria/components/ModalAmostra';
+import { ListaAmostrasPacometria } from '@/modules/pacometria/components/ListaAmostrasPacometria';
+import { ModalImportarObra } from '@/modules/pacometria/components/ModalImportarObra';
 import { gerarSvgEsquemaPacometria, gerarSvgsPerfisPacometria } from '@/modules/pacometria/svgRelatorio';
 import { svgParaPng } from '@/modules/aderencia/svgParaPng';
 
@@ -46,11 +46,29 @@ function maskData(v: string) {
   return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
 }
 function salvarLocal(cab: Cabecalho, amostras: AmostraRow[]) {
-  const sem = amostras.map(({ fotoFile: _f, fotoPreview: _p, ...rest }) => rest);
+  const sem = amostras.map(({ fotoFile: _f, fotoPreview: _p, fotoPath: _fp, ...rest }) => rest);
   try { localStorage.setItem(LS_KEY, JSON.stringify({ cab, amostras: sem })); } catch {}
 }
 function carregarLocal(): { cab: Cabecalho; amostras: AmostraRow[] } | null {
   try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
+}
+
+function base64ParaBlob(base64: string, contentType: string): Blob {
+  const bin = atob(base64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: contentType });
+}
+
+function formatarDataHora(iso: string) {
+  try {
+    return new Date(iso).toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
 }
 
 function comprimirImagem(file: File): Promise<{ base64: string; width: number; height: number; contentType: string }> {
@@ -119,6 +137,7 @@ export default function PacometriaPage() {
   const router = useRouter();
 
   // Auth
+  const [userId, setUserId]         = useState('');
   const [userName, setUserName]     = useState('');
   const [userEmail, setUserEmail]   = useState('');
   const [userCargo, setUserCargo]   = useState('');
@@ -130,15 +149,24 @@ export default function PacometriaPage() {
     rlt: '', data: '', cliente: '', obra: '', att: '', endereco: '', notas: '',
   });
 
-  // Amostras
+  // Amostras (Dados de Campo)
   const [amostras, setAmostras] = useState<AmostraRow[]>([]);
 
-  // Modal
+  // Modal de amostra (compartilhado entre Dados de Campo e Modo Obra)
   const [modalAberto, setModalAberto] = useState(false);
   const [amostraEditando, setAmostraEditando] = useState<AmostraRow | null>(null);
+  const [modalContexto, setModalContexto] = useState<'campo' | { tipo: 'obra'; grupoId: string }>('campo');
 
-  // Foto por linha (input ref por id)
-  const fotoRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  // Modo Obra (sincronizado com servidor)
+  const [obraGrupos, setObraGrupos] = useState<ObraGrupoPacometria[]>([]);
+  const [obraCarregando, setObraCarregando] = useState(false);
+  const [obraErro, setObraErro] = useState('');
+  const [obraSalvandoId, setObraSalvandoId] = useState<string | null>(null);
+  const [obraUploadingFotoId, setObraUploadingFotoId] = useState<string | null>(null);
+  const [novoGrupoNome, setNovoGrupoNome] = useState('');
+  const [criandoGrupo, setCriandoGrupo] = useState(false);
+  const [grupoAtivoId, setGrupoAtivoId] = useState<string | null>(null);
+  const [showImportarObra, setShowImportarObra] = useState(false);
 
   // Responsável
   const [outroResp, setOutroResp]         = useState(false);
@@ -164,18 +192,39 @@ export default function PacometriaPage() {
   const [gerandoDocx, setGerandoDocx] = useState(false);
 
   // ── Efeitos ──────────────────────────────────────────────────
+  const carregarGruposObra = useCallback(async () => {
+    setObraCarregando(true);
+    setObraErro('');
+    try {
+      const res = await fetch('/api/ensaios/pacometria/obra', { cache: 'no-store' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || 'Erro ao carregar obras do servidor.');
+      }
+      const data = await res.json();
+      setObraGrupos(Array.isArray(data.grupos) ? data.grupos : []);
+      if (data.currentUserId) setUserId(data.currentUserId);
+    } catch (err) {
+      setObraErro(err instanceof Error ? err.message : 'Erro ao carregar obras.');
+    } finally {
+      setObraCarregando(false);
+    }
+  }, []);
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { router.push('/login'); return; }
+      setUserId(user.id);
       setUserEmail(user.email ?? '');
       const m = user.user_metadata ?? {};
       setUserName(m.full_name ?? m.name ?? user.email ?? '');
       setUserCargo(m.cargo ?? '');
       setUserCrea(m.crea ?? '');
       setUserAssinatura(await buscarUrlAssinatura(user.id, m.assinatura_path));
+      carregarGruposObra();
     });
-  }, [router]);
+  }, [router, carregarGruposObra]);
 
   useEffect(() => {
     const saved = carregarLocal();
@@ -228,16 +277,94 @@ export default function PacometriaPage() {
     return `RLT.LAU-${n}.26-00`;
   })();
 
-  const salvarAmostra = (a: AmostraRow) => {
-    setAmostras(prev => {
-      const idx = prev.findIndex(x => x.id === a.id);
-      if (idx >= 0) {
-        const next = [...prev]; next[idx] = a; return next;
-      }
-      return [...prev, { ...a, item: prev.length + 1 }];
-    });
+  const persistirAmostrasGrupo = async (grupoId: string, novasAmostras: AmostraObraSalva[]) => {
+    setObraSalvandoId(grupoId);
+    setObraErro('');
+    try {
+      const res = await fetch(`/api/ensaios/pacometria/obra/${grupoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amostras: novasAmostras }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Erro ao salvar alterações na obra.');
+      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? data.grupo : g)));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao salvar alterações na obra.');
+    } finally {
+      setObraSalvandoId(null);
+    }
+  };
+
+  const criarGrupoObra = async () => {
+    const nome = novoGrupoNome.trim();
+    if (!nome || criandoGrupo) return;
+    setCriandoGrupo(true);
+    setObraErro('');
+    try {
+      const res = await fetch('/api/ensaios/pacometria/obra', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Erro ao criar obra.');
+      setObraGrupos(prev => [data.grupo, ...prev]);
+      setGrupoAtivoId(data.grupo.id);
+      setNovoGrupoNome('');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao criar obra.');
+    } finally {
+      setCriandoGrupo(false);
+    }
+  };
+
+  const apagarGrupoObra = async (g: ObraGrupoPacometria) => {
+    if (!confirm(`Apagar a obra "${g.nome}" e todas as suas amostras e fotos do servidor?`)) return;
+    setObraSalvandoId(g.id);
+    try {
+      const res = await fetch(`/api/ensaios/pacometria/obra/${g.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Erro ao apagar obra.');
+      setObraGrupos(prev => prev.filter(x => x.id !== g.id));
+      if (grupoAtivoId === g.id) setGrupoAtivoId(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao apagar obra.');
+    } finally {
+      setObraSalvandoId(null);
+    }
+  };
+
+  const salvarAmostra = async (a: AmostraRow) => {
+    if (modalContexto === 'campo') {
+      setAmostras(prev => {
+        const idx = prev.findIndex(x => x.id === a.id);
+        if (idx >= 0) {
+          const next = [...prev]; next[idx] = a; return next;
+        }
+        return [...prev, { ...a, item: prev.length + 1 }];
+      });
+      setModalAberto(false);
+      setAmostraEditando(null);
+      return;
+    }
+
+    const grupo = obraGrupos.find(g => g.id === modalContexto.grupoId);
+    if (!grupo) {
+      setModalAberto(false);
+      setAmostraEditando(null);
+      return;
+    }
+
+    const { fotoFile: _ff, fotoPreview: _fp, ...limpa } = a;
+    const idx = grupo.amostras.findIndex(x => x.id === a.id);
+    const novas: AmostraObraSalva[] = idx >= 0
+      ? grupo.amostras.map((x, i) => (i === idx ? { ...limpa, fotoPath: x.fotoPath ?? a.fotoPath ?? null } : x))
+      : [...grupo.amostras, { ...limpa, item: grupo.amostras.length + 1, fotoPath: null }];
+
     setModalAberto(false);
     setAmostraEditando(null);
+    await persistirAmostrasGrupo(grupo.id, novas);
   };
 
   const apagarAmostra = (id: string) => {
@@ -246,18 +373,85 @@ export default function PacometriaPage() {
   };
 
   const editarAmostra = (a: AmostraRow) => {
+    setModalContexto('campo');
     setAmostraEditando(a);
     setModalAberto(true);
   };
 
   const handleFoto = async (id: string, file: File) => {
     const preview = URL.createObjectURL(file);
-    setAmostras(prev => prev.map(a => a.id === id ? { ...a, fotoFile: file, fotoPreview: preview } : a));
+    setAmostras(prev => prev.map(a => a.id === id ? { ...a, fotoFile: file, fotoPreview: preview, fotoPath: null } : a));
   };
 
   const removerFoto = (id: string) => {
-    setAmostras(prev => prev.map(a => a.id === id ? { ...a, fotoFile: null, fotoPreview: null } : a));
-    if (fotoRefs.current[id]) fotoRefs.current[id]!.value = '';
+    setAmostras(prev => prev.map(a => a.id === id ? { ...a, fotoFile: null, fotoPreview: null, fotoPath: null } : a));
+  };
+
+  const apagarAmostraObra = async (grupoId: string, amostraId: string) => {
+    if (!confirm('Apagar esta amostra da obra?')) return;
+    const grupo = obraGrupos.find(g => g.id === grupoId);
+    if (!grupo) return;
+    const novas = grupo.amostras
+      .filter(a => a.id !== amostraId)
+      .map((a, i) => ({ ...a, item: i + 1 }));
+    await persistirAmostrasGrupo(grupoId, novas);
+  };
+
+  const anexarFotoObra = async (grupoId: string, amostraId: string, file: File) => {
+    const grupo = obraGrupos.find(g => g.id === grupoId);
+    if (!grupo) return;
+    setObraUploadingFotoId(amostraId);
+    try {
+      const comprimida = await comprimirImagem(file);
+      const blob = base64ParaBlob(comprimida.base64, comprimida.contentType);
+      const form = new FormData();
+      form.append('foto', new File([blob], 'foto.jpg', { type: comprimida.contentType }));
+
+      const res = await fetch(`/api/ensaios/pacometria/obra/${grupoId}/foto`, {
+        method: 'POST',
+        body: form,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.path) throw new Error(data?.error || 'Erro ao enviar foto.');
+
+      const novas = grupo.amostras.map(a =>
+        a.id === amostraId
+          ? { ...a, fotoPath: data.path as string, fotoWidth: comprimida.width, fotoHeight: comprimida.height }
+          : a,
+      );
+      await persistirAmostrasGrupo(grupoId, novas);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao enviar foto.');
+    } finally {
+      setObraUploadingFotoId(null);
+    }
+  };
+
+  const removerFotoObra = async (grupoId: string, amostraId: string) => {
+    const grupo = obraGrupos.find(g => g.id === grupoId);
+    if (!grupo) return;
+    const novas = grupo.amostras.map(a =>
+      a.id === amostraId ? { ...a, fotoPath: null, fotoWidth: undefined, fotoHeight: undefined } : a,
+    );
+    await persistirAmostrasGrupo(grupoId, novas);
+  };
+
+  const importarGrupoObra = (g: ObraGrupoPacometria, modo: 'adicionar' | 'substituir') => {
+    const convertidas: AmostraRow[] = g.amostras.map(a => ({
+      ...a,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${a.id}_${Date.now()}_${Math.random()}`,
+      fotoFile: null,
+      fotoPath: a.fotoPath ?? null,
+      fotoPreview: a.fotoUrl ?? null,
+    }));
+    setAmostras(prev => {
+      const base = modo === 'substituir' ? [] : prev;
+      return [...base, ...convertidas].map((a, i) => ({ ...a, item: i + 1 }));
+    });
+    if (!cab.obra.trim()) {
+      setCab(prev => ({ ...prev, obra: g.nome }));
+    }
+    setShowImportarObra(false);
   };
 
   const respNomeFinal = outroResp ? outroRespNome : userName;
@@ -417,8 +611,8 @@ export default function PacometriaPage() {
             {
               id: 'obra',
               variante: 'obra',
-              labelFull: '3. Modo Obra',
-              labelShort: 'Obra',
+              labelFull: `3. Modo Obra${obraGrupos.length > 0 ? ` (${obraGrupos.length})` : ''}`,
+              labelShort: `Obra${obraGrupos.length > 0 ? ` (${obraGrupos.length})` : ''}`,
               icon: (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 20h20" /><path d="M6 20v-4a6 6 0 0 1 12 0v4" /><path d="M12 4v4" /><path d="M4 12a8 8 0 0 1 16 0" />
@@ -590,184 +784,265 @@ export default function PacometriaPage() {
 
         {/* ── ABA 2: DADOS DE CAMPO ── */}
         {aba === 'campo' && (
-          <div>
-            {/* Tabela — desktop */}
-            <div className="amostras-table-section">
-              <PainelPlanilha
-                titulo="Resultado do Ensaio — Amostras de Pacometria"
-                direita={
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 600, color: '#BFDBFE' }}>{amostras.length} amostra{amostras.length !== 1 ? 's' : ''}</span>
-                    <button onClick={() => { setAmostraEditando(null); setModalAberto(true); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: GOLD, color: '#fff', border: 'none' }}>
-                      + Nova Amostra
-                    </button>
-                  </div>
-                }
+          <ListaAmostrasPacometria
+            amostras={amostras}
+            titulo="Resultado do Ensaio — Amostras de Pacometria"
+            direitaExtra={
+              <button
+                onClick={() => { setShowImportarObra(true); carregarGruposObra(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '5px 11px', borderRadius: 6, fontSize: 11.5, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  background: '#DCFCE7', color: '#166534', border: 'none',
+                }}
               >
-                {amostras.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '48px 0', color: SUBTEXT }}>
-                    <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhuma amostra registrada</p>
-                    <p style={{ margin: '4px 0 0', fontSize: 12 }}>Clique em &ldquo;+ Nova Amostra&rdquo; para começar</p>
-                  </div>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={tabelaHeaderStyle}>
-                        {['Item', 'Elemento', 'Tipo / Opção', 'Médio', 'Mínimo', 'Máximo', 'Desv. Padrão', 'CV (%)', 'Moda', 'Foto', 'Ações'].map((h, hi) => (
-                          <th key={h} style={{ ...tabelaThTextStyle, padding: '8px 10px', textAlign: hi === 1 || hi === 2 ? 'left' : 'center', borderLeft: hi > 0 ? '1px solid #E2E8F0' : undefined, whiteSpace: 'nowrap' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {amostras.map((a, i) => (
-                        <tr key={a.id} style={{ borderTop: '1px solid #E2E8F0', background: i % 2 === 1 ? '#F8FAFC' : '#fff' }}>
-                          <td style={{ padding: '9px 10px', fontSize: 12.5, fontWeight: 800, color: '#475569', textAlign: 'center', width: 44 }}>{a.item}</td>
-                          <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 700, color: TEXT, borderLeft: '1px solid #E2E8F0' }}>{a.elemento}</td>
-                          <td style={{ padding: '9px 10px', fontSize: 12, color: SUBTEXT, borderLeft: '1px solid #E2E8F0' }}>
-                            <span style={{ fontWeight: 600, color: TEXT }}>{TIPO_LABELS[a.tipo] ?? a.tipo}</span>
-                            <span style={{ marginLeft: 6, fontSize: 11, background: '#EEF2FF', color: PRIMARY, borderRadius: 4, padding: '2px 6px', fontWeight: 700 }}>{getResumoOpcao(a)}</span>
-                          </td>
-                          <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 700, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobMedio !== null ? TEXT : SUBTEXT }}>
-                            {a.cobMedio !== null ? `${a.cobMedio.toFixed(1)} mm` : '—'}
-                          </td>
-                          <td style={{ padding: '9px 10px', textAlign: 'center', borderLeft: '1px solid #E2E8F0' }}>
-                            {a.cobMinimo !== null ? (
-                              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: a.cobMinimo < 20 ? '#FEF2F2' : '#DCFCE7', color: a.cobMinimo < 20 ? '#B91C1C' : '#166534' }}>
-                                {a.cobMinimo.toFixed(0)} mm
-                              </span>
-                            ) : <span style={{ color: SUBTEXT }}>—</span>}
-                          </td>
-                          <td style={{ padding: '9px 10px', fontSize: 12.5, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobMaximo !== null ? TEXT : SUBTEXT }}>
-                            {a.cobMaximo !== null ? `${a.cobMaximo.toFixed(0)} mm` : '—'}
-                          </td>
-                          <td style={{ padding: '9px 10px', fontSize: 12.5, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobDesvio !== null ? TEXT : SUBTEXT }}>
-                            {a.cobDesvio !== null ? `${a.cobDesvio.toFixed(1)} mm` : '—'}
-                          </td>
-                          <td style={{ padding: '9px 10px', fontSize: 12.5, fontWeight: 700, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobCV !== null ? (a.cobCV > 20 ? DANGER : a.cobCV > 10 ? '#B45309' : SUCCESS) : SUBTEXT }}>
-                            {a.cobCV !== null ? `${a.cobCV.toFixed(1)}%` : '—'}
-                          </td>
-                          <td style={{ padding: '9px 10px', fontSize: 12.5, textAlign: 'center', borderLeft: '1px solid #E2E8F0', color: a.cobModa !== null ? TEXT : SUBTEXT }}>
-                            {a.cobModa !== null ? `${a.cobModa} mm` : '—'}
-                          </td>
-                          {/* Célula foto */}
-                          <td style={{ padding: '8px 10px', borderLeft: '1px solid #E2E8F0' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                              {a.fotoPreview ? (
-                                <>
-                                  <img src={a.fotoPreview} alt="foto" style={{ width: 34, height: 34, borderRadius: 4, objectFit: 'cover', border: `1px solid ${BORDER}` }} />
-                                  <button onClick={() => removerFoto(a.id)} aria-label="Remover foto" style={{ width: 22, height: 22, borderRadius: 4, border: 'none', background: '#FFF0EE', color: DANGER, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <input ref={el => { fotoRefs.current[a.id] = el; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFoto(a.id, e.target.files[0]); }} />
-                                  <button onClick={() => fotoRefs.current[a.id]?.click()} aria-label="Anexar foto" style={{ width: 30, height: 30, borderRadius: 6, border: `1px dashed ${BORDER}`, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUBTEXT }}>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                          {/* Ações */}
-                          <td style={{ padding: '8px 10px', borderLeft: '1px solid #E2E8F0' }}>
-                            <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
-                              <button onClick={() => editarAmostra(a)} aria-label="Editar amostra" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#EEF1F8', color: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                              </button>
-                              <button onClick={() => apagarAmostra(a.id)} aria-label="Apagar amostra" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: '#FFF0EE', color: DANGER, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
-                )}
-              </PainelPlanilha>
-            </div>
-
-            {/* Cards — mobile */}
-            <div className="amostras-cards-section" style={{ flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: SUBTEXT }}>{amostras.length} amostra{amostras.length !== 1 ? 's' : ''}</span>
-                <button onClick={() => { setAmostraEditando(null); setModalAberto(true); }} style={{ padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: PRIMARY, color: '#fff', border: 'none' }}>
-                  + Nova Amostra
-                </button>
-              </div>
-              {amostras.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: SUBTEXT, background: '#fff', border: '1px solid #94A3B8', borderRadius: 8 }}>
-                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhuma amostra registrada</p>
-                </div>
-              ) : amostras.map(a => (
-                <div key={a.id} style={{ background: '#fff', borderRadius: 8, border: '1px solid #94A3B8', padding: '12px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: SUBTEXT }}>#{a.item}</span>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: TEXT }}>{a.elemento}</span>
-                        <span style={{ fontSize: 10, background: '#EEF2FF', color: PRIMARY, borderRadius: 4, padding: '1px 5px', fontWeight: 700 }}>
-                          {TIPO_LABELS[a.tipo] ?? a.tipo} · {getResumoOpcao(a)}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 5 }}>
-                        <button onClick={() => editarAmostra(a)} aria-label="Editar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: '#EEF1F8', color: PRIMARY, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button onClick={() => apagarAmostra(a.id)} aria-label="Apagar" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: '#FFF0EE', color: DANGER, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 10, fontSize: 12, color: SUBTEXT, flexWrap: 'wrap' }}>
-                      <span>Médio: <strong style={{ color: TEXT }}>{a.cobMedio !== null ? `${a.cobMedio.toFixed(1)} mm` : '—'}</strong></span>
-                      <span>Mín: <strong style={{ color: a.cobMinimo !== null && a.cobMinimo < 20 ? DANGER : TEXT }}>{a.cobMinimo !== null ? `${a.cobMinimo.toFixed(0)} mm` : '—'}</strong></span>
-                      <span>Máx: <strong style={{ color: TEXT }}>{a.cobMaximo !== null ? `${a.cobMaximo.toFixed(0)} mm` : '—'}</strong></span>
-                      <span>CV: <strong style={{ color: a.cobCV !== null && a.cobCV > 20 ? DANGER : TEXT }}>{a.cobCV !== null ? `${a.cobCV.toFixed(1)}%` : '—'}</strong></span>
-                    </div>
-                    {/* Foto mobile */}
-                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {a.fotoPreview ? (
-                        <>
-                          <img src={a.fotoPreview} alt="foto" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: `1px solid ${BORDER}` }} />
-                          <button onClick={() => removerFoto(a.id)} style={{ fontSize: 11, color: DANGER, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Remover foto</button>
-                        </>
-                      ) : (
-                        <>
-                          <input ref={el => { fotoRefs.current[a.id + '_m'] = el; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFoto(a.id, e.target.files[0]); }} />
-                          <button onClick={() => fotoRefs.current[a.id + '_m']?.click()} style={{ fontSize: 11, color: PRIMARY, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                            Anexar foto
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-              ))}
-            </div>
-          </div>
+                Importar do Modo Obra{obraGrupos.length > 0 ? ` (${obraGrupos.length})` : ''}
+              </button>
+            }
+            mobileAcoesExtra={
+              <button
+                onClick={() => { setShowImportarObra(true); carregarGruposObra(); }}
+                style={{
+                  padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  background: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC',
+                }}
+              >
+                Importar Obra{obraGrupos.length > 0 ? ` (${obraGrupos.length})` : ''}
+              </button>
+            }
+            onNovaAmostra={() => {
+              setModalContexto('campo');
+              setAmostraEditando(null);
+              setModalAberto(true);
+            }}
+            onEditar={editarAmostra}
+            onApagar={apagarAmostra}
+            onAnexarFoto={handleFoto}
+            onRemoverFoto={removerFoto}
+          />
         )}
 
         {/* ── ABA 3: MODO OBRA ── */}
         {aba === 'obra' && (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: SUBTEXT }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={BORDER} strokeWidth="1.5" style={{ marginBottom: 12 }}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Modo Obra</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12 }}>A ser implementado seguindo o padrão dos outros módulos</p>
+          <div>
+            {/* Banner informativo */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '10px 14px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8, marginBottom: 14 }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <p style={{ margin: 0, fontSize: 12.5, fontWeight: 800, color: SUCCESS }}>Modo Obra — Sincronizado no servidor</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#3F6E4A', lineHeight: 1.5 }}>
+                  Registre amostras e fotos em campo. Todos os usuários podem visualizar e importar na aba <strong>Dados de Campo</strong>, mas somente quem criou a obra pode editar ou apagar.
+                </p>
+              </div>
+              <button
+                onClick={carregarGruposObra}
+                disabled={obraCarregando}
+                style={{
+                  padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                  cursor: obraCarregando ? 'wait' : 'pointer', fontFamily: 'inherit',
+                  background: '#fff', color: SUCCESS, border: '1px solid #86EFAC', whiteSpace: 'nowrap',
+                }}
+              >
+                {obraCarregando ? 'Atualizando…' : 'Atualizar lista'}
+              </button>
+            </div>
+
+            {/* Criar nova obra */}
+            <PainelPlanilha titulo="Nova Obra / Visita" corBarra={SUCCESS}>
+              <div style={{ padding: '12px 14px', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <input
+                  style={{ ...inputStyle, flex: 1, minWidth: 200 }}
+                  value={novoGrupoNome}
+                  onChange={e => setNovoGrupoNome(e.target.value)}
+                  placeholder="Ex: Edifício Central — Visita 24/11"
+                  onKeyDown={e => e.key === 'Enter' && criarGrupoObra()}
+                  disabled={criandoGrupo}
+                />
+                <button
+                  onClick={criarGrupoObra}
+                  disabled={!novoGrupoNome.trim() || criandoGrupo}
+                  style={{
+                    padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                    cursor: novoGrupoNome.trim() && !criandoGrupo ? 'pointer' : 'not-allowed',
+                    fontFamily: 'inherit', background: SUCCESS, color: '#fff', border: 'none',
+                    opacity: novoGrupoNome.trim() && !criandoGrupo ? 1 : 0.5, whiteSpace: 'nowrap',
+                  }}
+                >
+                  {criandoGrupo ? 'Criando…' : '+ Criar Obra'}
+                </button>
+              </div>
+            </PainelPlanilha>
+
+            {obraErro && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C', fontSize: 12.5, marginBottom: 14 }}>
+                {obraErro}
+              </div>
+            )}
+
+            {/* Lista de obras */}
+            {obraCarregando && obraGrupos.length === 0 ? (
+              <div style={{ padding: '36px 0', textAlign: 'center', color: SUBTEXT, background: '#fff', border: '1px solid #94A3B8', borderRadius: 8 }}>
+                <p style={{ margin: 0, fontSize: 13 }}>Carregando obras salvas no servidor…</p>
+              </div>
+            ) : obraGrupos.length === 0 ? (
+              <div style={{ padding: '36px 0', textAlign: 'center', color: SUBTEXT, background: '#fff', border: '1px solid #94A3B8', borderRadius: 8 }}>
+                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>Nenhuma obra registrada no servidor</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12 }}>Crie uma obra acima para começar a registrar amostras em campo</p>
+              </div>
+            ) : obraGrupos.map(g => {
+              const ativo = grupoAtivoId === g.id;
+              const ehCriador = g.createdBy === userId;
+              const salvandoEste = obraSalvandoId === g.id;
+              const qtdFotos = g.amostras.filter(a => Boolean(a.fotoPath)).length;
+              const amostrasParaLista: AmostraRow[] = g.amostras.map(a => ({
+                ...a,
+                fotoFile: null,
+                fotoPreview: a.fotoUrl ?? null,
+              }));
+
+              return (
+                <section
+                  key={g.id}
+                  style={{
+                    background: '#fff',
+                    border: `1px solid ${ativo ? SUCCESS : '#94A3B8'}`,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    marginBottom: 14,
+                  }}
+                >
+                  {/* Cabeçalho da obra */}
+                  <div
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
+                      padding: '12px 16px',
+                      background: ativo ? '#F0FDF4' : '#F8FAFC',
+                      borderBottom: ativo ? `1px solid ${BORDER}` : 'none',
+                    }}
+                  >
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flex: 1, minWidth: 200 }}
+                      onClick={() => setGrupoAtivoId(ativo ? null : g.id)}
+                    >
+                      <div style={{ width: 30, height: 30, borderRadius: 7, background: ativo ? SUCCESS : '#EEF1F8', color: ativo ? '#fff' : SUBTEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>
+                        {ativo ? '▾' : '▸'}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: ativo ? SUCCESS : TEXT }}>{g.nome}</p>
+                          <span
+                            style={{
+                              fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                              background: ehCriador ? '#DCFCE7' : '#EEF2FF',
+                              color: ehCriador ? '#166534' : PRIMARY,
+                            }}
+                          >
+                            {ehCriador ? 'Você' : `Criado por ${g.createdByNome}`}
+                          </span>
+                        </div>
+                        <p style={{ margin: '2px 0 0', fontSize: 11.5, color: SUBTEXT }}>
+                          {g.amostras.length} amostra{g.amostras.length !== 1 ? 's' : ''}
+                          {qtdFotos > 0 ? ` · ${qtdFotos} foto${qtdFotos !== 1 ? 's' : ''}` : ''}
+                          {' · '}{formatarDataHora(g.updatedAt || g.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        onClick={() => setGrupoAtivoId(ativo ? null : g.id)}
+                        style={{
+                          padding: '6px 13px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                          cursor: 'pointer', fontFamily: 'inherit', border: 'none',
+                          background: ativo ? SUCCESS : '#EEF1F8',
+                          color: ativo ? '#fff' : PRIMARY,
+                        }}
+                      >
+                        {ativo ? 'Fechar' : ehCriador ? 'Abrir / Editar' : 'Visualizar'}
+                      </button>
+                      {ehCriador && (
+                        <button
+                          aria-label="Apagar obra"
+                          disabled={salvandoEste}
+                          onClick={() => apagarGrupoObra(g)}
+                          style={{
+                            width: 30, height: 30, borderRadius: 6, border: 'none',
+                            cursor: salvandoEste ? 'wait' : 'pointer',
+                            background: '#FFF0EE', color: DANGER,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Corpo expandido: mesma experiência de Dados de Campo */}
+                  {ativo && (
+                    <div style={{ padding: '14px' }}>
+                      {!ehCriador && (
+                        <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 6, background: '#EEF2FF', color: PRIMARY, fontSize: 12, fontWeight: 600 }}>
+                          Modo somente visualização — esta obra foi criada por <strong>{g.createdByNome}</strong>. Você pode importar os dados na aba <strong>2. Dados de Campo</strong>.
+                        </div>
+                      )}
+                      <ListaAmostrasPacometria
+                        amostras={amostrasParaLista}
+                        titulo={`Amostras — ${g.nome}`}
+                        corBarra={SUCCESS}
+                        somenteLeitura={!ehCriador}
+                        salvando={salvandoEste}
+                        uploadingFotoId={obraUploadingFotoId}
+                        onNovaAmostra={() => {
+                          setModalContexto({ tipo: 'obra', grupoId: g.id });
+                          setAmostraEditando(null);
+                          setModalAberto(true);
+                        }}
+                        onEditar={a => {
+                          setModalContexto({ tipo: 'obra', grupoId: g.id });
+                          setAmostraEditando(a);
+                          setModalAberto(true);
+                        }}
+                        onApagar={id => apagarAmostraObra(g.id, id)}
+                        onAnexarFoto={(id, file) => anexarFotoObra(g.id, id, file)}
+                        onRemoverFoto={id => removerFotoObra(g.id, id)}
+                      />
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
 
       </main>
 
-      {/* Modal de amostra */}
+      {/* Modal de amostra (Dados de Campo e Modo Obra) */}
       {modalAberto && (
         <ModalAmostra
           amostraInicial={amostraEditando}
           onSalvar={salvarAmostra}
           onFechar={() => { setModalAberto(false); setAmostraEditando(null); }}
-          itemNum={amostras.length + 1}
+          itemNum={
+            modalContexto === 'campo'
+              ? amostras.length + 1
+              : (obraGrupos.find(g => g.id === modalContexto.grupoId)?.amostras.length ?? 0) + 1
+          }
+        />
+      )}
+
+      {/* Modal de importação do Modo Obra */}
+      {showImportarObra && (
+        <ModalImportarObra
+          grupos={obraGrupos}
+          currentUserId={userId}
+          amostrasAtuaisCount={amostras.length}
+          carregando={obraCarregando}
+          erro={obraErro}
+          onAtualizar={carregarGruposObra}
+          onImportar={importarGrupoObra}
+          onFechar={() => setShowImportarObra(false)}
         />
       )}
 
