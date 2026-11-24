@@ -23,7 +23,7 @@ import {
   getResumoOpcao,
 } from '@/modules/pacometria/types';
 import { ModalAmostra } from '@/modules/pacometria/components/ModalAmostra';
-import { gerarSvgEsquemaPacometria } from '@/modules/pacometria/svgRelatorio';
+import { gerarSvgEsquemaPacometria, gerarSvgsPerfisPacometria } from '@/modules/pacometria/svgRelatorio';
 import { svgParaPng } from '@/modules/aderencia/svgParaPng';
 
 // ── Constantes visuais ──────────────────────────────────────────
@@ -153,7 +153,10 @@ export default function PacometriaPage() {
   const [usaFotoGeral, setUsaFotoGeral]   = useState(false);
   const [fotoGeralFile, setFotoGeralFile] = useState<File | null>(null);
   const [usaCroquiGeral, setUsaCroquiGeral] = useState(false);
-  const [croquiFile, setCroquiFile]       = useState<File | null>(null);
+  const [croquiFiles, setCroquiFiles]     = useState<File[]>([]);
+  const [quebraPaginaPorElemento, setQuebraPaginaPorElemento] = useState(true);
+  const [usaConclusao, setUsaConclusao]   = useState(true);
+  const [conclusao, setConclusao]         = useState('');
 
   // UI
   const [aba, setAba]           = useState<'cabecalho' | 'campo' | 'obra'>('cabecalho');
@@ -206,7 +209,9 @@ export default function PacometriaPage() {
     setOutroRespFile(null); setOutroRespPreview(null);
     setUsaMotivacao(false); setMotivacao('');
     setUsaFotoGeral(false); setFotoGeralFile(null);
-    setUsaCroquiGeral(false); setCroquiFile(null);
+    setUsaCroquiGeral(false); setCroquiFiles([]);
+    setQuebraPaginaPorElemento(true);
+    setUsaConclusao(true); setConclusao('');
     localStorage.removeItem(LS_KEY);
   };
 
@@ -262,7 +267,7 @@ export default function PacometriaPage() {
   const gerarDocx = async () => {
     setGerandoDocx(true);
     try {
-      // Comprimir fotos e rasterizar esquemas SVG das amostras
+      // Comprimir fotos e rasterizar esquemas + perfis de elevação por face das amostras
       const amostrasPayload = await Promise.all(amostras.map(async a => {
         let foto = null;
         if (a.fotoFile instanceof File) {
@@ -275,20 +280,36 @@ export default function PacometriaPage() {
         } catch {
           esquema = null;
         }
+        const perfisSvgs = gerarSvgsPerfisPacometria(a);
+        const perfis: Array<{
+          face: string;
+          faceLabel: string;
+          imagem: { base64: string; width: number; height: number; contentType: string };
+        }> = [];
+        for (const p of perfisSvgs) {
+          try {
+            const imagem = await svgParaPng(p.svg, 2);
+            perfis.push({ face: p.face, faceLabel: p.faceLabel, imagem });
+          } catch {
+            // ignora perfil se falhar rasterização
+          }
+        }
         return {
           ...a,
           fotoFile: undefined,
           fotoPreview: undefined,
           foto,
           esquema,
+          perfis,
         };
       }));
 
-      // Foto geral e croqui
+      // Foto geral e múltiplos croquis
       let fotoGeralPayload = null;
       if (usaFotoGeral && fotoGeralFile) fotoGeralPayload = await comprimirImagem(fotoGeralFile);
-      let croquiPayload = null;
-      if (usaCroquiGeral && croquiFile) croquiPayload = await comprimirImagem(croquiFile);
+      const croquisPayload = usaCroquiGeral && croquiFiles.length > 0
+        ? await Promise.all(croquiFiles.map(f => comprimirImagem(f)))
+        : [];
 
       // Outro responsável
       let outroRespBase64 = '';
@@ -307,7 +328,9 @@ export default function PacometriaPage() {
         outroRespContentType,
         usaMotivacao, motivacao,
         usaFotoGeral, fotoGeral: fotoGeralPayload,
-        usaCroquiGeral, croqui: croquiPayload,
+        usaCroquiGeral, croquis: croquisPayload,
+        quebraPaginaPorElemento,
+        usaConclusao, conclusao,
       };
 
       const res = await fetch('/api/ensaios/pacometria/docx', {
@@ -456,15 +479,67 @@ export default function PacometriaPage() {
                     </div>
                   )}
                 </div>
-                {/* Croqui geral */}
+                {/* Croqui geral (múltiplas imagens) */}
                 <div style={{ paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: usaCroquiGeral ? PRIMARY : SUBTEXT }}>
                     <input type="checkbox" checked={usaCroquiGeral} onChange={e => setUsaCroquiGeral(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
-                    Incluir croqui geral de localização dos elementos
+                    Incluir croqui(s) de localização dos elementos
                   </label>
                   {usaCroquiGeral && (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={e => {
+                          const novos = Array.from(e.target.files ?? []);
+                          if (novos.length > 0) setCroquiFiles(prev => [...prev, ...novos]);
+                          e.target.value = '';
+                        }}
+                        style={{ fontSize: 12 }}
+                      />
+                      {croquiFiles.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {croquiFiles.map((f, idx) => (
+                            <span key={`${f.name}-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, background: '#EEF2FF', color: PRIMARY, padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                              Croqui {idx + 1}: {f.name}
+                              <button
+                                type="button"
+                                onClick={() => setCroquiFiles(prev => prev.filter((_, i) => i !== idx))}
+                                aria-label="Remover croqui"
+                                style={{ background: 'none', border: 'none', color: DANGER, cursor: 'pointer', fontWeight: 800, padding: 0, lineHeight: 1 }}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Paginação por elemento */}
+                <div style={{ paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: quebraPaginaPorElemento ? PRIMARY : SUBTEXT }}>
+                    <input type="checkbox" checked={quebraPaginaPorElemento} onChange={e => setQuebraPaginaPorElemento(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
+                    Iniciar cada elemento em uma nova página (controle de paginação)
+                  </label>
+                </div>
+                {/* Resumo Executivo e Conclusão */}
+                <div style={{ paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: usaConclusao ? PRIMARY : SUBTEXT }}>
+                    <input type="checkbox" checked={usaConclusao} onChange={e => setUsaConclusao(e.target.checked)} style={{ width: 16, height: 16, accentColor: PRIMARY, cursor: 'pointer' }} />
+                    Incluir seção de Resumo Executivo e Conclusão
+                  </label>
+                  {usaConclusao && (
                     <div style={{ marginTop: 8 }}>
-                      <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setCroquiFile(e.target.files[0]); }} style={{ fontSize: 12 }} />
+                      <textarea
+                        rows={3}
+                        style={{ ...inputStyle, resize: 'vertical' }}
+                        value={conclusao}
+                        onChange={e => setConclusao(e.target.value)}
+                        placeholder="Opcional: escreva as considerações finais. Se ficar em branco, será gerado automaticamente um resumo executivo com os dados globais do ensaio."
+                      />
                     </div>
                   )}
                 </div>

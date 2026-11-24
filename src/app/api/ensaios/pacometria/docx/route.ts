@@ -16,6 +16,7 @@ import {
   injetarAssinatura,
 } from '@/lib/docx/esclerometria';
 import {
+  injetarBlocoElementosPacometria,
   injetarImagensPacometria,
   montarDadosPacometria,
   type PacometriaDocxPayload,
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
     const zip = new PizZip(fs.readFileSync(templatePath));
 
-    const { dados, imagens } = montarDadosPacometria(body, mapaResult);
+    const { dados, blocoElementosXml, imagens } = montarDadosPacometria(body, mapaResult);
     dados.resp_assinatura = assinaturaBuffer ? 'ASSINATURA_PLACEHOLDER' : '';
 
     const doc = new Docxtemplater(zip, {
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
     const renderedZip = doc.getZip() as PizZip;
 
     // ── Injeções pós-render ─────────────────────────────────────
+    injetarBlocoElementosPacometria(renderedZip, blocoElementosXml);
     if (assinaturaBuffer) {
       injetarAssinatura(renderedZip, assinaturaBuffer, assinaturaContentType);
     }

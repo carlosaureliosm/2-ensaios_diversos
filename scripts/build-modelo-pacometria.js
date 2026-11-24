@@ -4,12 +4,14 @@
 // seguindo o padrão visual oficial da TECOMAT para relatórios de concreto:
 //   - Header com logo TECOMAT à esquerda e "ENSAIO DE PACOMETRIA" + [[num_rlt]] à direita
 //   - Footer com endereço da TECOMAT e paginação X/Y
-//   - Página 1 compacta (identificação do cliente, faixa cinza ENSAIO DE PACOMETRIA, sem capa/sumário)
-//   - Seção 1: Introdução (com motivação, mapa, foto geral e croqui opcionais)
+//   - Página 1 compacta (identificação do cliente, faixa cinza ENSAIO DE PACOMETRIA, sem capa/sumário/normas)
+//   - Seção 1: Introdução (com motivação, mapa, foto geral e múltiplos croquis opcionais, figuras numeradas)
 //   - Seção 2: Metodologia de Ensaio
-//   - Seção 3: Resultados do Ensaio (tabela consolidada com cabeçalho azul #002060 e destaque < 20 mm)
-//   - Seção 4: Detalhamento por Elemento Ensaiado (ficha técnica + esquema + leituras por face/malha)
-//   - Seção 5: Memorial Fotográfico (grade 2 colunas, opcional)
+//   - Seção 3: Resultados do Ensaio (Tabela 1 consolidada, sem destaque vermelho)
+//   - Seção 4: Detalhamento por Elemento Ensaiado (injetado dinamicamente via BLOCO_ELEMENTOS_PAC_END:
+//              paginação por elemento, esquema + foto integrados, perfis de elevação por face,
+//              tabelas compactadas sem colunas vazias e numeração automática de figuras/tabelas)
+//   - Seção 5: Resumo Executivo e Conclusão (opcional, com tabela síntese global + texto editável/automático)
 //   - Quadro final NOTAS (opcional) + Assinatura Dupla (João Ribeiro de Carvalho + Engenheiro)
 //
 // Nunca editar public/modelo_pacometria.docx à mão no Word — editar este script e rodar:
@@ -22,14 +24,13 @@ const PizZip = require(path.join(__dirname, '..', 'node_modules', 'pizzip'));
 const BASE_DOCX = path.join(__dirname, '..', 'public', 'modelo_esclerometria.docx');
 const OUT_DOCX = path.join(__dirname, '..', 'public', 'modelo_pacometria.docx');
 
-// Paleta oficial TECOMAT (esclerometria / resistividade / aderência)
+// Paleta oficial TECOMAT
 const BLACK = '000000';
 const WHITE = 'FFFFFF';
 const NAVY_HEADER = '002060';   // Cabeçalho de tabelas de resultados
 const NAVY_TITLE = '0F243E';    // Títulos de seções
 const GRAY_BG = 'D9D9D9';       // Faixa principal e subcabeçalhos
 const ROW_ALT = 'F2F4F8';       // Zebra suave / faixa de resumo
-const RED_ALERT = 'C00000';     // Destaque para cobrimento < 20 mm
 const BORDER_LIGHT = 'BFBFBF';  // Bordas internas discretas
 
 function esc(s) {
@@ -187,7 +188,7 @@ function tbl(colWidths, rowsXml, { borders = 'grid', marTop = 24, marBottom = 24
 // ══════════════════════════════════════════════════════════════
 const parts = [];
 
-// ── 0. PÁGINA 1 PADRÃO (IDENTIFICAÇÃO + NORMAS + FAIXA CINZA) ─
+// ── 0. PÁGINA 1 PADRÃO (IDENTIFICAÇÃO + FAIXA CINZA) ──────────
 const bRowLine = { top: B_THIN, bottom: B_THIN, left: B_NONE, right: B_NONE };
 const pIdOpts = { before: 10, after: 10, line: 200 };
 const rot = t => para(run(t, { bold: true, size: 16 }), pIdOpts);
@@ -244,20 +245,22 @@ parts.push(tagLinha('[[/temMotivacao]]'));
 // Mapa de localização (opcional)
 parts.push(tagLinha('[[#temMapa]]'));
 parts.push(para(run('[[mapa_img]]'), { jc: 'center', before: 40, after: 20, keepNext: true }));
-parts.push(para(run('Figura — Localização do empreendimento.', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
+parts.push(para(run('Figura [[figMapaNum]] — Localização do empreendimento.', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
 parts.push(tagLinha('[[/temMapa]]'));
 
 // Foto geral da estrutura (opcional)
 parts.push(tagLinha('[[#temFotoGeral]]'));
 parts.push(para(run('[[foto_geral_img]]'), { jc: 'center', before: 40, after: 20, keepNext: true }));
-parts.push(para(run('Figura — Vista geral da estrutura ensaiada.', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
+parts.push(para(run('Figura [[figFotoGeralNum]] — Vista geral da estrutura ensaiada.', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
 parts.push(tagLinha('[[/temFotoGeral]]'));
 
-// Croqui geral (opcional)
-parts.push(tagLinha('[[#temCroqui]]'));
-parts.push(para(run('[[croqui_img]]'), { jc: 'center', before: 40, after: 20, keepNext: true }));
-parts.push(para(run('Figura — Croqui de localização dos elementos ensaiados.', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
-parts.push(tagLinha('[[/temCroqui]]'));
+// Croquis gerais (múltiplas imagens, opcional)
+parts.push(tagLinha('[[#temCroquis]]'));
+parts.push(tagLinha('[[#croquis]]'));
+parts.push(para(run('[[marcador]]'), { jc: 'center', before: 40, after: 20, keepNext: true }));
+parts.push(para(run('Figura [[figNum]] — Croqui de localização dos elementos ensaiados[[sufixo]].', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
+parts.push(tagLinha('[[/croquis]]'));
+parts.push(tagLinha('[[/temCroquis]]'));
 
 // ── 2. METODOLOGIA DE ENSAIO ──────────────────────────────────
 parts.push(tituloSecao('2. METODOLOGIA DE ENSAIO'));
@@ -280,19 +283,11 @@ parts.push(tituloSecao('3. RESULTADOS DO ENSAIO'));
 parts.push(paragrafoCorpo([
   run('A Tabela 1 apresenta o resumo estatístico dos cobrimentos medidos nos ', { size: 19 }),
   run('[[total_elementos]]', { bold: true, size: 19 }),
-  run(' elemento(s) estrutural(is) inspecionado(s). Valores de cobrimento mínimo inferiores a 20 mm estão destacados em vermelho para atenção técnica.', { size: 19 }),
+  run(' elemento(s) estrutural(is) inspecionado(s).', { size: 19 }),
 ]));
 
 // Colunas: Item(340) | Elemento(1060) | Tipo/Seção(1060) | Médio(440) | Mín(420) | Máx(420) | DP(420) | CV(420) | Moda(420) = 5000
 const resCols = [340, 1060, 1060, 440, 420, 420, 420, 420, 420];
-const cobMinRuns = [
-  run('[[#cobMinBaixo]]', { size: 2 }),
-  run('[[cobMinimo]]', { bold: true, size: 15, color: RED_ALERT }),
-  run('[[/cobMinBaixo]]', { size: 2 }),
-  run('[[^cobMinBaixo]]', { size: 2 }),
-  run('[[cobMinimo]]', { size: 15 }),
-  run('[[/cobMinBaixo]]', { size: 2 }),
-];
 
 parts.push(para(run('Tabela 1 — Resumo estatístico dos cobrimentos de concreto medidos por pacometria.', { bold: true, size: 15, color: NAVY_TITLE }), { jc: 'center', before: 30, after: 30, keepNext: true }));
 parts.push(tbl(resCols, [
@@ -312,7 +307,7 @@ parts.push(tbl(resCols, [
     tc(1060, '[[elemento]]', { align: 'left', bold: true, size: 15 }),
     tc(1060, '[[tipoResumo]]', { align: 'left', size: 14 }),
     tc(440, '[[cobMedio]]', { bold: true, size: 15 }),
-    tc(420, cobMinRuns),
+    tc(420, '[[cobMinimo]]', { size: 15 }),
     tc(420, '[[cobMaximo]]', { size: 15 }),
     tc(420, '[[cobDesvio]]', { size: 15 }),
     tc(420, '[[cobCV]]', { size: 15 }),
@@ -325,160 +320,33 @@ parts.push(para(
   { jc: 'left', before: 30, after: 80, line: 200 },
 ));
 
-// ── 4. DETALHAMENTO POR ELEMENTO ENSAIADO ─────────────────────
+// ── 4. DETALHAMENTO POR ELEMENTO ENSAIADO (INJEÇÃO DINÂMICA) ──
 parts.push(tituloSecao('4. DETALHAMENTO POR ELEMENTO ENSAIADO'));
+parts.push(para(run('BLOCO_ELEMENTOS_PAC_END', { size: 16 }), { before: 0, after: 0 }));
 
-parts.push(tagLinha('[[#elementos]]'));
+// ── 5. RESUMO EXECUTIVO E CONCLUSÃO (OPCIONAL) ────────────────
+parts.push(tagLinha('[[#temConclusao]]'));
+parts.push(tituloSecao('5. RESUMO EXECUTIVO E CONCLUSÃO'));
 
-// Cabeçalho do elemento + faixa de estatísticas
-parts.push(tbl([5000], [
+parts.push(para(run('Tabela [[tabResumoGlobalNum]] — Síntese global dos resultados de pacometria.', { bold: true, size: 15, color: NAVY_TITLE }), { jc: 'center', before: 20, after: 30, keepNext: true }));
+parts.push(tbl([1250, 1250, 1250, 1250], [
   trow([
-    tc(5000, [
-      run('4.[[item]]  [[elemento]]', { bold: true, size: 17, color: WHITE }),
-      run('   —   [[tipoLabel]] ([[resumoGeometria]])', { size: 15, color: WHITE }),
-    ], {
-      align: 'left',
-      shade: NAVY_HEADER,
-      borders: { top: B_NAVY, bottom: B_NAVY, left: B_NAVY, right: B_NAVY },
-      keepNext: true,
-    }),
-  ]),
-  trow([
-    tc(5000, [
-      run('Médio: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      run('[[cobMedio]] mm   |   ', { size: 14 }),
-      run('Mínimo: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      ...cobMinRuns,
-      run(' mm   |   ', { size: 14 }),
-      run('Máximo: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      run('[[cobMaximo]] mm   |   ', { size: 14 }),
-      run('DP: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      run('[[cobDesvio]] mm   |   ', { size: 14 }),
-      run('CV: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      run('[[cobCV]]%   |   ', { size: 14 }),
-      run('Moda: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      run('[[cobModa]]', { size: 14 }),
-    ], {
-      align: 'left',
-      shade: ROW_ALT,
-      borders: { top: B_LIGHT, bottom: B_NAVY, left: B_NAVY, right: B_NAVY },
-      keepNext: true,
-    }),
-  ]),
-], { borders: 'none', marTop: 22, marBottom: 22, marLeft: 60, marRight: 60 }));
-
-// Esquema ilustrativo do elemento (quando enviado rasterizado)
-parts.push(tagLinha('[[#temEsquema]]'));
-parts.push(tbl([5000], [
-  trow([
-    tc(5000, [
-      para(run('[[esquemaImg]]'), { jc: 'center', before: 30, after: 20 }),
-      para(run('Esquema ilustrativo — [[elemento]] ([[resumoGeometria]])', { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 15 }),
-    ], {
-      align: 'center',
-      borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
-    }),
-  ]),
-], { borders: 'none', marTop: 14, marBottom: 14, marLeft: 40, marRight: 40 }));
-parts.push(tagLinha('[[/temEsquema]]'));
-
-// 4.A — Detalhamento de PILAR / VIGA (tabela por face)
-parts.push(tagLinha('[[#ehPilarOuViga]]'));
-const faceCols = [920, 620, 1280, 740, 740, 700];
-parts.push(tbl(faceCols, [
-  trow([
-    tc(920, 'FACE ENSAIADA', { bold: true, size: 14, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(620, 'BARRAS / ESTRIBOS', { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(1280, 'COBRIMENTO ESTRIBOS (mm)', { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(740, 'ESP. ESTRIBOS (cm)', { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(740, 'ESP. BARRAS (cm)', { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(700, 'COB. PERP. BORDAS (mm)', { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG }),
+    tc(1250, 'ELEMENTOS ENSAIADOS', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
+    tc(1250, 'TOTAL DE LEITURAS', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
+    tc(1250, 'COBRIMENTO MÉDIO GLOBAL', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
+    tc(1250, 'FAIXA GLOBAL (MÍN – MÁX)', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
   ], { header: true }),
   trow([
-    tc(920, [run('[[#faces]]', { size: 2 }), run('[[faceNome]]', { bold: true, size: 14 })], { align: 'left' }),
-    tc(620, '[[armaduraResumo]]', { size: 14 }),
-    tc(1280, '[[cobrimentosStr]]', { align: 'left', size: 14 }),
-    tc(740, '[[espEstribosStr]]', { size: 14 }),
-    tc(740, '[[espBarrasStr]]', { size: 14 }),
-    tc(700, [run('[[cobPerpStr]]', { size: 14 }), run('[[/faces]]', { size: 2 })]),
+    tc(1250, '[[resumoTiposGlobal]]', { bold: true, size: 14, shade: ROW_ALT }),
+    tc(1250, '[[totalLeiturasGlobal]]', { bold: true, size: 15, shade: ROW_ALT }),
+    tc(1250, '[[cobMedioGlobal]]', { bold: true, size: 15, shade: ROW_ALT }),
+    tc(1250, '[[faixaGlobal]]', { bold: true, size: 14, shade: ROW_ALT }),
   ]),
-], { borders: 'navy', marTop: 20, marBottom: 20, marLeft: 36, marRight: 36 }));
-parts.push(tagLinha('[[/ehPilarOuViga]]'));
+], { borders: 'navy', marTop: 22, marBottom: 22, marLeft: 40, marRight: 40 }));
 
-// 4.B — Detalhamento de LAJE / ÁREA LIVRE (tabela de malha)
-parts.push(tagLinha('[[#ehLaje]]'));
-parts.push(tbl([5000], [
-  trow([
-    tc(5000, [
-      run('Camada mais externa: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      run('[[camadaExternaLabel]]   |   ', { size: 14 }),
-      run('Malha: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      run('[[dimLaje]]   |   ', { size: 14 }),
-      run('Cobrimentos às bordas: ', { bold: true, size: 14, color: NAVY_TITLE }),
-      run('[[cobBordasLaje]]', { size: 14 }),
-    ], {
-      align: 'left',
-      shade: GRAY_BG,
-      borders: { top: B_LIGHT, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
-    }),
-  ]),
-], { borders: 'none', marTop: 18, marBottom: 18, marLeft: 50, marRight: 50 }));
-
-const lajeCols = [1250, 750, 950, 1000, 1050];
-parts.push(tbl(lajeCols, [
-  trow([
-    tc(1250, 'DIREÇÃO / CAMADA', { bold: true, size: 14, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(750, 'BARRA', { bold: true, size: 14, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(950, 'POSIÇÃO (cm)', { bold: true, size: 14, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(1000, 'ESPAÇAMENTO (cm)', { bold: true, size: 14, color: NAVY_TITLE, shade: GRAY_BG }),
-    tc(1050, 'COBRIMENTO (mm)', { bold: true, size: 14, color: NAVY_TITLE, shade: GRAY_BG }),
-  ], { header: true }),
-  trow([
-    tc(1250, [run('[[#barrasLaje]]', { size: 2 }), run('[[direcaoLabel]]', { bold: true, size: 14 })], { align: 'left' }),
-    tc(750, '[[barraNome]]', { bold: true, size: 14 }),
-    tc(950, '[[posicaoCm]]', { size: 14 }),
-    tc(1000, '[[espacamentoCm]]', { size: 14 }),
-    tc(1050, [run('[[cobrimentoMm]]', { size: 14 }), run('[[/barrasLaje]]', { size: 2 })]),
-  ]),
-], { borders: 'navy', marTop: 18, marBottom: 18, marLeft: 36, marRight: 36 }));
-parts.push(tagLinha('[[/ehLaje]]'));
-
-parts.push(espaco(100, 40, 40));
-parts.push(tagLinha('[[/elementos]]'));
-
-// ── 5. MEMORIAL FOTOGRÁFICO (OPCIONAL) ────────────────────────
-parts.push(tagLinha('[[#temFotos]]'));
-parts.push(tituloSecao('5. MEMORIAL FOTOGRÁFICO', { pageBreakBefore: true }));
-
-const anexoCols = [2420, 160, 2420];
-const bFotoBox = { top: B_THIN, bottom: B_THIN, left: B_THIN, right: B_THIN };
-const bNoBox = { top: B_NONE, bottom: B_NONE, left: B_NONE, right: B_NONE };
-
-parts.push(tagLinha('[[#linhasFotos]]'));
-parts.push(tbl(anexoCols, [
-  trow([
-    tc(2420, run('[[fotoEsq]]'), { align: 'center', vAlign: 'center', borders: bFotoBox }),
-    tc(160, '', { borders: bNoBox }),
-    tc(2420, [
-      run('[[#temDir]]', { size: 2 }),
-      run('[[fotoDir]]'),
-      run('[[/temDir]]', { size: 2 }),
-    ], { align: 'center', vAlign: 'center', borders: bFotoBox }),
-  ], { height: 2600 }),
-  trow([
-    tc(2420, para(run('[[legendaEsq]]', { bold: true, size: 15, color: NAVY_TITLE }), { jc: 'center', before: 30, after: 40 }), { borders: bNoBox }),
-    tc(160, '', { borders: bNoBox }),
-    tc(2420, [
-      para([
-        run('[[#temDir]]', { size: 2 }),
-        run('[[legendaDir]]', { bold: true, size: 15, color: NAVY_TITLE }),
-        run('[[/temDir]]', { size: 2 }),
-      ], { jc: 'center', before: 30, after: 40 }),
-    ], { borders: bNoBox }),
-  ]),
-], { borders: 'none', marTop: 18, marBottom: 10, marLeft: 20, marRight: 20 }));
-parts.push(tagLinha('[[/linhasFotos]]'));
-parts.push(tagLinha('[[/temFotos]]'));
+parts.push(espaco(80, 30, 20));
+parts.push(paragrafoCorpo(run('[[conclusao]]', { size: 19 })));
+parts.push(tagLinha('[[/temConclusao]]'));
 
 // ── 6. QUADRO FINAL: NOTAS (OPCIONAL) + ASSINATURA DUPLA ──────
 function joaoAssinaturaDrawing(docPrId) {
@@ -593,6 +461,7 @@ const headerXml =
   '</w:hdr>';
 
 // ── Footer padrão oficial (endereço + paginação X/Y) ──────────
+const bNoBox = { top: B_NONE, bottom: B_NONE, left: B_NONE, right: B_NONE };
 const footerXml =
   `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
   `<w:ftr ${NS}>` +

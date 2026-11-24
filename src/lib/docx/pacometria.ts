@@ -29,8 +29,6 @@ import {
   ordenarBarras,
 } from '@/modules/pacometria/types';
 
-export const LIMITE_COBRIMENTO_ALERTA_MM = 20;
-
 export type ImagemBase64Payload = {
   base64: string;
   contentType?: string;
@@ -38,9 +36,16 @@ export type ImagemBase64Payload = {
   height: number;
 };
 
+export type PerfilFacePayload = {
+  face: string;
+  faceLabel: string;
+  imagem: ImagemBase64Payload;
+};
+
 export type AmostraPacometriaPayload = Omit<AmostraRow, 'fotoFile' | 'fotoPreview'> & {
   foto?: ImagemBase64Payload | null;
   esquema?: ImagemBase64Payload | null;
+  perfis?: PerfilFacePayload[] | null;
 };
 
 export type PacometriaDocxPayload = {
@@ -57,7 +62,15 @@ export type PacometriaDocxPayload = {
   usaFotoGeral?: boolean;
   fotoGeral?: ImagemBase64Payload | null;
   usaCroquiGeral?: boolean;
+  /** Compatibilidade legada: imagem única de croqui */
   croqui?: ImagemBase64Payload | null;
+  /** Croqui com múltiplas imagens */
+  croquis?: ImagemBase64Payload[] | null;
+  /** Inicia cada elemento da Seção 4 (a partir do 2º) em nova página (padrão: true) */
+  quebraPaginaPorElemento?: boolean;
+  /** Inclui Seção 5 — Resumo Executivo e Conclusão */
+  usaConclusao?: boolean;
+  conclusao?: string;
 };
 
 export type ImagemPacometriaInjetar = {
@@ -70,6 +83,155 @@ export type ImagemPacometriaInjetar = {
   maxAlturaCm: number;
 };
 
+// ── Paleta e helpers OOXML para blocos dinâmicos da Seção 4 ──
+const BLACK = '000000';
+const WHITE = 'FFFFFF';
+const NAVY_HEADER = '002060';
+const NAVY_TITLE = '0F243E';
+const GRAY_BG = 'D9D9D9';
+const ROW_ALT = 'F2F4F8';
+const BORDER_LIGHT = 'BFBFBF';
+const NONE_ATTR = 'w:val="none" w:sz="0" w:space="0" w:color="auto"';
+
+const B_LIGHT = `w:val="single" w:sz="4" w:space="0" w:color="${BORDER_LIGHT}"`;
+const B_NAVY = `w:val="single" w:sz="6" w:space="0" w:color="${NAVY_HEADER}"`;
+const B_NONE: string | null = null;
+
+function escXml(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function xmlRpr({ bold = false, italic = false, color = BLACK, size = 16 } = {}): string {
+  let x = '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>';
+  if (bold) x += '<w:b/><w:bCs/>';
+  if (italic) x += '<w:i/><w:iCs/>';
+  if (color) x += `<w:color w:val="${color}"/>`;
+  if (size) x += `<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>`;
+  x += '<w:lang w:eastAsia="pt-BR"/></w:rPr>';
+  return x;
+}
+
+function xmlRun(text: string, opts?: { bold?: boolean; italic?: boolean; color?: string; size?: number }): string {
+  return `<w:r>${xmlRpr(opts)}<w:t xml:space="preserve">${escXml(text)}</w:t></w:r>`;
+}
+
+function xmlPara(
+  content: string | string[],
+  {
+    jc = 'left',
+    before = 0,
+    after = 0,
+    line = 210,
+    pageBreakBefore = false,
+    keepNext = false,
+  } = {},
+): string {
+  const runs = Array.isArray(content) ? content.join('') : content;
+  let ppr = '<w:pPr>';
+  if (pageBreakBefore) ppr += '<w:pageBreakBefore/>';
+  if (keepNext) ppr += '<w:keepNext/>';
+  ppr += `<w:spacing w:before="${before}" w:after="${after}" w:line="${line}" w:lineRule="auto"/>`;
+  if (jc) ppr += `<w:jc w:val="${jc}"/>`;
+  ppr += '</w:pPr>';
+  return `<w:p>${ppr}${runs}</w:p>`;
+}
+
+function xmlTcBorders(b: { top?: string | null; bottom?: string | null; left?: string | null; right?: string | null }): string {
+  let x = '<w:tcBorders>';
+  if (b.top !== undefined) x += `<w:top ${b.top || NONE_ATTR}/>`;
+  if (b.left !== undefined) x += `<w:left ${b.left || NONE_ATTR}/>`;
+  if (b.bottom !== undefined) x += `<w:bottom ${b.bottom || NONE_ATTR}/>`;
+  if (b.right !== undefined) x += `<w:right ${b.right || NONE_ATTR}/>`;
+  x += '</w:tcBorders>';
+  return x;
+}
+
+function xmlTc(
+  pctWidth: number,
+  content: string | string[],
+  {
+    align = 'center',
+    vAlign = 'center',
+    shade,
+    borders,
+    bold = false,
+    italic = false,
+    size = 14,
+    color = BLACK,
+    keepNext = false,
+    pageBreakBefore = false,
+  }: {
+    align?: string;
+    vAlign?: string;
+    shade?: string;
+    borders?: { top?: string | null; bottom?: string | null; left?: string | null; right?: string | null };
+    bold?: boolean;
+    italic?: boolean;
+    size?: number;
+    color?: string;
+    keepNext?: boolean;
+    pageBreakBefore?: boolean;
+  } = {},
+): string {
+  let tcPr = `<w:tcPr><w:tcW w:w="${pctWidth}" w:type="pct"/>`;
+  if (borders) tcPr += xmlTcBorders(borders);
+  if (shade) tcPr += `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>`;
+  tcPr += `<w:vAlign w:val="${vAlign}"/></w:tcPr>`;
+
+  let inner: string;
+  if (Array.isArray(content)) {
+    inner = content.join('');
+  } else if (/^<w:(r|p|tbl)[ >]/.test(content)) {
+    inner = content;
+  } else {
+    inner = xmlRun(content, { bold, italic, size, color });
+  }
+
+  const wrapInPara = !/^<w:(p|tbl)[ >]/.test(inner);
+  const body = wrapInPara
+    ? xmlPara(inner, { jc: align, before: 14, after: 14, line: 205, keepNext, pageBreakBefore })
+    : inner;
+  return `<w:tc>${tcPr}${body}</w:tc>`;
+}
+
+function xmlTrow(cells: string[], { header = false, cantSplit = true } = {}): string {
+  let trPr = '<w:trPr>';
+  if (cantSplit) trPr += '<w:cantSplit/>';
+  if (header) trPr += '<w:tblHeader/>';
+  trPr += '<w:jc w:val="center"/></w:trPr>';
+  return `<w:tr>${trPr}${cells.join('')}</w:tr>`;
+}
+
+function xmlTbl(
+  colWidths: number[],
+  rows: string[],
+  { borders = 'navy', marTop = 20, marBottom = 20, marLeft = 36, marRight = 36 } = {},
+): string {
+  const grid = colWidths.map(w => `<w:gridCol w:w="${w}"/>`).join('');
+  let tblBorders = '<w:tblBorders>';
+  if (borders === 'none') {
+    tblBorders += `<w:top ${NONE_ATTR}/><w:left ${NONE_ATTR}/><w:bottom ${NONE_ATTR}/><w:right ${NONE_ATTR}/><w:insideH ${NONE_ATTR}/><w:insideV ${NONE_ATTR}/>`;
+  } else {
+    tblBorders += `<w:top ${B_NAVY}/><w:left ${B_NAVY}/><w:bottom ${B_NAVY}/><w:right ${B_NAVY}/><w:insideH ${B_LIGHT}/><w:insideV ${B_LIGHT}/>`;
+  }
+  tblBorders += '</w:tblBorders>';
+  const tblCellMar = `<w:tblCellMar><w:top w:w="${marTop}" w:type="dxa"/><w:left w:w="${marLeft}" w:type="dxa"/><w:bottom w:w="${marBottom}" w:type="dxa"/><w:right w:w="${marRight}" w:type="dxa"/></w:tblCellMar>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:jc w:val="center"/>${tblBorders}${tblCellMar}</w:tblPr><w:tblGrid>${grid}</w:tblGrid>${rows.join('')}</w:tbl>`;
+}
+
+function distribuirLargurasPct(pesos: number[], total = 5000, idxAjuste = 0): number[] {
+  const soma = pesos.reduce((a, b) => a + b, 0) || 1;
+  const larguras = pesos.map(p => Math.round((p / soma) * total));
+  const diff = total - larguras.reduce((a, b) => a + b, 0);
+  larguras[Math.min(idxAjuste, larguras.length - 1)] += diff;
+  return larguras;
+}
+
+// ── Formatação de valores ─────────────────────────────────────
 function fmtNum(n: number | null | undefined, casas = 1): string {
   if (n === null || n === undefined || isNaN(n)) return '—';
   return n.toFixed(casas).replace('.', ',');
@@ -145,29 +307,117 @@ function formatarCobBordasLaje(ld: NonNullable<AmostraPacometriaPayload['lajeDat
   if (inf) partes.push(`Inf: ${inf} mm`);
   if (esq) partes.push(`Esq: ${esq} mm`);
   if (dir) partes.push(`Dir: ${dir} mm`);
-  return partes.length > 0 ? partes.join(' | ') : 'Não informado';
+  return partes.join(' | ');
+}
+
+function extrairLeiturasCobrimentoAmostra(a: AmostraPacometriaPayload): number[] {
+  const vals: number[] = [];
+  if (a.tipo === 'laje' && a.lajeData) {
+    const ext = a.lajeData.camadaExterna ?? (a.lajeData.barrasH.length > 0 ? 'H' : 'V');
+    const barras = ext === 'H' ? a.lajeData.barrasH : a.lajeData.barrasV;
+    for (const b of barras ?? []) {
+      const n = parseFloat((b.cob ?? '').replace(',', '.'));
+      if (!isNaN(n) && n > 0) vals.push(n);
+    }
+  } else {
+    for (const fd of Object.values(a.facesData ?? {})) {
+      for (const c of fd?.cob ?? []) {
+        const n = parseFloat((c ?? '').replace(',', '.'));
+        if (!isNaN(n) && n > 0) vals.push(n);
+      }
+    }
+  }
+  return vals;
+}
+
+export function gerarResumoExecutivoAutomatico(amostras: AmostraPacometriaPayload[]): {
+  resumoTiposGlobal: string;
+  totalLeiturasGlobal: string;
+  cobMedioGlobal: string;
+  faixaGlobal: string;
+  textoPadrao: string;
+} {
+  let nPilar = 0;
+  let nViga = 0;
+  let nLaje = 0;
+  const todasLeituras: number[] = [];
+  let minVal: number | null = null;
+  let minElem = '';
+  let maxVal: number | null = null;
+  let maxElem = '';
+
+  amostras.forEach((a, idx) => {
+    if (a.tipo === 'pilar') nPilar++;
+    else if (a.tipo === 'viga') nViga++;
+    else nLaje++;
+
+    const nome = a.elemento || `Elemento ${a.item || idx + 1}`;
+    const leituras = extrairLeiturasCobrimentoAmostra(a);
+    leituras.forEach(v => {
+      todasLeituras.push(v);
+      if (minVal === null || v < minVal) { minVal = v; minElem = nome; }
+      if (maxVal === null || v > maxVal) { maxVal = v; maxElem = nome; }
+    });
+  });
+
+  const partesTipo: string[] = [];
+  if (nPilar > 0) partesTipo.push(`${nPilar} ${nPilar === 1 ? 'pilar' : 'pilares'}`);
+  if (nViga > 0) partesTipo.push(`${nViga} ${nViga === 1 ? 'viga' : 'vigas'}`);
+  if (nLaje > 0) partesTipo.push(`${nLaje} ${nLaje === 1 ? 'laje/área livre' : 'lajes/áreas livres'}`);
+  const resumoTiposGlobal = partesTipo.length > 0
+    ? `${amostras.length} (${partesTipo.join(', ')})`
+    : String(amostras.length);
+
+  const totalLeituras = todasLeituras.length;
+  const mediaGlobal = totalLeituras > 0
+    ? todasLeituras.reduce((s, v) => s + v, 0) / totalLeituras
+    : null;
+
+  const cobMedioGlobal = mediaGlobal !== null ? `${fmtNum(mediaGlobal, 1)} mm` : '—';
+  const faixaGlobal = minVal !== null && maxVal !== null
+    ? `${fmtNum(minVal, 0)} a ${fmtNum(maxVal, 0)} mm`
+    : '—';
+
+  const textoPadrao = totalLeituras > 0
+    ? `Foram inspecionados ${amostras.length} elemento(s) estrutural(is) (${partesTipo.join(', ')}), totalizando ${totalLeituras} leitura(s) de cobrimento na armadura mais externa. O cobrimento médio global obtido foi de ${fmtNum(mediaGlobal, 1)} mm, com valores variando entre ${fmtNum(minVal, 0)} mm (${minElem}) e ${fmtNum(maxVal, 0)} mm (${maxElem}). Os levantamentos individuais de posicionamento, espaçamentos e cobrimentos por face constam detalhados na Seção 4 deste relatório.`
+    : `Foram inspecionados ${amostras.length} elemento(s) estrutural(is) (${partesTipo.join(', ')}), com levantamento da geometria e posicionamento das armaduras detalhado na Seção 4 deste relatório.`;
+
+  return {
+    resumoTiposGlobal,
+    totalLeiturasGlobal: String(totalLeituras),
+    cobMedioGlobal,
+    faixaGlobal,
+    textoPadrao,
+  };
 }
 
 /**
  * Converte o payload de pacometria em:
  *   1) objeto `dados` para o Docxtemplater (`modelo_pacometria.docx`)
- *   2) lista `imagens` para injeção pós-render (`injetarImagensPacometria`).
+ *   2) string `blocoElementosXml` para injeção dinâmica da Seção 4
+ *   3) lista `imagens` para injeção pós-render (`injetarImagensPacometria`).
  */
 export function montarDadosPacometria(
   payload: PacometriaDocxPayload,
   mapaResult?: { buffer: Buffer; width: number; height: number } | null,
 ): {
   dados: Record<string, unknown>;
+  blocoElementosXml: string;
   imagens: ImagemPacometriaInjetar[];
 } {
   const { cab } = payload;
   const imagens: ImagemPacometriaInjetar[] = [];
+  let figNum = 0;
+  let tabNum = 1; // Tabela 1 = Resumo estatístico da Seção 3
 
-  // Mapa de localização (opcional)
+  // ── Imagens da Seção 1 (com numeração automática sequencial) ─
   let temMapa = false;
   let mapaMarcador = '';
+  let figMapaNum = '';
   if (mapaResult && mapaResult.width > 0 && mapaResult.height > 0) {
     temMapa = true;
+    figNum += 1;
+    figMapaNum = String(figNum);
     mapaMarcador = 'MAPA_PAC_PH_END';
     imagens.push({
       marcador: mapaMarcador,
@@ -180,11 +430,13 @@ export function montarDadosPacometria(
     });
   }
 
-  // Foto geral (opcional)
   let temFotoGeral = false;
   let fotoGeralMarcador = '';
+  let figFotoGeralNum = '';
   if (payload.usaFotoGeral && imagemValida(payload.fotoGeral)) {
     temFotoGeral = true;
+    figNum += 1;
+    figFotoGeralNum = String(figNum);
     fotoGeralMarcador = 'FOTO_GERAL_PAC_PH_END';
     imagens.push({
       marcador: fotoGeralMarcador,
@@ -197,29 +449,46 @@ export function montarDadosPacometria(
     });
   }
 
-  // Croqui geral (opcional)
-  let temCroqui = false;
-  let croquiMarcador = '';
-  if (payload.usaCroquiGeral && imagemValida(payload.croqui)) {
-    temCroqui = true;
-    croquiMarcador = 'CROQUI_PAC_PH_END';
+  // Croquis múltiplos (aceita array `croquis` ou legado `croqui`)
+  const croquisBrutos: ImagemBase64Payload[] = [];
+  if (payload.usaCroquiGeral) {
+    if (Array.isArray(payload.croquis) && payload.croquis.length > 0) {
+      payload.croquis.forEach(c => { if (imagemValida(c)) croquisBrutos.push(c); });
+    } else if (imagemValida(payload.croqui)) {
+      croquisBrutos.push(payload.croqui);
+    }
+  }
+  const croquisLista = croquisBrutos.map((c, idx) => {
+    figNum += 1;
+    const marcador = `CROQUI_PAC_${idx + 1}_PH_END`;
     imagens.push({
-      marcador: croquiMarcador,
-      buffer: bufferDeBase64(payload.croqui.base64),
-      contentType: payload.croqui.contentType || 'image/jpeg',
-      width: payload.croqui.width,
-      height: payload.croqui.height,
+      marcador,
+      buffer: bufferDeBase64(c.base64),
+      contentType: c.contentType || 'image/jpeg',
+      width: c.width,
+      height: c.height,
       maxLarguraCm: 15.0,
       maxAlturaCm: 10.5,
     });
-  }
+    return {
+      marcador,
+      figNum: String(figNum),
+      sufixo: croquisBrutos.length > 1 ? ` (${idx + 1}/${croquisBrutos.length})` : '',
+    };
+  });
 
-  const fotosMemorial: Array<{ marcador: string; legenda: string }> = [];
+  // ── Seção 3 (Resumo) + Seção 4 (Detalhamento dinâmico) ───────
+  const quebraPagina = payload.quebraPaginaPorElemento !== false; // padrão true
+  const blocosElementos: string[] = [];
+  const resumo: Array<Record<string, string>> = [];
 
-  const elementos = payload.amostras.map((a, idx) => {
+  payload.amostras.forEach((a, idx) => {
     const itemNum = a.item || idx + 1;
+    const elemNome = a.elemento || `Elemento ${itemNum}`;
+    const tipoLabel = TIPO_LABELS[a.tipo] ?? a.tipo;
+    const tipoResumo = resumoTipoCurto(a);
+    const resumoGeometria = resumoGeometriaElemento(a);
 
-    // Recalcula estatísticas a partir dos dados brutos (fallback para os campos da amostra)
     const statsCalc = a.tipo === 'laje' && a.lajeData
       ? calcularCobrimentosLaje(a.lajeData)
       : calcularCobrimentos(a.facesData ?? {});
@@ -231,84 +500,269 @@ export function montarDadosPacometria(
     const cobCV = statsCalc.cobCV ?? a.cobCV ?? null;
     const cobModa = statsCalc.cobModa ?? a.cobModa ?? null;
 
-    const cobMinBaixo = cobMinimo !== null && cobMinimo < LIMITE_COBRIMENTO_ALERTA_MM;
+    const cobMedioStr = fmtNum(cobMedio, 1);
+    const cobMinStr = fmtNum(cobMinimo, 0);
+    const cobMaxStr = fmtNum(cobMaximo, 0);
+    const cobDpStr = fmtNum(cobDesvio, 1);
+    const cobCvStr = fmtNum(cobCV, 1);
+    const cobModaStr = cobModa !== null ? `${cobModa} mm` : '—';
+    const cobModaNum = cobModa !== null ? String(cobModa) : '—';
 
-    // Esquema ilustrativo da amostra (opcional)
-    let temEsquema = false;
-    let esquemaMarcador = '';
-    if (imagemValida(a.esquema)) {
-      temEsquema = true;
-      esquemaMarcador = `ESQUEMA_PAC_${itemNum}_END`;
+    resumo.push({
+      item: String(itemNum),
+      elemento: elemNome,
+      tipoResumo,
+      cobMedio: cobMedioStr,
+      cobMinimo: cobMinStr,
+      cobMaximo: cobMaxStr,
+      cobDesvio: cobDpStr,
+      cobCV: cobCvStr,
+      cobModa: cobModaNum,
+    });
+
+    // Controle de paginação por elemento (quebra limpa a partir do 2º elemento quando ativado)
+    const usarQuebra = quebraPagina && idx > 0;
+
+    // 1) Cabeçalho + faixa de estatísticas do elemento
+    const headerElemTbl = xmlTbl([5000], [
+      xmlTrow([
+        xmlTc(5000, [
+          xmlRun(`4.${itemNum}  ${elemNome}`, { bold: true, size: 17, color: WHITE }),
+          xmlRun(`   —   ${tipoLabel} (${resumoGeometria})`, { size: 15, color: WHITE }),
+        ], {
+          align: 'left',
+          shade: NAVY_HEADER,
+          borders: { top: B_NAVY, bottom: B_NAVY, left: B_NAVY, right: B_NAVY },
+          keepNext: true,
+          pageBreakBefore: usarQuebra,
+        }),
+      ]),
+      xmlTrow([
+        xmlTc(5000, [
+          xmlRun('Médio: ', { bold: true, size: 14, color: NAVY_TITLE }),
+          xmlRun(`${cobMedioStr} mm   |   `, { size: 14 }),
+          xmlRun('Mínimo: ', { bold: true, size: 14, color: NAVY_TITLE }),
+          xmlRun(`${cobMinStr} mm   |   `, { size: 14 }),
+          xmlRun('Máximo: ', { bold: true, size: 14, color: NAVY_TITLE }),
+          xmlRun(`${cobMaxStr} mm   |   `, { size: 14 }),
+          xmlRun('DP: ', { bold: true, size: 14, color: NAVY_TITLE }),
+          xmlRun(`${cobDpStr} mm   |   `, { size: 14 }),
+          xmlRun('CV: ', { bold: true, size: 14, color: NAVY_TITLE }),
+          xmlRun(`${cobCvStr}%   |   `, { size: 14 }),
+          xmlRun('Moda: ', { bold: true, size: 14, color: NAVY_TITLE }),
+          xmlRun(cobModaStr, { size: 14 }),
+        ], {
+          align: 'left',
+          shade: ROW_ALT,
+          borders: { top: B_LIGHT, bottom: B_NAVY, left: B_NAVY, right: B_NAVY },
+          keepNext: true,
+        }),
+      ]),
+    ], { borders: 'none', marTop: 22, marBottom: 22, marLeft: 60, marRight: 60 });
+
+    blocosElementos.push(headerElemTbl);
+
+    // 2) Esquema + Foto integrados à ficha do elemento
+    const temEsquema = imagemValida(a.esquema);
+    const temFoto = imagemValida(a.foto);
+
+    if (temEsquema && temFoto) {
+      figNum += 1;
+      const figEsq = figNum;
+      const esqMarc = `ESQUEMA_PAC_${itemNum}_END`;
       imagens.push({
-        marcador: esquemaMarcador,
-        buffer: bufferDeBase64(a.esquema.base64),
-        contentType: a.esquema.contentType || 'image/png',
-        width: a.esquema.width,
-        height: a.esquema.height,
+        marcador: esqMarc,
+        buffer: bufferDeBase64(a.esquema!.base64),
+        contentType: a.esquema!.contentType || 'image/png',
+        width: a.esquema!.width,
+        height: a.esquema!.height,
+        maxLarguraCm: 8.4,
+        maxAlturaCm: 5.8,
+      });
+
+      figNum += 1;
+      const figFoto = figNum;
+      const fotoMarc = `FOTO_ELEM_PAC_${itemNum}_END`;
+      imagens.push({
+        marcador: fotoMarc,
+        buffer: bufferDeBase64(a.foto!.base64),
+        contentType: a.foto!.contentType || 'image/jpeg',
+        width: a.foto!.width,
+        height: a.foto!.height,
+        maxLarguraCm: 7.4,
+        maxAlturaCm: 5.6,
+      });
+
+      const descEsquema = a.tipo === 'laje' ? 'Malha ensaiada' : 'Esquema da seção transversal';
+      blocosElementos.push(xmlTbl([2650, 2350], [
+        xmlTrow([
+          xmlTc(2650, [
+            xmlPara(xmlRun(esqMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figEsq} — ${descEsquema} (${elemNome}).`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
+          ], {
+            borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_LIGHT },
+          }),
+          xmlTc(2350, [
+            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico (${elemNome}).`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
+          ], {
+            borders: { top: B_NONE, bottom: B_LIGHT, left: B_LIGHT, right: B_NAVY },
+          }),
+        ]),
+      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
+    } else if (temEsquema) {
+      figNum += 1;
+      const figEsq = figNum;
+      const esqMarc = `ESQUEMA_PAC_${itemNum}_END`;
+      imagens.push({
+        marcador: esqMarc,
+        buffer: bufferDeBase64(a.esquema!.base64),
+        contentType: a.esquema!.contentType || 'image/png',
+        width: a.esquema!.width,
+        height: a.esquema!.height,
         maxLarguraCm: 13.5,
+        maxAlturaCm: 6.8,
+      });
+      const descEsquema = a.tipo === 'laje' ? 'Malha ensaiada' : 'Esquema da seção transversal';
+      blocosElementos.push(xmlTbl([5000], [
+        xmlTrow([
+          xmlTc(5000, [
+            xmlPara(xmlRun(esqMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figEsq} — ${descEsquema} — ${elemNome} (${resumoGeometria}).`, { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
+          ], {
+            borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
+          }),
+        ]),
+      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 36, marRight: 36 }));
+    } else if (temFoto) {
+      figNum += 1;
+      const figFoto = figNum;
+      const fotoMarc = `FOTO_ELEM_PAC_${itemNum}_END`;
+      imagens.push({
+        marcador: fotoMarc,
+        buffer: bufferDeBase64(a.foto!.base64),
+        contentType: a.foto!.contentType || 'image/jpeg',
+        width: a.foto!.width,
+        height: a.foto!.height,
+        maxLarguraCm: 10.5,
         maxAlturaCm: 7.0,
       });
+      blocosElementos.push(xmlTbl([5000], [
+        xmlTrow([
+          xmlTc(5000, [
+            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico — ${elemNome}.`, { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
+          ], {
+            borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
+          }),
+        ]),
+      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 36, marRight: 36 }));
     }
 
-    // Foto do elemento para o Memorial Fotográfico (opcional)
-    if (imagemValida(a.foto)) {
-      const fotoIdx = fotosMemorial.length + 1;
-      const marcador = `FOTO_PAC_${fotoIdx}_END`;
-      imagens.push({
-        marcador,
-        buffer: bufferDeBase64(a.foto.base64),
-        contentType: a.foto.contentType || 'image/jpeg',
-        width: a.foto.width,
-        height: a.foto.height,
-        maxLarguraCm: 7.6,
-        maxAlturaCm: 5.7,
-      });
-      fotosMemorial.push({
-        marcador,
-        legenda: `Foto ${fotoIdx} — ${a.elemento || `Elemento ${itemNum}`}`,
-      });
+    // 3) Perfis de elevação por face (Pilar / Viga)
+    const perfisValidos = (a.perfis ?? []).filter(p => imagemValida(p?.imagem));
+    if (perfisValidos.length > 0) {
+      if (perfisValidos.length === 1) {
+        const p = perfisValidos[0];
+        figNum += 1;
+        const marc = `PERFIL_PAC_${itemNum}_1_END`;
+        imagens.push({
+          marcador: marc,
+          buffer: bufferDeBase64(p.imagem.base64),
+          contentType: p.imagem.contentType || 'image/png',
+          width: p.imagem.width,
+          height: p.imagem.height,
+          maxLarguraCm: 13.0,
+          maxAlturaCm: 7.0,
+        });
+        blocosElementos.push(xmlTbl([5000], [
+          xmlTrow([
+            xmlTc(5000, [
+              xmlPara(xmlRun(marc), { jc: 'center', before: 20, after: 14, keepNext: true }),
+              xmlPara(xmlRun(`Figura ${figNum} — Perfil de elevação — ${p.faceLabel} (${elemNome}).`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 12, keepNext: true }),
+            ], {
+              borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
+            }),
+          ]),
+        ], { borders: 'none', marTop: 10, marBottom: 10, marLeft: 28, marRight: 28 }));
+      } else {
+        const linhasPerfis: string[] = [];
+        for (let pi = 0; pi < perfisValidos.length; pi += 2) {
+          const pEsq = perfisValidos[pi];
+          const pDir = perfisValidos[pi + 1];
+
+          figNum += 1;
+          const figEsq = figNum;
+          const marcEsq = `PERFIL_PAC_${itemNum}_${pi + 1}_END`;
+          imagens.push({
+            marcador: marcEsq,
+            buffer: bufferDeBase64(pEsq.imagem.base64),
+            contentType: pEsq.imagem.contentType || 'image/png',
+            width: pEsq.imagem.width,
+            height: pEsq.imagem.height,
+            maxLarguraCm: 7.8,
+            maxAlturaCm: 6.2,
+          });
+
+          const cellEsq = xmlTc(2500, [
+            xmlPara(xmlRun(marcEsq), { jc: 'center', before: 18, after: 12, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figEsq} — Perfil — ${pEsq.faceLabel}.`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
+          ], {
+            borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_LIGHT },
+          });
+
+          let cellDir: string;
+          if (pDir) {
+            figNum += 1;
+            const figDir = figNum;
+            const marcDir = `PERFIL_PAC_${itemNum}_${pi + 2}_END`;
+            imagens.push({
+              marcador: marcDir,
+              buffer: bufferDeBase64(pDir.imagem.base64),
+              contentType: pDir.imagem.contentType || 'image/png',
+              width: pDir.imagem.width,
+              height: pDir.imagem.height,
+              maxLarguraCm: 7.8,
+              maxAlturaCm: 6.2,
+            });
+            cellDir = xmlTc(2500, [
+              xmlPara(xmlRun(marcDir), { jc: 'center', before: 18, after: 12, keepNext: true }),
+              xmlPara(xmlRun(`Figura ${figDir} — Perfil — ${pDir.faceLabel}.`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
+            ], {
+              borders: { top: B_NONE, bottom: B_LIGHT, left: B_LIGHT, right: B_NAVY },
+            });
+          } else {
+            cellDir = xmlTc(2500, '', {
+              borders: { top: B_NONE, bottom: B_LIGHT, left: B_LIGHT, right: B_NAVY },
+            });
+          }
+
+          linhasPerfis.push(xmlTrow([cellEsq, cellDir]));
+        }
+        blocosElementos.push(xmlTbl([2500, 2500], linhasPerfis, { borders: 'none', marTop: 10, marBottom: 10, marLeft: 24, marRight: 24 }));
+      }
     }
 
-    // Detalhamento por face (Pilar / Viga)
-    const ehLaje = a.tipo === 'laje';
-    const ehPilarOuViga = !ehLaje;
+    // 4) Tabela de leituras compactada (omissão de colunas vazias) + numeração automática
+    tabNum += 1;
+    const tabAtual = tabNum;
 
-    let faces: Array<{
-      faceNome: string;
-      armaduraResumo: string;
-      cobrimentosStr: string;
-      espEstribosStr: string;
-      espBarrasStr: string;
-      cobPerpStr: string;
-    }> = [];
-
-    if (ehPilarOuViga) {
+    if (a.tipo !== 'laje') {
       const chaves = getFacesDaOpcao(a.tipo, a.opcao);
       const chavesEfetivas = chaves.length > 0 ? chaves : Object.keys(a.facesData ?? {});
-      faces = chavesEfetivas.map(f => {
+      const facesRows = chavesEfetivas.map(f => {
         const fd = a.facesData?.[f];
         const nBarras = a.barras?.[f] ?? 0;
         const nEstribos = fd?.nEstribos ?? fd?.cob?.length ?? 0;
 
         const cobs = (fd?.cob ?? [])
-          .map((v, i) => {
-            const s = fmtValorBruto(v);
-            return s ? `E${i + 1}: ${s}` : null;
-          })
+          .map((v, i) => { const s = fmtValorBruto(v); return s ? `E${i + 1}: ${s}` : null; })
           .filter(Boolean);
-
         const espV = (fd?.espV ?? [])
-          .map((v, i) => {
-            const s = fmtValorBruto(v);
-            return s ? `E${i + 1}–E${i + 2}: ${s}` : null;
-          })
+          .map((v, i) => { const s = fmtValorBruto(v); return s ? `E${i + 1}–E${i + 2}: ${s}` : null; })
           .filter(Boolean);
-
         const espH = (fd?.espH ?? [])
-          .map((v, i) => {
-            const s = fmtValorBruto(v);
-            return s ? `B${i + 1}–B${i + 2}: ${s}` : null;
-          })
+          .map((v, i) => { const s = fmtValorBruto(v); return s ? `B${i + 1}–B${i + 2}: ${s}` : null; })
           .filter(Boolean);
 
         return {
@@ -321,8 +775,8 @@ export function montarDadosPacometria(
         };
       });
 
-      if (faces.length === 0) {
-        faces.push({
+      if (facesRows.length === 0) {
+        facesRows.push({
           faceNome: '—',
           armaduraResumo: '—',
           cobrimentosStr: '—',
@@ -331,54 +785,115 @@ export function montarDadosPacometria(
           cobPerpStr: '—',
         });
       }
-    }
 
-    // Detalhamento de malha (Laje / Área Livre)
-    let camadaExternaLabel = '';
-    let dimLaje = '';
-    let cobBordasLaje = '';
-    const barrasLaje: Array<{
-      direcaoLabel: string;
-      barraNome: string;
-      posicaoCm: string;
-      espacamentoCm: string;
-      cobrimentoMm: string;
-    }> = [];
+      const temEspEstribos = facesRows.some(r => r.espEstribosStr !== '—');
+      const temEspBarras = facesRows.some(r => r.espBarrasStr !== '—');
+      const temCobPerp = facesRows.some(r => r.cobPerpStr !== '—');
 
-    if (ehLaje && a.lajeData) {
+      type ColDef = {
+        titulo: string;
+        peso: number;
+        align: 'left' | 'center';
+        bold?: boolean;
+        val: (r: typeof facesRows[number]) => string;
+      };
+      const cols: ColDef[] = [
+        { titulo: 'FACE ENSAIADA', peso: 18, align: 'left', bold: true, val: r => r.faceNome },
+        { titulo: 'BARRAS / ESTRIBOS', peso: 13, align: 'center', val: r => r.armaduraResumo },
+        { titulo: 'COBRIMENTO ESTRIBOS (mm)', peso: 28, align: 'left', val: r => r.cobrimentosStr },
+      ];
+      if (temEspEstribos) cols.push({ titulo: 'ESP. ESTRIBOS (cm)', peso: 14, align: 'center', val: r => r.espEstribosStr });
+      if (temEspBarras) cols.push({ titulo: 'ESP. BARRAS (cm)', peso: 14, align: 'center', val: r => r.espBarrasStr });
+      if (temCobPerp) cols.push({ titulo: 'COB. PERP. BORDAS (mm)', peso: 13, align: 'center', val: r => r.cobPerpStr });
+
+      const larguras = distribuirLargurasPct(cols.map(c => c.peso), 5000, 2);
+
+      blocosElementos.push(
+        xmlPara(
+          xmlRun(`Tabela ${tabAtual} — Leituras por face — ${elemNome}.`, { bold: true, size: 14, color: NAVY_TITLE }),
+          { jc: 'left', before: 50, after: 20, keepNext: true },
+        ),
+      );
+
+      const headerRow = xmlTrow(
+        cols.map((c, ci) => xmlTc(larguras[ci], c.titulo, { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG })),
+        { header: true },
+      );
+      const dataRows = facesRows.map((r, ri) =>
+        xmlTrow(
+          cols.map((c, ci) =>
+            xmlTc(larguras[ci], c.val(r), {
+              align: c.align,
+              bold: c.bold,
+              size: 14,
+              shade: ri % 2 === 1 ? ROW_ALT : undefined,
+            }),
+          ),
+        ),
+      );
+
+      blocosElementos.push(xmlTbl(larguras, [headerRow, ...dataRows], { borders: 'navy', marTop: 18, marBottom: 18, marLeft: 34, marRight: 34 }));
+    } else if (a.lajeData) {
       const ld = a.lajeData;
       const ext: 'H' | 'V' = ld.camadaExterna ?? (ld.barrasH.length > 0 ? 'H' : 'V');
-      camadaExternaLabel = ext === 'H' ? 'Horizontal (H)' : 'Vertical (V)';
-      dimLaje = `${ld.larguraX} × ${ld.alturaY} cm (grade ${ld.passoGrid} cm)`;
-      cobBordasLaje = formatarCobBordasLaje(ld);
+      const camadaExternaLabel = ext === 'H' ? 'Horizontal (H)' : 'Vertical (V)';
+      const dimLaje = `${ld.larguraX} × ${ld.alturaY} cm (grade ${ld.passoGrid} cm)`;
+      const cobBordas = formatarCobBordasLaje(ld);
+
+      const faixaRuns = [
+        xmlRun('Camada mais externa: ', { bold: true, size: 14, color: NAVY_TITLE }),
+        xmlRun(`${camadaExternaLabel}   |   `, { size: 14 }),
+        xmlRun('Malha: ', { bold: true, size: 14, color: NAVY_TITLE }),
+        xmlRun(dimLaje, { size: 14 }),
+      ];
+      if (cobBordas) {
+        faixaRuns.push(
+          xmlRun('   |   Cobrimentos às bordas: ', { bold: true, size: 14, color: NAVY_TITLE }),
+          xmlRun(cobBordas, { size: 14 }),
+        );
+      }
+
+      blocosElementos.push(xmlTbl([5000], [
+        xmlTrow([
+          xmlTc(5000, faixaRuns, {
+            align: 'left',
+            shade: GRAY_BG,
+            borders: { top: B_LIGHT, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
+            keepNext: true,
+          }),
+        ]),
+      ], { borders: 'none', marTop: 16, marBottom: 16, marLeft: 50, marRight: 50 }));
+
+      type LajeRow = {
+        direcaoLabel: string;
+        barraNome: string;
+        posicaoCm: string;
+        espacamentoCm: string;
+        cobrimentoMm: string;
+      };
+      const barrasLaje: LajeRow[] = [];
 
       const bh = ordenarBarras(ld.barrasH ?? []);
       const espH = calcularEspacamentos(bh);
       bh.forEach((b, i) => {
-        const cobStr = ext === 'H'
-          ? (fmtValorBruto(b.cob) || '—')
-          : '— (camada interna)';
         barrasLaje.push({
           direcaoLabel: ext === 'H' ? 'Horizontal (Externa)' : 'Horizontal (Interna)',
           barraNome: `H${i + 1}`,
           posicaoCm: fmtNum(b.pos, 1),
           espacamentoCm: i === 0 ? '—' : fmtNum(espH[i - 1], 1),
-          cobrimentoMm: cobStr,
+          cobrimentoMm: ext === 'H' ? (fmtValorBruto(b.cob) || '—') : '— (camada interna)',
         });
       });
 
       const bv = ordenarBarras(ld.barrasV ?? []);
       const espV = calcularEspacamentos(bv);
       bv.forEach((b, i) => {
-        const cobStr = ext === 'V'
-          ? (fmtValorBruto(b.cob) || '—')
-          : '— (camada interna)';
         barrasLaje.push({
           direcaoLabel: ext === 'V' ? 'Vertical (Externa)' : 'Vertical (Interna)',
           barraNome: `V${i + 1}`,
           posicaoCm: fmtNum(b.pos, 1),
           espacamentoCm: i === 0 ? '—' : fmtNum(espV[i - 1], 1),
-          cobrimentoMm: cobStr,
+          cobrimentoMm: ext === 'V' ? (fmtValorBruto(b.cob) || '—') : '— (camada interna)',
         });
       });
 
@@ -391,53 +906,64 @@ export function montarDadosPacometria(
           cobrimentoMm: '—',
         });
       }
+
+      const temEsp = barrasLaje.some(r => r.espacamentoCm !== '—');
+      const temCob = barrasLaje.some(r => r.cobrimentoMm !== '—' && r.cobrimentoMm !== '— (camada interna)');
+
+      type LajeColDef = {
+        titulo: string;
+        peso: number;
+        align: 'left' | 'center';
+        bold?: boolean;
+        val: (r: LajeRow) => string;
+      };
+      const cols: LajeColDef[] = [
+        { titulo: 'DIREÇÃO / CAMADA', peso: 26, align: 'left', bold: true, val: r => r.direcaoLabel },
+        { titulo: 'BARRA', peso: 14, align: 'center', bold: true, val: r => r.barraNome },
+        { titulo: 'POSIÇÃO (cm)', peso: 18, align: 'center', val: r => r.posicaoCm },
+      ];
+      if (temEsp) cols.push({ titulo: 'ESPAÇAMENTO (cm)', peso: 20, align: 'center', val: r => r.espacamentoCm });
+      if (temCob) cols.push({ titulo: 'COBRIMENTO (mm)', peso: 22, align: 'center', val: r => r.cobrimentoMm });
+
+      const larguras = distribuirLargurasPct(cols.map(c => c.peso), 5000, 0);
+
+      blocosElementos.push(
+        xmlPara(
+          xmlRun(`Tabela ${tabAtual} — Leituras da malha — ${elemNome}.`, { bold: true, size: 14, color: NAVY_TITLE }),
+          { jc: 'left', before: 50, after: 20, keepNext: true },
+        ),
+      );
+
+      const headerRow = xmlTrow(
+        cols.map((c, ci) => xmlTc(larguras[ci], c.titulo, { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG })),
+        { header: true },
+      );
+      const dataRows = barrasLaje.map((r, ri) =>
+        xmlTrow(
+          cols.map((c, ci) =>
+            xmlTc(larguras[ci], c.val(r), {
+              align: c.align,
+              bold: c.bold,
+              size: 14,
+              shade: ri % 2 === 1 ? ROW_ALT : undefined,
+            }),
+          ),
+        ),
+      );
+
+      blocosElementos.push(xmlTbl(larguras, [headerRow, ...dataRows], { borders: 'navy', marTop: 18, marBottom: 18, marLeft: 34, marRight: 34 }));
     }
 
-    return {
-      item: String(itemNum),
-      elemento: a.elemento || `Elemento ${itemNum}`,
-      tipoLabel: TIPO_LABELS[a.tipo] ?? a.tipo,
-      tipoResumo: resumoTipoCurto(a),
-      resumoGeometria: resumoGeometriaElemento(a),
-      cobMedio: fmtNum(cobMedio, 1),
-      cobMinimo: fmtNum(cobMinimo, 0),
-      cobMinBaixo,
-      cobMaximo: fmtNum(cobMaximo, 0),
-      cobDesvio: fmtNum(cobDesvio, 1),
-      cobCV: fmtNum(cobCV, 1),
-      cobModa: cobModa !== null ? `${cobModa} mm` : '—',
-      cobModaNum: cobModa !== null ? String(cobModa) : '—',
-      temEsquema,
-      esquemaImg: esquemaMarcador,
-      ehPilarOuViga,
-      ehLaje,
-      faces,
-      camadaExternaLabel,
-      dimLaje,
-      cobBordasLaje,
-      barrasLaje,
-    };
+    // Espaçamento após cada elemento (quando não há quebra de página forçada)
+    blocosElementos.push(xmlPara('', { before: 40, after: 40, line: 100 }));
   });
 
-  // Agrupa fotos do memorial em pares (grade 2 colunas)
-  const linhasFotos: Array<{
-    fotoEsq: string;
-    legendaEsq: string;
-    temDir: boolean;
-    fotoDir: string;
-    legendaDir: string;
-  }> = [];
-  for (let i = 0; i < fotosMemorial.length; i += 2) {
-    const esq = fotosMemorial[i];
-    const dir = fotosMemorial[i + 1];
-    linhasFotos.push({
-      fotoEsq: esq.marcador,
-      legendaEsq: esq.legenda,
-      temDir: !!dir,
-      fotoDir: dir?.marcador ?? '',
-      legendaDir: dir?.legenda ?? '',
-    });
-  }
+  // ── Seção 5: Resumo Executivo e Conclusão (opcional) ─────────
+  const resumoGlobal = gerarResumoExecutivoAutomatico(payload.amostras);
+  const conclusaoInformada = (payload.conclusao ?? '').trim();
+  const temConclusao = Boolean(payload.usaConclusao || conclusaoInformada);
+  const tabResumoGlobalNum = temConclusao ? String(tabNum + 1) : '';
+  const conclusaoFinal = conclusaoInformada || resumoGlobal.textoPadrao;
 
   const rltOficial = payload.rltOficial?.trim() || formatarRlt(cab.rlt || '');
   const motivacaoTexto = (payload.motivacao ?? '').trim();
@@ -453,36 +979,35 @@ export function montarDadosPacometria(
     endereco: cab.endereco?.trim() || '—',
     endereco_intro: toTitleCase(cab.endereco?.trim() || '') || '—',
     data_emissao: cab.data?.trim() || '—',
-    total_elementos: String(elementos.length),
+    total_elementos: String(payload.amostras.length),
     temMotivacao: Boolean(payload.usaMotivacao && motivacaoTexto),
     motivacao: motivacaoTexto,
     temMapa,
     mapa_img: mapaMarcador,
+    figMapaNum,
     temFotoGeral,
     foto_geral_img: fotoGeralMarcador,
-    temCroqui,
-    croqui_img: croquiMarcador,
-    resumo: elementos.map(e => ({
-      item: e.item,
-      elemento: e.elemento,
-      tipoResumo: e.tipoResumo,
-      cobMedio: e.cobMedio,
-      cobMinimo: e.cobMinimo,
-      cobMinBaixo: e.cobMinBaixo,
-      cobMaximo: e.cobMaximo,
-      cobDesvio: e.cobDesvio,
-      cobCV: e.cobCV,
-      cobModa: e.cobModaNum,
-    })),
-    elementos,
-    temFotos: linhasFotos.length > 0,
-    linhasFotos,
+    figFotoGeralNum,
+    temCroquis: croquisLista.length > 0,
+    croquis: croquisLista,
+    resumo,
+    temConclusao,
+    tabResumoGlobalNum,
+    resumoTiposGlobal: resumoGlobal.resumoTiposGlobal,
+    totalLeiturasGlobal: resumoGlobal.totalLeiturasGlobal,
+    cobMedioGlobal: resumoGlobal.cobMedioGlobal,
+    faixaGlobal: resumoGlobal.faixaGlobal,
+    conclusao: conclusaoFinal,
     notas: notasTexto,
     resp_nome: payload.respNome?.trim() || '—',
     resp_crea: payload.respCrea?.trim() || '—',
   };
 
-  return { dados, imagens };
+  return {
+    dados,
+    blocoElementosXml: blocosElementos.join(''),
+    imagens,
+  };
 }
 
 function escapeRegex(s: string): string {
@@ -490,7 +1015,23 @@ function escapeRegex(s: string): string {
 }
 
 /**
- * Injeta todas as imagens de pacometria (mapa, foto geral, croqui, esquemas e fotos do memorial)
+ * Substitui o parágrafo marcador `BLOCO_ELEMENTOS_PAC_END` pelo XML dinâmico dos elementos
+ * da Seção 4 (paginação por elemento, esquema+foto integrados, perfis por face e tabelas compactadas).
+ */
+export function injetarBlocoElementosPacometria(zip: PizZip, blocoElementosXml: string): void {
+  const docFile = zip.file('word/document.xml');
+  if (!docFile) return;
+  const xml = docFile.asText();
+  const re = /<w:p\b[^>]*>(?:(?!<\/w:p>).)*?BLOCO_ELEMENTOS_PAC_END(?:(?!<\/w:p>).)*?<\/w:p>/;
+  if (re.test(xml)) {
+    zip.file('word/document.xml', xml.replace(re, () => blocoElementosXml));
+  } else {
+    console.warn('[pacometria docx] marcador BLOCO_ELEMENTOS_PAC_END não encontrado no documento.');
+  }
+}
+
+/**
+ * Injeta todas as imagens de pacometria (mapa, foto geral, croquis, esquemas, fotos e perfis)
  * substituindo `<w:t>MARCADOR</w:t>` por `<w:drawing>` inline proporcional.
  * rId e docPrId começam em 2000 para não colidir com rId13 (João) nem rId901 (assinatura dinâmica).
  */

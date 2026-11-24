@@ -6,7 +6,10 @@ import { NextRequest } from 'next/server';
 import PizZip from 'pizzip';
 import fs from 'fs';
 import { POST } from '@/app/api/ensaios/pacometria/docx/route';
-import { gerarSvgEsquemaPacometria } from '@/modules/pacometria/svgRelatorio';
+import {
+  gerarSvgEsquemaPacometria,
+  gerarSvgsPerfisPacometria,
+} from '@/modules/pacometria/svgRelatorio';
 import type { AmostraRow } from '@/modules/pacometria/types';
 
 let mockUser: { id: string; user_metadata?: Record<string, string> } | null = { id: 'user-1' };
@@ -67,7 +70,7 @@ const amostraPilar: AmostraRow = {
   facesData: {
     '1X': {
       nEstribos: 3,
-      cob: ['18', '22', '24'], // 18 < 20 -> alerta vermelho
+      cob: ['18', '22', '24'],
       espV: ['15', '15'],
       espH: ['11', '11'],
       cobPerpIni: '25',
@@ -206,7 +209,7 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(res400.status).toBe(400);
   });
 
-  it('gera laudo completo com Pilar, Pilar Circular, Viga e Laje + imagens + assinatura dupla', async () => {
+  it('gera laudo completo com perfis, foto integrada, múltiplos croquis, paginação, numeração e conclusão', async () => {
     const body = {
       cab: {
         rlt: '42',
@@ -227,11 +230,38 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
       usaFotoGeral: true,
       fotoGeral: imgMock(800, 600),
       usaCroquiGeral: true,
-      croqui: imgMock(800, 600),
+      croquis: [imgMock(800, 600), imgMock(800, 600)],
+      quebraPaginaPorElemento: true,
+      usaConclusao: true,
+      conclusao: '', // vazio -> gera texto executivo automático
       amostras: [
-        { ...amostraPilar, esquema: imgMock(), foto: imgMock(800, 600) },
-        { ...amostraPilarCirc, esquema: imgMock(), foto: imgMock(800, 600) },
-        { ...amostraViga, esquema: imgMock(), foto: imgMock(800, 600) },
+        {
+          ...amostraPilar,
+          esquema: imgMock(),
+          foto: imgMock(800, 600),
+          perfis: [
+            { face: '1X', faceLabel: 'Face Inferior', imagem: imgMock(320, 260) },
+            { face: '1Y', faceLabel: 'Face Esquerda', imagem: imgMock(320, 260) },
+          ],
+        },
+        {
+          ...amostraPilarCirc,
+          esquema: imgMock(),
+          foto: imgMock(800, 600),
+          perfis: [
+            { face: 'circ', faceLabel: 'Face Externa (Circular)', imagem: imgMock(320, 260) },
+          ],
+        },
+        {
+          ...amostraViga,
+          esquema: imgMock(),
+          foto: imgMock(800, 600),
+          perfis: [
+            { face: 'fundo', faceLabel: 'Face Inferior (Fundo)', imagem: imgMock(360, 220) },
+            { face: 'lat1', faceLabel: 'Face Lateral Esquerda', imagem: imgMock(360, 220) },
+            { face: 'lat2', faceLabel: 'Face Lateral Direita', imagem: imgMock(360, 220) },
+          ],
+        },
         { ...amostraLaje, esquema: imgMock() },
       ],
     };
@@ -253,7 +283,7 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
 
     // Sem marcadores/tags sobrando
     expect(xml).not.toMatch(/\[\[|\]\]/);
-    expect(xml).not.toMatch(/_PH_|PLACEHOLDER/);
+    expect(xml).not.toMatch(/_PH_|PLACEHOLDER|BLOCO_ELEMENTOS_PAC_END/);
     expect(xml).not.toContain('undefined');
     expect(hdr).toContain('ENSAIO DE PACOMETRIA');
     expect(hdr).toContain('RLT.LAU-042.26-00');
@@ -263,11 +293,16 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(xml).not.toMatch(/<w:tr(?:\s[^>]*)?>(?:<w:trPr>.*?<\/w:trPr>)?<w:r[ >]/);
     expect(xml).not.toMatch(/<\/w:tc><w:r[ >]/);
 
-    // Padrão de cores oficial TECOMAT presente
+    // Paleta oficial TECOMAT SEM destaque vermelho (não existe limite normativo)
     expect(xml).toContain('w:fill="002060"');
     expect(xml).toContain('w:fill="D9D9D9"');
-    expect(xml).toContain('w:val="C00000"'); // destaque cobrimento 18 mm < 20 mm
+    expect(xml).not.toContain('w:val="C00000"');
+    expect(xml).not.toContain('inferiores a 20 mm');
     expect(xml).toContain('w:val="0F243E"');
+
+    // Sem normas/tabela de cobrimentos normativos
+    expect(xml).not.toContain('NORMA(S) DE REFERÊNCIA');
+    expect(xml).not.toContain('CAA I');
 
     // Conteúdo dos 4 elementos + escape XML
     expect(xml).toContain('Construtora Alpha &amp; Beta');
@@ -277,12 +312,28 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(xml).toContain('Viga V-104 &amp; Balanço');
     expect(xml).toContain('Laje L-05 &lt;Garagem&gt;');
     expect(xml).toContain('Verificação dos cobrimentos antes da reforma estrutural.');
-    expect(xml).toContain('5. MEMORIAL FOTOGRÁFICO');
 
-    // Sem normas/tabela de cobrimentos normativos (não há norma para ensaio de pacometria)
-    expect(xml).not.toContain('NORMA(S) DE REFERÊNCIA');
-    expect(xml).not.toContain('CAA I');
+    // Foto integrada à ficha (sem Seção 5 Memorial Fotográfico separado)
+    expect(xml).not.toContain('MEMORIAL FOTOGRÁFICO');
+    expect(xml).toContain('Registro fotográfico');
+
+    // Múltiplos croquis + numeração sequencial de figuras e tabelas
+    expect(xml).toContain('Figura 1 — Vista geral da estrutura ensaiada.');
+    expect(xml).toContain('Figura 2 — Croqui de localização dos elementos ensaiados (1/2).');
+    expect(xml).toContain('Figura 3 — Croqui de localização dos elementos ensaiados (2/2).');
     expect(xml).toContain('Tabela 1 — Resumo estatístico');
+    expect(xml).toContain('Tabela 2 — Leituras por face — Pilar P-01 (Térreo).');
+    expect(xml).toContain('Tabela 3 — Leituras por face — Pilar Circular PC-02.');
+    expect(xml).toContain('Tabela 4 — Leituras por face — Viga V-104 &amp; Balanço.');
+    expect(xml).toContain('Tabela 5 — Leituras da malha — Laje L-05 &lt;Garagem&gt;.');
+    expect(xml).toContain('Tabela 6 — Síntese global dos resultados de pacometria.');
+
+    // Controle de paginação por elemento (3 quebras para os 3 elementos após o 1º)
+    expect((xml.match(/<w:pageBreakBefore\/>/g) ?? []).length).toBe(3);
+
+    // Seção 5 — Resumo Executivo e Conclusão com texto automático
+    expect(xml).toContain('5. RESUMO EXECUTIVO E CONCLUSÃO');
+    expect(xml).toContain('Foram inspecionados 4 elemento(s) estrutural(is)');
 
     // Nomenclatura correta (nunca códigos internos 1X/2X/1Y/2Y)
     expect(xml).toContain('Face Inferior');
@@ -303,11 +354,11 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(rels).toContain('media/image6.jpeg');
     expect(rels).toContain('media/assinatura_resp.png');
 
-    // Imagens: 1 fotoGeral + 1 croqui + 4 esquemas + 3 fotos memorial + 1 João + 1 eng = 11 drawings
-    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(11);
+    // Imagens: 1 fotoGeral + 2 croquis + 4 esquemas + 3 fotos integradas + 6 perfis + 1 João + 1 eng = 18 drawings
+    expect((xml.match(/<w:drawing>/g) ?? []).length).toBe(18);
   });
 
-  it('omite seções opcionais quando vazias (sem motivação, sem fotos e sem notas)', async () => {
+  it('compacta colunas vazias e omite seções opcionais quando vazias', async () => {
     const body = {
       cab: {
         rlt: '7',
@@ -318,7 +369,10 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
         endereco: '',
         notas: '',
       },
-      amostras: [amostraPilar],
+      // Pilar circular sem espH e sem cobPerp -> deve omitir essas 2 colunas!
+      amostras: [amostraPilarCirc],
+      quebraPaginaPorElemento: false,
+      usaConclusao: false,
       respNome: 'Eng. Carlos',
       respCrea: '11111',
     };
@@ -331,19 +385,39 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     const xml = new PizZip(Buffer.from(await res.arrayBuffer())).file('word/document.xml')!.asText();
 
     expect(xml).not.toMatch(/\[\[|\]\]/);
-    expect(xml).not.toContain('5. MEMORIAL FOTOGRÁFICO');
+    expect(xml).not.toContain('5. RESUMO EXECUTIVO E CONCLUSÃO');
     expect(xml).not.toContain('NOTAS:');
+    expect(xml).not.toContain('<w:pageBreakBefore/>');
+    // Colunas vazias omitidas na tabela do Pilar Circular
+    expect(xml).toContain('ESP. ESTRIBOS (cm)');
+    expect(xml).not.toContain('ESP. BARRAS (cm)');
+    expect(xml).not.toContain('COB. PERP. BORDAS (mm)');
     expect(xml).toContain('João Ribeiro de Carvalho');
     expect(xml).toContain('Eng. Carlos');
     validarXmlBemFormado(xml);
   });
 
-  it('gera SVGs técnicos válidos para Pilar, Pilar Circular, Viga e Laje', () => {
+  it('gera SVGs de seção com Mín/Máx e perfis de elevação por face para Pilar e Viga', () => {
     for (const a of [amostraPilar, amostraPilarCirc, amostraViga, amostraLaje]) {
       const svg = gerarSvgEsquemaPacometria(a);
       expect(svg).toContain('<svg');
       expect(svg).toContain('</svg>');
+      expect(svg).toContain('Mín');
+      expect(svg).toContain('Máx');
+      expect(svg).not.toContain('#C00000');
       expect(svg).not.toMatch(/\b(1X|2X|1Y|2Y)\b/);
     }
+
+    const perfisPilar = gerarSvgsPerfisPacometria(amostraPilar);
+    expect(perfisPilar).toHaveLength(2);
+    expect(perfisPilar[0].faceLabel).toBe('Face Inferior');
+    expect(perfisPilar[0].svg).toContain('18mm');
+
+    const perfisViga = gerarSvgsPerfisPacometria(amostraViga);
+    expect(perfisViga).toHaveLength(3);
+    expect(perfisViga[0].faceLabel).toBe('Face Inferior (Fundo)');
+    expect(perfisViga[0].svg).toContain('28mm');
+
+    expect(gerarSvgsPerfisPacometria(amostraLaje)).toHaveLength(0);
   });
 });
