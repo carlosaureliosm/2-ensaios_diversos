@@ -10,6 +10,7 @@ import {
   BUCKET_PACOMETRIA_OBRA,
   garantirBucketObra,
   lerGrupoObra,
+  salvarGrupoObra,
   validarFotoPath,
   validarGrupoId,
 } from '@/lib/pacometriaObraStorage';
@@ -66,11 +67,42 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const { data: signed } = await admin.storage
-      .from(BUCKET_PACOMETRIA_OBRA)
-      .createSignedUrl(path, 3600);
+    const amostraId = form.get('amostraId');
+    const fotoWidthRaw = Number(form.get('fotoWidth'));
+    const fotoHeightRaw = Number(form.get('fotoHeight'));
+    const fotoWidth = Number.isFinite(fotoWidthRaw) && fotoWidthRaw > 0 ? Math.round(fotoWidthRaw) : undefined;
+    const fotoHeight = Number.isFinite(fotoHeightRaw) && fotoHeightRaw > 0 ? Math.round(fotoHeightRaw) : undefined;
 
-    return NextResponse.json({ path, url: signed?.signedUrl ?? null });
+    let updatedAt = existente.updatedAt;
+    let fotoAnterior: string | null = null;
+
+    // Quando amostraId é informado, já persiste o fotoPath no JSON da obra em 1 única requisição
+    if (typeof amostraId === 'string' && amostraId.trim()) {
+      const alvo = existente.amostras.find(a => a.id === amostraId);
+      if (alvo) {
+        fotoAnterior = alvo.fotoPath && validarFotoPath(alvo.fotoPath, id) ? alvo.fotoPath : null;
+        updatedAt = new Date().toISOString();
+        const atualizado = {
+          ...existente,
+          updatedAt,
+          amostras: existente.amostras.map(a =>
+            a.id === amostraId
+              ? { ...a, fotoPath: path, fotoWidth, fotoHeight }
+              : a,
+          ),
+        };
+        await salvarGrupoObra(admin, atualizado);
+      }
+    }
+
+    const [{ data: signed }] = await Promise.all([
+      admin.storage.from(BUCKET_PACOMETRIA_OBRA).createSignedUrl(path, 3600),
+      fotoAnterior && fotoAnterior !== path
+        ? admin.storage.from(BUCKET_PACOMETRIA_OBRA).remove([fotoAnterior])
+        : Promise.resolve(),
+    ]);
+
+    return NextResponse.json({ path, url: signed?.signedUrl ?? null, updatedAt });
   } catch (err) {
     console.error('[pacometria obra foto POST] Erro:', err);
     return NextResponse.json(

@@ -23,6 +23,12 @@ import {
 import { ModalAmostra } from '@/modules/pacometria/components/ModalAmostra';
 import { ListaAmostrasPacometria } from '@/modules/pacometria/components/ListaAmostrasPacometria';
 import { ModalImportarObra } from '@/modules/pacometria/components/ModalImportarObra';
+import {
+  blobParaBase64,
+  comprimirImagemParaFile,
+  comprimirImagemRapida,
+  precarregarImagens,
+} from '@/modules/pacometria/imagemRapida';
 import { gerarSvgEsquemaPacometria, gerarSvgsPerfisPacometria } from '@/modules/pacometria/svgRelatorio';
 import { svgParaPng } from '@/modules/aderencia/svgParaPng';
 
@@ -53,13 +59,6 @@ function carregarLocal(): { cab: Cabecalho; amostras: AmostraRow[] } | null {
   try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
 }
 
-function base64ParaBlob(base64: string, contentType: string): Blob {
-  const bin = atob(base64);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return new Blob([arr], { type: contentType });
-}
-
 function formatarDataHora(iso: string) {
   try {
     return new Date(iso).toLocaleString('pt-BR', {
@@ -71,29 +70,13 @@ function formatarDataHora(iso: string) {
   }
 }
 
-function comprimirImagem(file: File): Promise<{ base64: string; width: number; height: number; contentType: string }> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 800;
-        let { width, height } = img;
-        if (width > MAX || height > MAX) {
-          if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
-          else { width = Math.round(width * MAX / height); height = MAX; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-        const base64 = canvas.toDataURL('image/jpeg', 0.65).split(',')[1] ?? '';
-        resolve({ base64, width, height, contentType: 'image/jpeg' });
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
+function revogarSeBlob(url?: string | null) {
+  if (url && url.startsWith('blob:')) {
+    try { URL.revokeObjectURL(url); } catch {}
+  }
 }
+
+const SIGNED_URL_CACHE_MS = 45 * 60 * 1000; // 45 min (TTL no servidor é 60 min)
 
 const inputStyle: React.CSSProperties = {
   padding: '9px 12px', borderRadius: 7, border: `1.5px solid ${BORDER}`,
@@ -191,9 +174,31 @@ export default function PacometriaPage() {
   const [salvoMsg, setSalvoMsg] = useState('');
   const [gerandoDocx, setGerandoDocx] = useState(false);
 
+  // Cache em memória de URLs assinadas por fotoPath para não invalidar o cache de imagem do navegador
+  const signedUrlCacheRef = useRef<Map<string, { url: string; cachedAt: number }>>(new Map());
+
+  const aplicarCacheUrls = useCallback((grupos: ObraGrupoPacometria[]): ObraGrupoPacometria[] => {
+    const agora = Date.now();
+    const cache = signedUrlCacheRef.current;
+    return grupos.map(g => ({
+      ...g,
+      amostras: g.amostras.map(a => {
+        if (!a.fotoPath) return { ...a, fotoUrl: null };
+        const existente = cache.get(a.fotoPath);
+        if (existente && agora - existente.cachedAt < SIGNED_URL_CACHE_MS) {
+          return { ...a, fotoUrl: existente.url };
+        }
+        if (a.fotoUrl) {
+          cache.set(a.fotoPath, { url: a.fotoUrl, cachedAt: agora });
+        }
+        return a;
+      }),
+    }));
+  }, []);
+
   // ── Efeitos ──────────────────────────────────────────────────
-  const carregarGruposObra = useCallback(async () => {
-    setObraCarregando(true);
+  const carregarGruposObra = useCallback(async (opts?: { silencioso?: boolean }) => {
+    if (!opts?.silencioso) setObraCarregando(true);
     setObraErro('');
     try {
       const res = await fetch('/api/ensaios/pacometria/obra', { cache: 'no-store' });
@@ -202,14 +207,21 @@ export default function PacometriaPage() {
         throw new Error(j?.error || 'Erro ao carregar obras do servidor.');
       }
       const data = await res.json();
-      setObraGrupos(Array.isArray(data.grupos) ? data.grupos : []);
+      const rawGrupos: ObraGrupoPacometria[] = Array.isArray(data.grupos) ? data.grupos : [];
+      const comCache = aplicarCacheUrls(rawGrupos);
+      setObraGrupos(comCache);
       if (data.currentUserId) setUserId(data.currentUserId);
+      // Pré-carrega miniaturas em segundo plano para abertura e importação instantâneas
+      const urlsParaPrecarregar = comCache
+        .slice(0, 5)
+        .flatMap(g => g.amostras.map(a => a.fotoUrl));
+      precarregarImagens(urlsParaPrecarregar);
     } catch (err) {
       setObraErro(err instanceof Error ? err.message : 'Erro ao carregar obras.');
     } finally {
-      setObraCarregando(false);
+      if (!opts?.silencioso) setObraCarregando(false);
     }
-  }, []);
+  }, [aplicarCacheUrls]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -277,7 +289,15 @@ export default function PacometriaPage() {
     return `RLT.LAU-${n}.26-00`;
   })();
 
-  const persistirAmostrasGrupo = async (grupoId: string, novasAmostras: AmostraObraSalva[]) => {
+  const persistirAmostrasGrupo = async (
+    grupoId: string,
+    novasAmostras: AmostraObraSalva[],
+    anterior: ObraGrupoPacometria,
+  ) => {
+    // Atualização otimista imediata (0 ms na tela)
+    setObraGrupos(prev =>
+      prev.map(g => (g.id === grupoId ? { ...g, amostras: novasAmostras, updatedAt: new Date().toISOString() } : g)),
+    );
     setObraSalvandoId(grupoId);
     setObraErro('');
     try {
@@ -288,8 +308,11 @@ export default function PacometriaPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Erro ao salvar alterações na obra.');
-      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? data.grupo : g)));
+      const [hidratado] = aplicarCacheUrls([data.grupo]);
+      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? hidratado : g)));
     } catch (err) {
+      // Reverte estado em caso de erro no servidor
+      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? anterior : g)));
       alert(err instanceof Error ? err.message : 'Erro ao salvar alterações na obra.');
     } finally {
       setObraSalvandoId(null);
@@ -359,17 +382,25 @@ export default function PacometriaPage() {
     const { fotoFile: _ff, fotoPreview: _fp, ...limpa } = a;
     const idx = grupo.amostras.findIndex(x => x.id === a.id);
     const novas: AmostraObraSalva[] = idx >= 0
-      ? grupo.amostras.map((x, i) => (i === idx ? { ...limpa, fotoPath: x.fotoPath ?? a.fotoPath ?? null } : x))
-      : [...grupo.amostras, { ...limpa, item: grupo.amostras.length + 1, fotoPath: null }];
+      ? grupo.amostras.map((x, i) =>
+          i === idx
+            ? { ...limpa, fotoPath: x.fotoPath ?? a.fotoPath ?? null, fotoUrl: x.fotoUrl ?? null }
+            : x,
+        )
+      : [...grupo.amostras, { ...limpa, item: grupo.amostras.length + 1, fotoPath: null, fotoUrl: null }];
 
     setModalAberto(false);
     setAmostraEditando(null);
-    await persistirAmostrasGrupo(grupo.id, novas);
+    await persistirAmostrasGrupo(grupo.id, novas, grupo);
   };
 
   const apagarAmostra = (id: string) => {
     if (!confirm('Apagar esta amostra?')) return;
-    setAmostras(prev => prev.filter(a => a.id !== id).map((a, i) => ({ ...a, item: i + 1 })));
+    setAmostras(prev => {
+      const alvo = prev.find(a => a.id === id);
+      revogarSeBlob(alvo?.fotoPreview);
+      return prev.filter(a => a.id !== id).map((a, i) => ({ ...a, item: i + 1 }));
+    });
   };
 
   const editarAmostra = (a: AmostraRow) => {
@@ -379,12 +410,44 @@ export default function PacometriaPage() {
   };
 
   const handleFoto = async (id: string, file: File) => {
-    const preview = URL.createObjectURL(file);
-    setAmostras(prev => prev.map(a => a.id === id ? { ...a, fotoFile: file, fotoPreview: preview, fotoPath: null } : a));
+    // Prévia instantânea + compressão em segundo plano para manter DOM leve e DOCX rápido
+    const tempPreview = URL.createObjectURL(file);
+    setAmostras(prev =>
+      prev.map(a => {
+        if (a.id !== id) return a;
+        revogarSeBlob(a.fotoPreview);
+        return { ...a, fotoFile: file, fotoPreview: tempPreview, fotoPath: null };
+      }),
+    );
+    try {
+      const comprimida = await comprimirImagemParaFile(file);
+      const previewLeve = URL.createObjectURL(comprimida.file);
+      setAmostras(prev =>
+        prev.map(a => {
+          if (a.id !== id || a.fotoPreview !== tempPreview) return a;
+          revogarSeBlob(tempPreview);
+          return {
+            ...a,
+            fotoFile: comprimida.file,
+            fotoPreview: previewLeve,
+            fotoWidth: comprimida.width,
+            fotoHeight: comprimida.height,
+          };
+        }),
+      );
+    } catch {
+      // Mantém arquivo original caso compressão falhe
+    }
   };
 
   const removerFoto = (id: string) => {
-    setAmostras(prev => prev.map(a => a.id === id ? { ...a, fotoFile: null, fotoPreview: null, fotoPath: null } : a));
+    setAmostras(prev =>
+      prev.map(a => {
+        if (a.id !== id) return a;
+        revogarSeBlob(a.fotoPreview);
+        return { ...a, fotoFile: null, fotoPreview: null, fotoPath: null, fotoWidth: undefined, fotoHeight: undefined };
+      }),
+    );
   };
 
   const apagarAmostraObra = async (grupoId: string, amostraId: string) => {
@@ -394,18 +457,33 @@ export default function PacometriaPage() {
     const novas = grupo.amostras
       .filter(a => a.id !== amostraId)
       .map((a, i) => ({ ...a, item: i + 1 }));
-    await persistirAmostrasGrupo(grupoId, novas);
+    await persistirAmostrasGrupo(grupoId, novas, grupo);
   };
 
   const anexarFotoObra = async (grupoId: string, amostraId: string, file: File) => {
     const grupo = obraGrupos.find(g => g.id === grupoId);
     if (!grupo) return;
+    const previewLocal = URL.createObjectURL(file);
+
+    // Prévia otimista instantânea (0 ms) enquanto envia em 1 única requisição
+    setObraGrupos(prev =>
+      prev.map(g =>
+        g.id === grupoId
+          ? {
+              ...g,
+              amostras: g.amostras.map(a => (a.id === amostraId ? { ...a, fotoUrl: previewLocal } : a)),
+            }
+          : g,
+      ),
+    );
     setObraUploadingFotoId(amostraId);
     try {
-      const comprimida = await comprimirImagem(file);
-      const blob = base64ParaBlob(comprimida.base64, comprimida.contentType);
+      const comprimida = await comprimirImagemParaFile(file);
       const form = new FormData();
-      form.append('foto', new File([blob], 'foto.jpg', { type: comprimida.contentType }));
+      form.append('foto', comprimida.file);
+      form.append('amostraId', amostraId);
+      form.append('fotoWidth', String(comprimida.width));
+      form.append('fotoHeight', String(comprimida.height));
 
       const res = await fetch(`/api/ensaios/pacometria/obra/${grupoId}/foto`, {
         method: 'POST',
@@ -414,13 +492,39 @@ export default function PacometriaPage() {
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.path) throw new Error(data?.error || 'Erro ao enviar foto.');
 
-      const novas = grupo.amostras.map(a =>
-        a.id === amostraId
-          ? { ...a, fotoPath: data.path as string, fotoWidth: comprimida.width, fotoHeight: comprimida.height }
-          : a,
+      const urlFinal = (data.url as string | null) ?? previewLocal;
+      if (data.url) {
+        signedUrlCacheRef.current.set(data.path as string, { url: data.url as string, cachedAt: Date.now() });
+        precarregarImagens([data.url as string]);
+      }
+
+      setObraGrupos(prev =>
+        prev.map(g =>
+          g.id === grupoId
+            ? {
+                ...g,
+                updatedAt: (data.updatedAt as string) || new Date().toISOString(),
+                amostras: g.amostras.map(a =>
+                  a.id === amostraId
+                    ? {
+                        ...a,
+                        fotoPath: data.path as string,
+                        fotoUrl: urlFinal,
+                        fotoWidth: comprimida.width,
+                        fotoHeight: comprimida.height,
+                      }
+                    : a,
+                ),
+              }
+            : g,
+        ),
       );
-      await persistirAmostrasGrupo(grupoId, novas);
+      if (data.url) {
+        setTimeout(() => revogarSeBlob(previewLocal), 2000);
+      }
     } catch (err) {
+      revogarSeBlob(previewLocal);
+      setObraGrupos(prev => prev.map(g => (g.id === grupoId ? grupo : g)));
       alert(err instanceof Error ? err.message : 'Erro ao enviar foto.');
     } finally {
       setObraUploadingFotoId(null);
@@ -431,9 +535,11 @@ export default function PacometriaPage() {
     const grupo = obraGrupos.find(g => g.id === grupoId);
     if (!grupo) return;
     const novas = grupo.amostras.map(a =>
-      a.id === amostraId ? { ...a, fotoPath: null, fotoWidth: undefined, fotoHeight: undefined } : a,
+      a.id === amostraId
+        ? { ...a, fotoPath: null, fotoUrl: null, fotoWidth: undefined, fotoHeight: undefined }
+        : a,
     );
-    await persistirAmostrasGrupo(grupoId, novas);
+    await persistirAmostrasGrupo(grupoId, novas, grupo);
   };
 
   const importarGrupoObra = (g: ObraGrupoPacometria, modo: 'adicionar' | 'substituir') => {
@@ -461,11 +567,20 @@ export default function PacometriaPage() {
   const gerarDocx = async () => {
     setGerandoDocx(true);
     try {
-      // Comprimir fotos e rasterizar esquemas + perfis de elevação por face das amostras
+      // Comprimir fotos (reaproveitando as já comprimidas no anexo) e rasterizar esquemas + perfis
       const amostrasPayload = await Promise.all(amostras.map(async a => {
         let foto = null;
         if (a.fotoFile instanceof File) {
-          foto = await comprimirImagem(a.fotoFile);
+          if (a.fotoFile.type === 'image/jpeg' && a.fotoWidth && a.fotoHeight && a.fotoFile.size <= 350_000) {
+            foto = {
+              base64: await blobParaBase64(a.fotoFile),
+              width: a.fotoWidth,
+              height: a.fotoHeight,
+              contentType: 'image/jpeg',
+            };
+          } else {
+            foto = await comprimirImagemRapida(a.fotoFile);
+          }
         }
         let esquema = null;
         try {
@@ -501,16 +616,16 @@ export default function PacometriaPage() {
 
       // Foto geral e múltiplos croquis
       let fotoGeralPayload = null;
-      if (usaFotoGeral && fotoGeralFile) fotoGeralPayload = await comprimirImagem(fotoGeralFile);
+      if (usaFotoGeral && fotoGeralFile) fotoGeralPayload = await comprimirImagemRapida(fotoGeralFile);
       const croquisPayload = usaCroquiGeral && croquiFiles.length > 0
-        ? await Promise.all(croquiFiles.map(f => comprimirImagem(f)))
+        ? await Promise.all(croquiFiles.map(f => comprimirImagemRapida(f)))
         : [];
 
       // Outro responsável
       let outroRespBase64 = '';
       let outroRespContentType = 'image/png';
       if (outroResp && outroRespFile instanceof File) {
-        const r = await comprimirImagem(outroRespFile);
+        const r = await comprimirImagemRapida(outroRespFile);
         outroRespBase64 = r.base64;
         outroRespContentType = r.contentType;
       }
@@ -789,7 +904,7 @@ export default function PacometriaPage() {
             titulo="Resultado do Ensaio — Amostras de Pacometria"
             direitaExtra={
               <button
-                onClick={() => { setShowImportarObra(true); carregarGruposObra(); }}
+                onClick={() => { setShowImportarObra(true); carregarGruposObra({ silencioso: obraGrupos.length > 0 }); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '5px 11px', borderRadius: 6, fontSize: 11.5, fontWeight: 700,
@@ -802,7 +917,7 @@ export default function PacometriaPage() {
             }
             mobileAcoesExtra={
               <button
-                onClick={() => { setShowImportarObra(true); carregarGruposObra(); }}
+                onClick={() => { setShowImportarObra(true); carregarGruposObra({ silencioso: obraGrupos.length > 0 }); }}
                 style={{
                   padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700,
                   cursor: 'pointer', fontFamily: 'inherit',
@@ -836,7 +951,7 @@ export default function PacometriaPage() {
                 </p>
               </div>
               <button
-                onClick={carregarGruposObra}
+                onClick={() => carregarGruposObra()}
                 disabled={obraCarregando}
                 style={{
                   padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700,
@@ -1040,7 +1155,7 @@ export default function PacometriaPage() {
           amostrasAtuaisCount={amostras.length}
           carregando={obraCarregando}
           erro={obraErro}
-          onAtualizar={carregarGruposObra}
+          onAtualizar={() => carregarGruposObra()}
           onImportar={importarGrupoObra}
           onFechar={() => setShowImportarObra(false)}
         />

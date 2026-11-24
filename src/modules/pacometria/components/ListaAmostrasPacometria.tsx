@@ -4,7 +4,7 @@
 // Tabela (desktop) e cards (mobile) de amostras de Pacometria.
 // Reutilizado por "2. Dados de Campo" e "3. Modo Obra" (com suporte a somenteLeitura).
 
-import { useRef } from 'react';
+import { memo, useRef } from 'react';
 import {
   PainelPlanilha,
   tabelaHeaderStyle,
@@ -40,7 +40,7 @@ type Props = {
   onRemoverFoto?: (id: string) => void;
 };
 
-export function ListaAmostrasPacometria({
+export const ListaAmostrasPacometria = memo(function ListaAmostrasPacometria({
   amostras,
   titulo,
   corBarra = PRIMARY,
@@ -158,16 +158,22 @@ export function ListaAmostrasPacometria({
                         {/* Célula foto */}
                         <td style={{ padding: '8px 10px', borderLeft: '1px solid #E2E8F0' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                            {enviandoFoto ? (
-                              <span style={{ fontSize: 11, color: SUBTEXT, fontWeight: 600 }}>Enviando…</span>
-                            ) : a.fotoPreview ? (
+                            {a.fotoPreview ? (
                               <>
                                 <img
                                   src={a.fotoPreview}
                                   alt="foto"
-                                  style={{ width: 34, height: 34, borderRadius: 4, objectFit: 'cover', border: `1px solid ${BORDER}` }}
+                                  decoding="async"
+                                  loading="lazy"
+                                  style={{
+                                    width: 34, height: 34, borderRadius: 4, objectFit: 'cover',
+                                    border: `1px solid ${BORDER}`, background: '#F1F5F9',
+                                    opacity: enviandoFoto ? 0.65 : 1,
+                                  }}
                                 />
-                                {!somenteLeitura && onRemoverFoto && (
+                                {enviandoFoto ? (
+                                  <span style={{ fontSize: 10, color: SUBTEXT, fontWeight: 700 }}>…</span>
+                                ) : !somenteLeitura && onRemoverFoto && (
                                   <button
                                     onClick={() => {
                                       onRemoverFoto(a.id);
@@ -180,6 +186,8 @@ export function ListaAmostrasPacometria({
                                   </button>
                                 )}
                               </>
+                            ) : enviandoFoto ? (
+                              <span style={{ fontSize: 11, color: SUBTEXT, fontWeight: 600 }}>Enviando…</span>
                             ) : !somenteLeitura && onAnexarFoto ? (
                               <>
                                 <input
@@ -297,12 +305,22 @@ export function ListaAmostrasPacometria({
               </div>
               {/* Foto mobile */}
               <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                {enviandoFoto ? (
-                  <span style={{ fontSize: 11, color: SUBTEXT, fontWeight: 600 }}>Enviando foto…</span>
-                ) : a.fotoPreview ? (
+                {a.fotoPreview ? (
                   <>
-                    <img src={a.fotoPreview} alt="foto" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: `1px solid ${BORDER}` }} />
-                    {!somenteLeitura && onRemoverFoto && (
+                    <img
+                      src={a.fotoPreview}
+                      alt="foto"
+                      decoding="async"
+                      loading="lazy"
+                      style={{
+                        width: 40, height: 40, borderRadius: 6, objectFit: 'cover',
+                        border: `1px solid ${BORDER}`, background: '#F1F5F9',
+                        opacity: enviandoFoto ? 0.65 : 1,
+                      }}
+                    />
+                    {enviandoFoto ? (
+                      <span style={{ fontSize: 11, color: SUBTEXT, fontWeight: 600 }}>Salvando foto…</span>
+                    ) : !somenteLeitura && onRemoverFoto && (
                       <button
                         onClick={() => {
                           onRemoverFoto(a.id);
@@ -314,6 +332,8 @@ export function ListaAmostrasPacometria({
                       </button>
                     )}
                   </>
+                ) : enviandoFoto ? (
+                  <span style={{ fontSize: 11, color: SUBTEXT, fontWeight: 600 }}>Enviando foto…</span>
                 ) : !somenteLeitura && onAnexarFoto ? (
                   <>
                     <input
@@ -343,4 +363,4 @@ export function ListaAmostrasPacometria({
       </div>
     </div>
   );
-}
+});

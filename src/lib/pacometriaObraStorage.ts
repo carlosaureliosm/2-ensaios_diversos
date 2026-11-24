@@ -32,15 +32,22 @@ export function caminhoGrupo(id: string): string {
   return `${PASTA_GRUPOS}/${id}.json`;
 }
 
+let bucketGarantido = false;
+
 export async function garantirBucketObra(
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<void> {
+  if (bucketGarantido) return;
   const { data } = await admin.storage.getBucket(BUCKET_PACOMETRIA_OBRA);
-  if (data) return;
+  if (data) {
+    bucketGarantido = true;
+    return;
+  }
   const { error } = await admin.storage.createBucket(BUCKET_PACOMETRIA_OBRA, { public: false });
   if (error && !/already exists/i.test(error.message)) {
     throw new Error(error.message);
   }
+  bucketGarantido = true;
 }
 
 export async function lerGrupoObra(
