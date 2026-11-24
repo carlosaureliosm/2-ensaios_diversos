@@ -326,10 +326,19 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(xml).toContain('Tabela 2 — Leituras da malha — Laje L-05 &lt;Garagem&gt;.');
     expect(xml).toContain('Tabela 3 — Síntese global dos resultados de pacometria.');
 
-    // Corpo de texto em 11 pt (w:sz w:val="22") e títulos de seção em 12 pt (w:sz w:val="24")
+    // Corpo de texto, tabela de cabeçalho, tabelas e legendas em 11 pt (w:sz="22"); títulos de seção em 12 pt (w:sz="24")
     expect(xml).toContain('<w:sz w:val="22"/>');
     expect(xml).toContain('<w:sz w:val="24"/>');
     expect(xml).not.toContain('<w:sz w:val="19"/>');
+    expect(xml).not.toContain('<w:sz w:val="16"/>');
+
+    // Ordem da ficha do elemento: Esquema da seção transversal -> Perfis -> Foto do elemento
+    const idxEsquemaP1 = xml.indexOf('Esquema da seção transversal — Pilar P-01');
+    const idxPerfilP1 = xml.indexOf('Perfil — Face Inferior.');
+    const idxFotoP1 = xml.indexOf('Registro fotográfico — Pilar P-01');
+    expect(idxEsquemaP1).toBeGreaterThan(-1);
+    expect(idxPerfilP1).toBeGreaterThan(idxEsquemaP1);
+    expect(idxFotoP1).toBeGreaterThan(idxPerfilP1);
 
     // Controle de paginação por elemento (3 quebras para os 3 elementos após o 1º)
     expect((xml.match(/<w:pageBreakBefore\/>/g) ?? []).length).toBe(3);

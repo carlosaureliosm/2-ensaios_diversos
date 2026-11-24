@@ -38,7 +38,7 @@ function esc(s) {
 }
 
 // ── Runs / parágrafos ─────────────────────────────────────────
-function rpr({ bold, italic, caps, color = BLACK, size = 16, vertAlign } = {}) {
+function rpr({ bold, italic, caps, color = BLACK, size = 22, vertAlign } = {}) {
   let x = '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>';
   if (bold) x += '<w:b/><w:bCs/>';
   if (italic) x += '<w:i/><w:iCs/>';
@@ -190,36 +190,36 @@ const parts = [];
 
 // ── 0. PÁGINA 1 PADRÃO (IDENTIFICAÇÃO + FAIXA CINZA) ──────────
 const bRowLine = { top: B_THIN, bottom: B_THIN, left: B_NONE, right: B_NONE };
-const pIdOpts = { before: 10, after: 10, line: 200 };
-const rot = t => para(run(t, { bold: true, size: 16 }), pIdOpts);
-const val = (t, jc = 'left') => para(run(t, { size: 16 }), { ...pIdOpts, jc });
+const pIdOpts = { before: 12, after: 12, line: 220 };
+const rot = t => para(run(t, { bold: true, size: 22 }), pIdOpts);
+const val = (t, jc = 'left') => para(run(t, { size: 22 }), { ...pIdOpts, jc });
 
-parts.push(tbl([650, 2450, 950, 950], [
+parts.push(tbl([950, 2000, 1200, 850], [
   trow([
-    tc(650, rot('CLIENTE:'), { borders: bRowLine }),
-    tc(4350, val('[[cliente]]'), { gridSpan: 3, borders: bRowLine }),
+    tc(950, rot('CLIENTE:'), { borders: bRowLine }),
+    tc(4050, val('[[cliente]]'), { gridSpan: 3, borders: bRowLine }),
   ]),
   trow([
-    tc(650, rot('OBRA:'), { borders: bRowLine }),
-    tc(4350, val('[[obra]]'), { gridSpan: 3, borders: bRowLine }),
+    tc(950, rot('OBRA:'), { borders: bRowLine }),
+    tc(4050, val('[[obra]]'), { gridSpan: 3, borders: bRowLine }),
   ]),
   trow([
-    tc(650, rot('ATT.:'), { borders: bRowLine }),
-    tc(2450, val('[[att]]'), { borders: bRowLine }),
-    tc(950, para(run('DATA DE EMISSÃO:', { bold: true, size: 16 }), { ...pIdOpts, jc: 'right' }), { borders: bRowLine }),
-    tc(950, val('[[data_emissao]]', 'center'), { borders: bRowLine }),
+    tc(950, rot('ATT.:'), { borders: bRowLine }),
+    tc(2000, val('[[att]]'), { borders: bRowLine }),
+    tc(1200, para(run('DATA DE EMISSÃO:', { bold: true, size: 22 }), { ...pIdOpts, jc: 'right' }), { borders: bRowLine }),
+    tc(850, val('[[data_emissao]]', 'center'), { borders: bRowLine }),
   ]),
   trow([
-    tc(650, rot('ENDEREÇO:'), { borders: bRowLine }),
-    tc(4350, val('[[endereco]]'), { gridSpan: 3, borders: bRowLine }),
+    tc(950, rot('ENDEREÇO:'), { borders: bRowLine }),
+    tc(4050, val('[[endereco]]'), { gridSpan: 3, borders: bRowLine }),
   ]),
-], { borders: 'none', marTop: 14, marBottom: 14, marLeft: 45, marRight: 45 }));
+], { borders: 'none', marTop: 14, marBottom: 14, marLeft: 40, marRight: 40 }));
 
 parts.push(espaco(100));
 
 parts.push(tbl([5000], [
   trow([
-    tc(5000, para(run('ENSAIO DE [[nome_ensaio]]', { bold: true, size: 17, caps: true }), { ...pIdOpts, jc: 'center' }), {
+    tc(5000, para(run('ENSAIO DE [[nome_ensaio]]', { bold: true, size: 22, caps: true }), { ...pIdOpts, jc: 'center' }), {
       shade: GRAY_BG,
       borders: { top: B_MED, bottom: B_MED, left: B_MED, right: B_MED },
     }),
@@ -245,20 +245,20 @@ parts.push(tagLinha('[[/temMotivacao]]'));
 // Mapa de localização (opcional)
 parts.push(tagLinha('[[#temMapa]]'));
 parts.push(para(run('[[mapa_img]]'), { jc: 'center', before: 40, after: 20, keepNext: true }));
-parts.push(para(run('Figura [[figMapaNum]] — Localização do empreendimento.', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
+parts.push(para(run('Figura [[figMapaNum]] — Localização do empreendimento.', { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
 parts.push(tagLinha('[[/temMapa]]'));
 
 // Foto geral da estrutura (opcional)
 parts.push(tagLinha('[[#temFotoGeral]]'));
 parts.push(para(run('[[foto_geral_img]]'), { jc: 'center', before: 40, after: 20, keepNext: true }));
-parts.push(para(run('Figura [[figFotoGeralNum]] — Vista geral da estrutura ensaiada.', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
+parts.push(para(run('Figura [[figFotoGeralNum]] — Vista geral da estrutura ensaiada.', { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
 parts.push(tagLinha('[[/temFotoGeral]]'));
 
 // Croquis gerais (múltiplas imagens, opcional)
 parts.push(tagLinha('[[#temCroquis]]'));
 parts.push(tagLinha('[[#croquis]]'));
 parts.push(para(run('[[marcador]]'), { jc: 'center', before: 40, after: 20, keepNext: true }));
-parts.push(para(run('Figura [[figNum]] — Croqui de localização dos elementos ensaiados[[sufixo]].', { italic: true, size: 16, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
+parts.push(para(run('Figura [[figNum]] — Croqui de localização dos elementos ensaiados[[sufixo]].', { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 80 }));
 parts.push(tagLinha('[[/croquis]]'));
 parts.push(tagLinha('[[/temCroquis]]'));
 
@@ -286,63 +286,63 @@ parts.push(paragrafoCorpo([
   run(' elemento(s) estrutural(is) inspecionado(s).', { size: 22 }),
 ]));
 
-// Colunas: Item(340) | Elemento(1060) | Tipo/Seção(1060) | Médio(440) | Mín(420) | Máx(420) | DP(420) | CV(420) | Moda(420) = 5000
-const resCols = [340, 1060, 1060, 440, 420, 420, 420, 420, 420];
+// Colunas: Item(380) | Elemento(1000) | Tipo/Seção(1020) | Médio(450) | Mín(430) | Máx(430) | DP(430) | CV(430) | Moda(430) = 5000
+const resCols = [380, 1000, 1020, 450, 430, 430, 430, 430, 430];
 
-parts.push(para(run('Tabela 1 — Resumo estatístico dos cobrimentos de concreto medidos por pacometria.', { bold: true, size: 15, color: NAVY_TITLE }), { jc: 'center', before: 30, after: 30, keepNext: true }));
+parts.push(para(run('Tabela 1 — Resumo estatístico dos cobrimentos de concreto medidos por pacometria.', { bold: true, size: 22, color: NAVY_TITLE }), { jc: 'center', before: 30, after: 30, keepNext: true }));
 parts.push(tbl(resCols, [
   trow([
-    tc(340, 'ITEM', { bold: true, size: 15, color: WHITE, shade: NAVY_HEADER }),
-    tc(1060, 'ELEMENTO', { bold: true, size: 15, color: WHITE, shade: NAVY_HEADER }),
-    tc(1060, 'TIPO / SEÇÃO', { bold: true, size: 15, color: WHITE, shade: NAVY_HEADER }),
-    tc(440, 'MÉDIO\n(mm)', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
-    tc(420, 'MÍN.\n(mm)', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
-    tc(420, 'MÁX.\n(mm)', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
-    tc(420, 'DP\n(mm)', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
-    tc(420, 'CV\n(%)', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
-    tc(420, 'MODA\n(mm)', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
+    tc(380, 'ITEM', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(1000, 'ELEMENTO', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(1020, 'TIPO / SEÇÃO', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(450, 'MÉDIO\n(mm)', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(430, 'MÍN.\n(mm)', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(430, 'MÁX.\n(mm)', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(430, 'DP\n(mm)', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(430, 'CV\n(%)', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(430, 'MODA\n(mm)', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
   ], { header: true }),
   trow([
-    tc(340, [run('[[#resumo]]', { size: 2 }), run('[[item]]', { bold: true, size: 15 })]),
-    tc(1060, '[[elemento]]', { align: 'left', bold: true, size: 15 }),
-    tc(1060, '[[tipoResumo]]', { align: 'left', size: 14 }),
-    tc(440, '[[cobMedio]]', { bold: true, size: 15 }),
-    tc(420, '[[cobMinimo]]', { size: 15 }),
-    tc(420, '[[cobMaximo]]', { size: 15 }),
-    tc(420, '[[cobDesvio]]', { size: 15 }),
-    tc(420, '[[cobCV]]', { size: 15 }),
-    tc(420, [run('[[cobModa]]', { size: 15 }), run('[[/resumo]]', { size: 2 })]),
+    tc(380, [run('[[#resumo]]', { size: 2 }), run('[[item]]', { bold: true, size: 22 })]),
+    tc(1000, '[[elemento]]', { align: 'left', bold: true, size: 22 }),
+    tc(1020, '[[tipoResumo]]', { align: 'left', size: 22 }),
+    tc(450, '[[cobMedio]]', { bold: true, size: 22 }),
+    tc(430, '[[cobMinimo]]', { size: 22 }),
+    tc(430, '[[cobMaximo]]', { size: 22 }),
+    tc(430, '[[cobDesvio]]', { size: 22 }),
+    tc(430, '[[cobCV]]', { size: 22 }),
+    tc(430, [run('[[cobModa]]', { size: 22 }), run('[[/resumo]]', { size: 2 })]),
   ]),
-], { borders: 'navy', marTop: 22, marBottom: 22, marLeft: 32, marRight: 32 }));
+], { borders: 'navy', marTop: 22, marBottom: 22, marLeft: 24, marRight: 24 }));
 
 parts.push(para(
-  run('Legenda: DP = Desvio Padrão; CV = Coeficiente de Variação. Cobrimentos obtidos exclusivamente na armadura mais externa (estribos em pilares/vigas; camada externa em lajes/áreas livres).', { italic: true, size: 14, color: '444444' }),
-  { jc: 'left', before: 30, after: 80, line: 200 },
+  run('Legenda: DP = Desvio Padrão; CV = Coeficiente de Variação. Cobrimentos obtidos exclusivamente na armadura mais externa (estribos em pilares/vigas; camada externa em lajes/áreas livres).', { italic: true, size: 22, color: '444444' }),
+  { jc: 'left', before: 30, after: 80, line: 220 },
 ));
 
 // ── 4. DETALHAMENTO POR ELEMENTO ENSAIADO (INJEÇÃO DINÂMICA) ──
 parts.push(tituloSecao('4. DETALHAMENTO POR ELEMENTO ENSAIADO'));
-parts.push(para(run('BLOCO_ELEMENTOS_PAC_END', { size: 16 }), { before: 0, after: 0 }));
+parts.push(para(run('BLOCO_ELEMENTOS_PAC_END', { size: 22 }), { before: 0, after: 0 }));
 
 // ── 5. RESUMO EXECUTIVO E CONCLUSÃO (OPCIONAL) ────────────────
 parts.push(tagLinha('[[#temConclusao]]'));
 parts.push(tituloSecao('5. RESUMO EXECUTIVO E CONCLUSÃO'));
 
-parts.push(para(run('Tabela [[tabResumoGlobalNum]] — Síntese global dos resultados de pacometria.', { bold: true, size: 15, color: NAVY_TITLE }), { jc: 'center', before: 20, after: 30, keepNext: true }));
+parts.push(para(run('Tabela [[tabResumoGlobalNum]] — Síntese global dos resultados de pacometria.', { bold: true, size: 22, color: NAVY_TITLE }), { jc: 'center', before: 20, after: 30, keepNext: true }));
 parts.push(tbl([1250, 1250, 1250, 1250], [
   trow([
-    tc(1250, 'ELEMENTOS ENSAIADOS', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
-    tc(1250, 'TOTAL DE LEITURAS', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
-    tc(1250, 'COBRIMENTO MÉDIO GLOBAL', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
-    tc(1250, 'FAIXA GLOBAL (MÍN – MÁX)', { bold: true, size: 14, color: WHITE, shade: NAVY_HEADER }),
+    tc(1250, 'ELEMENTOS ENSAIADOS', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(1250, 'TOTAL DE LEITURAS', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(1250, 'COBRIMENTO MÉDIO GLOBAL', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
+    tc(1250, 'FAIXA GLOBAL (MÍN – MÁX)', { bold: true, size: 22, color: WHITE, shade: NAVY_HEADER }),
   ], { header: true }),
   trow([
-    tc(1250, '[[resumoTiposGlobal]]', { bold: true, size: 14, shade: ROW_ALT }),
-    tc(1250, '[[totalLeiturasGlobal]]', { bold: true, size: 15, shade: ROW_ALT }),
-    tc(1250, '[[cobMedioGlobal]]', { bold: true, size: 15, shade: ROW_ALT }),
-    tc(1250, '[[faixaGlobal]]', { bold: true, size: 14, shade: ROW_ALT }),
+    tc(1250, '[[resumoTiposGlobal]]', { bold: true, size: 22, shade: ROW_ALT }),
+    tc(1250, '[[totalLeiturasGlobal]]', { bold: true, size: 22, shade: ROW_ALT }),
+    tc(1250, '[[cobMedioGlobal]]', { bold: true, size: 22, shade: ROW_ALT }),
+    tc(1250, '[[faixaGlobal]]', { bold: true, size: 22, shade: ROW_ALT }),
   ]),
-], { borders: 'navy', marTop: 22, marBottom: 22, marLeft: 40, marRight: 40 }));
+], { borders: 'navy', marTop: 22, marBottom: 22, marLeft: 32, marRight: 32 }));
 
 parts.push(espaco(80, 30, 20));
 parts.push(paragrafoCorpo(run('[[conclusao]]', { size: 22 })));
@@ -394,8 +394,8 @@ const quadroOpts = { borders: 'none', marTop: 30, marBottom: 30, marLeft: 60, ma
 const comNotas = tbl([2500, 2500], [
   trow([
     tc(5000, [
-      para(run('NOTAS:', { bold: true, size: 15 }), { jc: 'left', after: 20, keepNext: true }),
-      para(run('[[notas]]', { size: 14 }), { jc: 'left', indentLeft: 60, keepNext: true }),
+      para(run('NOTAS:', { bold: true, size: 22 }), { jc: 'left', after: 20, keepNext: true }),
+      para(run('[[notas]]', { size: 22 }), { jc: 'left', indentLeft: 60, keepNext: true }),
     ], {
       gridSpan: 2,
       vAlign: 'top',

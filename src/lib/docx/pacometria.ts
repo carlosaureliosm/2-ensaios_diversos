@@ -103,7 +103,7 @@ function escXml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function xmlRpr({ bold = false, italic = false, color = BLACK, size = 16 } = {}): string {
+function xmlRpr({ bold = false, italic = false, color = BLACK, size = 22 } = {}): string {
   let x = '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>';
   if (bold) x += '<w:b/><w:bCs/>';
   if (italic) x += '<w:i/><w:iCs/>';
@@ -514,8 +514,8 @@ export function montarDadosPacometria(
     const headerElemTbl = xmlTbl([5000], [
       xmlTrow([
         xmlTc(5000, [
-          xmlRun(`4.${itemNum}  ${elemNome}`, { bold: true, size: 17, color: WHITE }),
-          xmlRun(`   —   ${tipoLabel} (${resumoGeometria})`, { size: 15, color: WHITE }),
+          xmlRun(`4.${itemNum}  ${elemNome}`, { bold: true, size: 22, color: WHITE }),
+          xmlRun(`   —   ${tipoLabel} (${resumoGeometria})`, { size: 22, color: WHITE }),
         ], {
           align: 'left',
           shade: NAVY_HEADER,
@@ -526,18 +526,18 @@ export function montarDadosPacometria(
       ]),
       xmlTrow([
         xmlTc(5000, [
-          xmlRun('Médio: ', { bold: true, size: 14, color: NAVY_TITLE }),
-          xmlRun(`${cobMedioStr} mm   |   `, { size: 14 }),
-          xmlRun('Mínimo: ', { bold: true, size: 14, color: NAVY_TITLE }),
-          xmlRun(`${cobMinStr} mm   |   `, { size: 14 }),
-          xmlRun('Máximo: ', { bold: true, size: 14, color: NAVY_TITLE }),
-          xmlRun(`${cobMaxStr} mm   |   `, { size: 14 }),
-          xmlRun('DP: ', { bold: true, size: 14, color: NAVY_TITLE }),
-          xmlRun(`${cobDpStr} mm   |   `, { size: 14 }),
-          xmlRun('CV: ', { bold: true, size: 14, color: NAVY_TITLE }),
-          xmlRun(`${cobCvStr}%   |   `, { size: 14 }),
-          xmlRun('Moda: ', { bold: true, size: 14, color: NAVY_TITLE }),
-          xmlRun(cobModaStr, { size: 14 }),
+          xmlRun('Médio: ', { bold: true, size: 22, color: NAVY_TITLE }),
+          xmlRun(`${cobMedioStr} mm   |   `, { size: 22 }),
+          xmlRun('Mínimo: ', { bold: true, size: 22, color: NAVY_TITLE }),
+          xmlRun(`${cobMinStr} mm   |   `, { size: 22 }),
+          xmlRun('Máximo: ', { bold: true, size: 22, color: NAVY_TITLE }),
+          xmlRun(`${cobMaxStr} mm   |   `, { size: 22 }),
+          xmlRun('DP: ', { bold: true, size: 22, color: NAVY_TITLE }),
+          xmlRun(`${cobDpStr} mm   |   `, { size: 22 }),
+          xmlRun('CV: ', { bold: true, size: 22, color: NAVY_TITLE }),
+          xmlRun(`${cobCvStr}%   |   `, { size: 22 }),
+          xmlRun('Moda: ', { bold: true, size: 22, color: NAVY_TITLE }),
+          xmlRun(cobModaStr, { size: 22 }),
         ], {
           align: 'left',
           shade: ROW_ALT,
@@ -549,10 +549,12 @@ export function montarDadosPacometria(
 
     blocosElementos.push(headerElemTbl);
 
-    // 2) Esquema em largura total (maior legibilidade) + Foto integrada à ficha do elemento
     const temEsquema = imagemValida(a.esquema);
+    const perfisValidos = (a.perfis ?? []).filter(p => imagemValida(p?.imagem));
+    const temPerfis = perfisValidos.length > 0;
     const temFoto = imagemValida(a.foto);
 
+    // 2) Esquema da seção transversal / malha (1º na ordem da ficha)
     if (temEsquema) {
       figNum += 1;
       const figEsq = figNum;
@@ -567,46 +569,22 @@ export function montarDadosPacometria(
         maxAlturaCm: 8.2,
       });
       const descEsquema = a.tipo === 'laje' ? 'Malha ensaiada' : 'Esquema da seção transversal';
+      const bBotEsq = !temPerfis && !temFoto && a.tipo !== 'laje' ? B_NAVY : B_LIGHT;
       blocosElementos.push(xmlTbl([5000], [
         xmlTrow([
           xmlTc(5000, [
             xmlPara(xmlRun(esqMarc), { jc: 'center', before: 24, after: 16, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figEsq} — ${descEsquema} — ${elemNome} (${resumoGeometria}).`, { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figEsq} — ${descEsquema} — ${elemNome} (${resumoGeometria}).`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 14, keepNext: true }),
           ], {
-            borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
+            borders: { top: B_NONE, bottom: bBotEsq, left: B_NAVY, right: B_NAVY },
           }),
         ]),
       ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
     }
 
-    if (temFoto) {
-      figNum += 1;
-      const figFoto = figNum;
-      const fotoMarc = `FOTO_ELEM_PAC_${itemNum}_END`;
-      imagens.push({
-        marcador: fotoMarc,
-        buffer: bufferDeBase64(a.foto!.base64),
-        contentType: a.foto!.contentType || 'image/jpeg',
-        width: a.foto!.width,
-        height: a.foto!.height,
-        maxLarguraCm: 11.0,
-        maxAlturaCm: 7.4,
-      });
-      blocosElementos.push(xmlTbl([5000], [
-        xmlTrow([
-          xmlTc(5000, [
-            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 22, after: 14, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico — ${elemNome}.`, { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 14 }),
-          ], {
-            borders: { top: B_NONE, bottom: B_LIGHT, left: B_NAVY, right: B_NAVY },
-          }),
-        ]),
-      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
-    }
-
-    // 3) Perfis de elevação por face (Pilar / Viga)
-    const perfisValidos = (a.perfis ?? []).filter(p => imagemValida(p?.imagem));
-    if (perfisValidos.length > 0) {
+    // 3) Perfis de elevação por face (2º na ordem da ficha — Pilar / Viga)
+    if (temPerfis) {
+      const bBotPerfisFinal = temFoto ? B_LIGHT : B_NAVY;
       if (perfisValidos.length === 1) {
         const p = perfisValidos[0];
         figNum += 1;
@@ -624,9 +602,9 @@ export function montarDadosPacometria(
           xmlTrow([
             xmlTc(5000, [
               xmlPara(xmlRun(marc), { jc: 'center', before: 20, after: 14, keepNext: true }),
-              xmlPara(xmlRun(`Figura ${figNum} — Perfil de elevação — ${p.faceLabel} (${elemNome}).`, { italic: true, size: 14, color: NAVY_TITLE }), { jc: 'center', after: 12 }),
+              xmlPara(xmlRun(`Figura ${figNum} — Perfil de elevação — ${p.faceLabel} (${elemNome}).`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 12 }),
             ], {
-              borders: { top: B_NONE, bottom: B_NAVY, left: B_NAVY, right: B_NAVY },
+              borders: { top: B_NONE, bottom: bBotPerfisFinal, left: B_NAVY, right: B_NAVY },
             }),
           ]),
         ], { borders: 'none', marTop: 10, marBottom: 10, marLeft: 24, marRight: 24 }));
@@ -636,7 +614,7 @@ export function montarDadosPacometria(
           const pEsq = perfisValidos[pi];
           const pDir = perfisValidos[pi + 1];
           const ultimaLinha = pi + 2 >= perfisValidos.length;
-          const bBot = ultimaLinha ? B_NAVY : B_LIGHT;
+          const bBot = ultimaLinha ? bBotPerfisFinal : B_LIGHT;
 
           figNum += 1;
           const figEsq = figNum;
@@ -653,7 +631,7 @@ export function montarDadosPacometria(
 
           const cellEsq = xmlTc(2500, [
             xmlPara(xmlRun(marcEsq), { jc: 'center', before: 18, after: 12, keepNext: true }),
-            xmlPara(xmlRun(`Figura ${figEsq} — Perfil — ${pEsq.faceLabel}.`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
+            xmlPara(xmlRun(`Figura ${figEsq} — Perfil — ${pEsq.faceLabel}.`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
           ], {
             borders: { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_LIGHT },
           });
@@ -674,7 +652,7 @@ export function montarDadosPacometria(
             });
             cellDir = xmlTc(2500, [
               xmlPara(xmlRun(marcDir), { jc: 'center', before: 18, after: 12, keepNext: true }),
-              xmlPara(xmlRun(`Figura ${figDir} — Perfil — ${pDir.faceLabel}.`, { italic: true, size: 13, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
+              xmlPara(xmlRun(`Figura ${figDir} — Perfil — ${pDir.faceLabel}.`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 10 }),
             ], {
               borders: { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY },
             });
@@ -690,7 +668,34 @@ export function montarDadosPacometria(
       }
     }
 
-    // 4) Tabela de leituras compactada apenas para LAJE (Pilar/Viga já apresentam os dados nos perfis visuais)
+    // 4) Foto do elemento integrada à ficha (por último na ordem da ficha)
+    if (temFoto) {
+      figNum += 1;
+      const figFoto = figNum;
+      const fotoMarc = `FOTO_ELEM_PAC_${itemNum}_END`;
+      imagens.push({
+        marcador: fotoMarc,
+        buffer: bufferDeBase64(a.foto!.base64),
+        contentType: a.foto!.contentType || 'image/jpeg',
+        width: a.foto!.width,
+        height: a.foto!.height,
+        maxLarguraCm: 11.0,
+        maxAlturaCm: 7.4,
+      });
+      const bBotFoto = a.tipo === 'laje' ? B_LIGHT : B_NAVY;
+      blocosElementos.push(xmlTbl([5000], [
+        xmlTrow([
+          xmlTc(5000, [
+            xmlPara(xmlRun(fotoMarc), { jc: 'center', before: 22, after: 14, keepNext: true }),
+            xmlPara(xmlRun(`Figura ${figFoto} — Registro fotográfico — ${elemNome}.`, { italic: true, size: 22, color: NAVY_TITLE }), { jc: 'center', after: 14 }),
+          ], {
+            borders: { top: B_NONE, bottom: bBotFoto, left: B_NAVY, right: B_NAVY },
+          }),
+        ]),
+      ], { borders: 'none', marTop: 12, marBottom: 12, marLeft: 28, marRight: 28 }));
+    }
+
+    // 5) Tabela de leituras compactada apenas para LAJE (Pilar/Viga já apresentam os dados nos perfis visuais)
     if (a.tipo === 'laje' && a.lajeData) {
       tabNum += 1;
       const tabAtual = tabNum;
@@ -701,15 +706,15 @@ export function montarDadosPacometria(
       const cobBordas = formatarCobBordasLaje(ld);
 
       const faixaRuns = [
-        xmlRun('Camada mais externa: ', { bold: true, size: 14, color: NAVY_TITLE }),
-        xmlRun(`${camadaExternaLabel}   |   `, { size: 14 }),
-        xmlRun('Malha: ', { bold: true, size: 14, color: NAVY_TITLE }),
-        xmlRun(dimLaje, { size: 14 }),
+        xmlRun('Camada mais externa: ', { bold: true, size: 22, color: NAVY_TITLE }),
+        xmlRun(`${camadaExternaLabel}   |   `, { size: 22 }),
+        xmlRun('Malha: ', { bold: true, size: 22, color: NAVY_TITLE }),
+        xmlRun(dimLaje, { size: 22 }),
       ];
       if (cobBordas) {
         faixaRuns.push(
-          xmlRun('   |   Cobrimentos às bordas: ', { bold: true, size: 14, color: NAVY_TITLE }),
-          xmlRun(cobBordas, { size: 14 }),
+          xmlRun('   |   Cobrimentos às bordas: ', { bold: true, size: 22, color: NAVY_TITLE }),
+          xmlRun(cobBordas, { size: 22 }),
         );
       }
 
@@ -789,13 +794,13 @@ export function montarDadosPacometria(
 
       blocosElementos.push(
         xmlPara(
-          xmlRun(`Tabela ${tabAtual} — Leituras da malha — ${elemNome}.`, { bold: true, size: 14, color: NAVY_TITLE }),
+          xmlRun(`Tabela ${tabAtual} — Leituras da malha — ${elemNome}.`, { bold: true, size: 22, color: NAVY_TITLE }),
           { jc: 'left', before: 50, after: 20, keepNext: true },
         ),
       );
 
       const headerRow = xmlTrow(
-        cols.map((c, ci) => xmlTc(larguras[ci], c.titulo, { bold: true, size: 13, color: NAVY_TITLE, shade: GRAY_BG })),
+        cols.map((c, ci) => xmlTc(larguras[ci], c.titulo, { bold: true, size: 22, color: NAVY_TITLE, shade: GRAY_BG })),
         { header: true },
       );
       const dataRows = barrasLaje.map((r, ri) =>
@@ -804,7 +809,7 @@ export function montarDadosPacometria(
             xmlTc(larguras[ci], c.val(r), {
               align: c.align,
               bold: c.bold,
-              size: 14,
+              size: 22,
               shade: ri % 2 === 1 ? ROW_ALT : undefined,
             }),
           ),
