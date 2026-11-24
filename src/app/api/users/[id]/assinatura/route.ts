@@ -39,7 +39,10 @@ export async function GET(
   const admin = createAdminClient();
   const { data: targetData } = await admin.auth.admin.getUserById(id);
   const storagePath = targetData?.user?.user_metadata?.assinatura_path;
-  if (typeof storagePath !== 'string') return NextResponse.json({ assinatura_url: null });
+  // user_metadata pode ser editado pelo próprio cliente com a anon key: restringir sempre à pasta do id alvo.
+  if (typeof storagePath !== 'string' || !storagePath.startsWith(`${id}/`) || storagePath.includes('..')) {
+    return NextResponse.json({ assinatura_url: null });
+  }
 
   const { data: signed, error } = await admin.storage.from(BUCKET).createSignedUrl(storagePath, URL_TTL_SEGUNDOS);
   if (error || !signed) return NextResponse.json({ assinatura_url: null });

@@ -6,12 +6,24 @@ export async function POST(request: NextRequest) {
   if (!(await usuarioAtual())) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
   try {
-    const body = await request.json();
-    const { latitude, longitude } = body;
+    let body: { latitude?: unknown; longitude?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+    }
 
-    if (!latitude || !longitude) {
+    const lat = typeof body.latitude === 'number' ? body.latitude : Number(body.latitude);
+    const lng = typeof body.longitude === 'number' ? body.longitude : Number(body.longitude);
+
+    if (
+      body.latitude === undefined || body.latitude === null || body.latitude === '' ||
+      body.longitude === undefined || body.longitude === null || body.longitude === '' ||
+      !Number.isFinite(lat) || !Number.isFinite(lng) ||
+      lat < -90 || lat > 90 || lng < -180 || lng > 180
+    ) {
       return NextResponse.json(
-        { error: 'Latitude e longitude são obrigatórias' },
+        { error: 'Latitude e longitude válidas são obrigatórias' },
         { status: 400 }
       );
     }
@@ -26,10 +38,10 @@ export async function POST(request: NextRequest) {
     }
 
     const mapUrl = new URL('https://maps.googleapis.com/maps/api/staticmap');
-    mapUrl.searchParams.append('center', `${latitude},${longitude}`);
+    mapUrl.searchParams.append('center', `${lat},${lng}`);
     mapUrl.searchParams.append('zoom', '15');
     mapUrl.searchParams.append('size', '640x480');
-    mapUrl.searchParams.append('markers', `color:red|${latitude},${longitude}`);
+    mapUrl.searchParams.append('markers', `color:red|${lat},${lng}`);
     mapUrl.searchParams.append('key', apiKey);
 
     const response = await fetch(mapUrl.toString());

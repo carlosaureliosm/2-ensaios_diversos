@@ -12,13 +12,15 @@ import fs from 'fs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { BUCKET_FOTOS_ADERENCIA } from '@/lib/aderenciaStorage';
 import type { FotoAnexo } from '@/modules/aderencia/types';
-import { injetarAssinatura, atualizarSumario } from '@/lib/docx/esclerometria';
+import { injetarAssinatura, atualizarSumario, sanitizarNomeArquivoDocx } from '@/lib/docx/esclerometria';
 import {
   montarDadosAderencia,
   injetarImagensAderencia,
   formatarRltAderencia,
   type AderenciaDocxPayload,
 } from '@/lib/docx/aderencia';
+
+export const maxDuration = 60;
 
 type RequestBody = AderenciaDocxPayload & {
   respAssinaturaUrl?: string;
@@ -107,7 +109,7 @@ export async function POST(req: NextRequest) {
     atualizarSumario(renderedZip);
 
     const output = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
-    const nomeArquivo = formatarRltAderencia(body.cabecalho.rltNumero);
+    const nomeArquivo = sanitizarNomeArquivoDocx(formatarRltAderencia(body.cabecalho.rltNumero));
 
     return new NextResponse(output as unknown as BodyInit, {
       status: 200,

@@ -30,4 +30,4 @@ Não criar cabeçalhos/abas customizados, cartões com `boxShadow` difuso, `bord
 - **Inteiros (`InteiroInput`):** nunca travar valor mínimo/fallback no `onChange` — permitir apagar completamente durante a digitação e aplicar o mínimo apenas no `onBlur`.
 - **Teclado numérico mobile:** campos inteiros usam `inputMode="numeric" pattern="[0-9]*"`; decimais usam `inputMode="decimal"` (com vírgula decimal, sem `type="number"`).
 - **Anti-zoom iOS/Android:** `src/app/layout.tsx` exporta `viewport` (`maximumScale: 1, userScalable: false`) e `src/app/globals.css` aplica em `@media (max-width: 768px)` `font-size: 16px !important` + `touch-action: manipulation` em `input` (exceto `color`/`checkbox`/`radio`/`file`), `textarea` e `select`, além de `touch-action: pan-y` e `text-size-adjust: 100%` em `html, body`.
-- **Header mobile:** toda página que usa `Header` precisa do `@media (max-width: 600px)` com `.header-*`/`.signout-text`/`.sb-u` para evitar overflow horizontal em telas de 320–360px.
+- **Header mobile:** `src/components/Header.tsx` já embute o `@media (max-width: 600px)` com `.header-*`/`.signout-text`/`.sb-u` para evitar overflow horizontal em telas de 320–360px.

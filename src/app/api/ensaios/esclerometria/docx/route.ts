@@ -24,11 +24,10 @@ import {
   injetarCroquiMultiplo,
   injetarMemorial,
   atualizarSumario,
+  sanitizarNomeArquivoDocx,
 } from '@/lib/docx/esclerometria';
 
-export const config = {
-  api: { bodyParser: { sizeLimit: '20mb' } },
-};
+export const maxDuration = 60;
 
 // ── Tipos ──────────────────────────────────────────────────────
 type AmostraPayload = {
@@ -182,6 +181,7 @@ export async function POST(req: NextRequest) {
       paragraphLoop: true,
       linebreaks: true,
       delimiters: { start: '[[', end: ']]' },
+      nullGetter: () => '',
     });
     doc.render(dados);
 
@@ -214,12 +214,13 @@ export async function POST(req: NextRequest) {
     atualizarSumario(renderedZip);
 
     const output = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+    const nomeArquivo = sanitizarNomeArquivoDocx(rltOficial);
 
     return new NextResponse(output as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${rltOficial}.docx"`,
+        'Content-Disposition': `attachment; filename="${nomeArquivo}.docx"`,
       },
     });
   } catch (err: unknown) {

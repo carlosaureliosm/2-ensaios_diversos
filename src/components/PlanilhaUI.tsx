@@ -5,6 +5,7 @@
 // existentes e futuros para manter cores, tabelas, fichas e responsividade uniformes.
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
 
 export const CORES_PLANILHA = {
@@ -326,9 +327,9 @@ export function EnsaioCabecalho({
   return (
     <div style={{ marginBottom }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-        <a href="/dashboard" style={{ fontSize: 12, color: CORES_PLANILHA.SUBTEXT, textDecoration: 'none' }}>
+        <Link href="/dashboard" style={{ fontSize: 12, color: CORES_PLANILHA.SUBTEXT, textDecoration: 'none' }}>
           Ensaios
-        </a>
+        </Link>
         <span style={{ fontSize: 12, color: CORES_PLANILHA.SUBTEXT }}>›</span>
         <span style={{ fontSize: 12, color: CORES_PLANILHA.PRIMARY, fontWeight: 700 }}>{breadcrumb}</span>
       </div>

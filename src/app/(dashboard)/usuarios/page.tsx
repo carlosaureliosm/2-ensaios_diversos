@@ -546,8 +546,7 @@ export default function UsuariosPage() {
 
   const loadCurrentUser = useCallback(async () => {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push('/login'); return undefined; }
     const cu: CurrentUser = {
       id: user.id,

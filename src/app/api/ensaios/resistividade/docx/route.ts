@@ -23,6 +23,8 @@ import {
   injetarCroqui,
   injetarMapa,
   buscarImagemMapa,
+  atualizarSumario,
+  sanitizarNomeArquivoDocx,
 } from '@/lib/docx/esclerometria';
 
 // App Router: route handlers não possuem limite artificial de body.
@@ -110,11 +112,15 @@ export async function POST(req: NextRequest) {
       if (file) zip.file(xmlPath, prepararXml(file.asText()));
     }
 
+    // ── Mapa (buscar antes do render para não vazar MAPA_PLACEHOLDER se falhar) ─
+    const mapa = await buscarImagemMapa(body.endereco, body.coordenadas);
+
     // ── Dados formatados ────────────────────────────────────────
     const rltOficial = formatarRlt(body.rlt);
     const { capa: dataCapa, corpo: dataCorpo } = formatarData(body.data);
     const obraTitle  = toTitleCase(body.obra);
     const endTitle   = toTitleCase(body.endereco);
+    const medicoes = Array.isArray(body.medicoes) ? body.medicoes : [];
 
     // ── Template data ────────────────────────────────────────────
     const templateData = {
@@ -136,17 +142,17 @@ export async function POST(req: NextRequest) {
       foto_geral_imagem: body.fotoGeralBase64 ? 'FOTO_GERAL_PLACEHOLDER' : '',
       croqui:            !!body.croquiBase64,
       croqui_imagem:     body.croquiBase64 ? 'CROQUI_PLACEHOLDER' : '',
-      fotos_memorial:    body.medicoes.some(m => !!m.fotoBase64),
-      mapa:              'MAPA_PLACEHOLDER',
+      fotos_memorial:    medicoes.some(m => !!m.fotoBase64),
+      mapa:              mapa ? 'MAPA_PLACEHOLDER' : '',
       apar_marca:     body.aparMarca || 'Proceq',
       apar_modelo:    body.aparModelo || 'Resipod',
       apar_serie:     body.aparSerie || '—',
-      resp_nome:        body.respNome,
-      resp_crea:        body.respCrea,
+      resp_nome:        body.respNome || '—',
+      resp_crea:        body.respCrea || '—',
       resp_assinatura:  assinaturaBuffer ? 'ASSINATURA_PLACEHOLDER' : '',
       notas:            (body.notas || '').trim(),
       tem_notas:      !!body.notas?.trim(),
-      medicoes: body.medicoes.map(m => ({
+      medicoes: medicoes.map(m => ({
         item:          String(m.item),
         elemento:      m.elemento,
         posicao:       m.posicao,
@@ -159,7 +165,7 @@ export async function POST(req: NextRequest) {
         desvio:        m.desvio,
         classificacao: m.classificacao,
       })),
-      tem_fotos: body.medicoes.some(m => !!m.fotoBase64),
+      tem_fotos: medicoes.some(m => !!m.fotoBase64),
     };
 
     // ── Renderizar template ──────────────────────────────────────
@@ -167,6 +173,7 @@ export async function POST(req: NextRequest) {
       delimiters: { start: '[[', end: ']]' },
       paragraphLoop: true,
       linebreaks: true,
+      nullGetter: () => '',
     });
 
     doc.render(templateData);
@@ -193,13 +200,12 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Injetar mapa ─────────────────────────────────────────────
-    const mapa = await buscarImagemMapa(body.endereco, body.coordenadas);
     if (mapa) {
       injetarMapa(zipResult, mapa.buffer, mapa.width, mapa.height);
     }
 
     // ── Injetar memorial fotográfico ─────────────────────────────
-    const fotosParaMemorial = body.medicoes
+    const fotosParaMemorial = medicoes
       .filter(m => !!m.fotoBase64)
       .map(m => ({
         buffer:      Buffer.from(m.fotoBase64!, 'base64'),
@@ -213,14 +219,17 @@ export async function POST(req: NextRequest) {
       injetarMemorial(zipResult, fotosParaMemorial);
     }
 
+    atualizarSumario(zipResult);
+
     // ── Gerar buffer final ───────────────────────────────────────
     const outputBuffer = zipResult.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+    const nomeArquivo = sanitizarNomeArquivoDocx(rltOficial);
 
     return new NextResponse(outputBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${rltOficial}.docx"`,
+        'Content-Disposition': `attachment; filename="${nomeArquivo}.docx"`,
       },
     });
 

@@ -51,8 +51,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Acesso restrito a administradores.' }, { status: 403 });
   }
 
-  const body = await req.json();
-  const { email, password, full_name, cargo, crea, role } = body;
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+  }
+  const { email, password, full_name, cargo, crea, role } = body as {
+    email?: string;
+    password?: string;
+    full_name?: string;
+    cargo?: string;
+    crea?: string;
+    role?: string;
+  };
 
   if (!email || !password) {
     return NextResponse.json({ error: 'E-mail e senha são obrigatórios.' }, { status: 400 });

@@ -33,8 +33,22 @@ export async function PATCH(
     return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
   }
 
-  const body = await req.json();
-  const { full_name, cargo, crea, role, email, password, currentPassword, action } = body;
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+  }
+  const { full_name, cargo, crea, role, email, password, currentPassword, action } = body as {
+    full_name?: string;
+    cargo?: string;
+    crea?: string;
+    role?: string;
+    email?: string;
+    password?: string;
+    currentPassword?: string;
+    action?: string;
+  };
 
   const admin = createAdminClient();
 
@@ -148,6 +162,12 @@ export async function DELETE(
 
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  // Remove eventual imagem de assinatura do usuário excluído (melhor esforço)
+  await admin.storage
+    .from('assinaturas')
+    .remove(['png', 'jpg', 'webp'].map((ext) => `${id}/assinatura.${ext}`))
+    .catch(() => {});
 
   return NextResponse.json({ success: true });
 }

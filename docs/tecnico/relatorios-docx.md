@@ -20,13 +20,14 @@ Todos os laudos encerram com o quadro final `NOTAS` + 2 assinaturas lado a lado 
 
 ## Scripts de geração/manutenção de templates
 - `scripts/build-modelo-aderencia.js`: gera `public/modelo_aderencia.docx` clonando `public/modelo_esclerometria.docx` (reaproveita `styles.xml`, tema, logo e `word/media/image6.jpeg` em `rId13`), remove mídia não usada e substitui `document.xml`, `header1.xml` e `footer1.xml`. Nunca editar `modelo_aderencia.docx` à mão no Word — editar o script e rodar `node scripts/build-modelo-aderencia.js`.
+- `scripts/build-modelo-pacometria.js`: gera `public/modelo_pacometria.docx` no mesmo padrão (11 pt em todo o documento, sem quadro de normas, injeção dinâmica da Seção 4 via `BLOCO_ELEMENTOS_PAC_END`). Nunca editar `modelo_pacometria.docx` à mão no Word — editar o script e rodar `node scripts/build-modelo-pacometria.js`.
 - `scripts/aplicar-pagina1-padrao.js`: aplica de forma idempotente o padrão de página 1, header, margens e quadro final de notas/assinaturas em `modelo_esclerometria.docx` e `modelo_resistividade.docx`, removendo capa/sumário e imagens órfãs.
-  - Esclerometria: `NBR 7584:2026` no DOCX (observação: na tela/PDF client-side de `esclerometria/page.tsx` ainda consta `NBR 7584:2012`).
+  - Esclerometria: `NBR 7584:2026` no DOCX e na tela/PDF client-side.
   - Resistividade: `AASHTO T 358`, `RILEM TC 154-EMC (2003)`, `CEB-192 (1989)`, `COST 509`, e `manterTabelaJunta` aplica `<w:cantSplit/>` + `<w:keepNext/>` na Tabela 1.
 
 ## Estado dos templates por módulo
-- **Aderência:** `public/modelo_aderencia.docx` (`rId13 -> image6.jpeg`), rota `api/ensaios/aderencia/docx/route.ts` (ainda sem `export const maxDuration` — avaliar).
-- **Esclerometria:** `public/modelo_esclerometria.docx` (`rId13 -> image6.jpeg`), rota `api/ensaios/esclerometria/docx/route.ts`.
+- **Aderência:** `public/modelo_aderencia.docx` (`rId13 -> image6.jpeg`), rota `api/ensaios/aderencia/docx/route.ts` (`maxDuration = 60`).
+- **Esclerometria:** `public/modelo_esclerometria.docx` (`rId13 -> image6.jpeg`), rota `api/ensaios/esclerometria/docx/route.ts` (`maxDuration = 60`).
 - **Resistividade:** `public/modelo_resistividade.docx` (`rId11 -> image6.jpeg`), rota `api/ensaios/resistividade/docx/route.ts` (`maxDuration = 60`). Reutiliza `injetarCroqui` (imagem única) de `src/lib/docx/esclerometria.ts` — **não alterar a assinatura de `injetarCroqui`** sem migrar resistividade.
 - **Pacometria:** `public/modelo_pacometria.docx` (`rId13 -> image6.jpeg`, gerado por `scripts/build-modelo-pacometria.js`), rota `api/ensaios/pacometria/docx/route.ts` (`maxDuration = 60`). Já utiliza corpo de texto 11 pt (`w:sz="22"`), sem quadro de normas e sem tabela `Leituras por face` (dados exibidos nos perfis visuais).
 - **Futuros** (`carbonatacao`, `ultrassom`, `potencial-corrosao`): ainda sem rota DOCX; ao implementar, iniciar já no padrão acima com corpo de texto em 11 pt.

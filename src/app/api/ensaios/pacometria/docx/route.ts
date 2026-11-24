@@ -14,6 +14,7 @@ import {
   buscarImagemMapa,
   formatarRlt,
   injetarAssinatura,
+  sanitizarNomeArquivoDocx,
 } from '@/lib/docx/esclerometria';
 import {
   injetarBlocoElementosPacometria,
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
     atualizarSumario(renderedZip);
 
     const output = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
-    const nomeArquivo = body.rltOficial?.trim() || formatarRlt(body.cab.rlt || '');
+    const nomeArquivo = sanitizarNomeArquivoDocx(body.rltOficial?.trim() || formatarRlt(body.cab.rlt || ''));
 
     return new NextResponse(output as unknown as BodyInit, {
       status: 200,

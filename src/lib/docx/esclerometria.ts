@@ -13,10 +13,11 @@ export function toTitleCase(str: string): string {
 export function formatarData(ddmmaaaa: string): { capa: string; corpo: string } {
   const mesesCapa  = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
   const mesesCorpo = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const partes = ddmmaaaa.split('/');
+  const partes = (ddmmaaaa ?? '').split('/');
   if (partes.length !== 3) return { capa: '', corpo: '' };
   const [dd, mm, aaaa] = partes;
   const idx = parseInt(mm, 10) - 1;
+  if (isNaN(idx) || idx < 0 || idx > 11) return { capa: '', corpo: '' };
   return {
     capa:  `${mesesCapa[idx]}, ${aaaa}`,
     corpo: `Recife, ${dd} de ${mesesCorpo[idx]} de ${aaaa}`,
@@ -24,10 +25,22 @@ export function formatarData(ddmmaaaa: string): { capa: string; corpo: string } 
 }
 
 export function formatarRlt(rlt: string): string {
-  const n = rlt.trim();
-  if (!n) return 'RLT.LAU-XXX.26-00';
-  if (/^\d+$/.test(n)) return `RLT.LAU-${n.padStart(3, '0')}.26-00`;
-  return `RLT.LAU-${n}.26-00`;
+  const aa = String(new Date().getFullYear()).slice(-2);
+  const n = (rlt ?? '').trim();
+  if (!n) return `RLT.LAU-XXX.${aa}-00`;
+  if (/^\d+$/.test(n)) return `RLT.LAU-${n.padStart(3, '0')}.${aa}-00`;
+  return `RLT.LAU-${n}.${aa}-00`;
+}
+
+/** Sanitiza nome de arquivo para uso seguro no cabeçalho HTTP Content-Disposition. */
+export function sanitizarNomeArquivoDocx(nome: string): string {
+  const limpo = (nome || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/["\\\r\n/:*?<>|]/g, '_')
+    .replace(/[^\x20-\x7E]/g, '_')
+    .trim();
+  return limpo || 'relatorio';
 }
 
 /**
@@ -271,7 +284,7 @@ export function injetarMemorial(
 
   const cxFixo = cmParaEmu(8);
   const cyFixo = cmParaEmu(6);
-  const cxCelula = cmParaEmu(8);
+  const larguraColunaDxa = 5027;
 
   const rPrLegenda = `<w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>`;
   const pPrCentro = `<w:pPr><w:jc w:val="center"/></w:pPr>`;
@@ -294,21 +307,21 @@ export function injetarMemorial(
 
     const drawEsq = buildDrawingXml(`rId${910 + i}`, 910 + i, `MemorialFoto${i + 1}`, cxFixo, cyFixo);
     const celulaEsq =
-      `<w:tc>${tcPr(5027)}` +
+      `<w:tc>${tcPr(larguraColunaDxa)}` +
       `<w:p>${pPrCentro}<w:r>${rPrLegenda}${drawEsq}</w:r></w:p>` +
-      `<w:p>${pPrCentro}<w:r>${rPrLegenda}<w:t>Foto ${i + 1} — ${esq.legenda}</w:t></w:r></w:p>` +
+      `<w:p>${pPrCentro}<w:r>${rPrLegenda}<w:t>Foto ${i + 1} — ${escapeXml(esq.legenda)}</w:t></w:r></w:p>` +
       `</w:tc>`;
 
     let celulaDir = '';
     if (dir) {
       const drawDir = buildDrawingXml(`rId${910 + i + 1}`, 910 + i + 1, `MemorialFoto${i + 2}`, cxFixo, cyFixo);
       celulaDir =
-        `<w:tc>${tcPr(5027)}` +
+        `<w:tc>${tcPr(larguraColunaDxa)}` +
         `<w:p>${pPrCentro}<w:r>${rPrLegenda}${drawDir}</w:r></w:p>` +
-        `<w:p>${pPrCentro}<w:r>${rPrLegenda}<w:t>Foto ${i + 2} — ${dir.legenda}</w:t></w:r></w:p>` +
+        `<w:p>${pPrCentro}<w:r>${rPrLegenda}<w:t>Foto ${i + 2} — ${escapeXml(dir.legenda)}</w:t></w:r></w:p>` +
         `</w:tc>`;
     } else {
-      celulaDir = `<w:tc>${tcPr(5027)}<w:p><w:pPr><w:jc w:val="center"/></w:pPr></w:p></w:tc>`;
+      celulaDir = `<w:tc>${tcPr(larguraColunaDxa)}<w:p><w:pPr><w:jc w:val="center"/></w:pPr></w:p></w:tc>`;
     }
 
     linhas += `<w:tr>${celulaEsq}${celulaDir}</w:tr>`;
@@ -317,7 +330,7 @@ export function injetarMemorial(
   const novaTabela =
     `<w:tbl>` +
     `<w:tblPr>` +
-    `<w:tblW w:w="${cxCelula * 2}" w:type="dxa"/>` +
+    `<w:tblW w:w="${larguraColunaDxa * 2}" w:type="dxa"/>` +
     `<w:jc w:val="center"/>` +
     `<w:tblBorders>` +
     `<w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
@@ -328,7 +341,7 @@ export function injetarMemorial(
     `<w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>` +
     `</w:tblBorders>` +
     `</w:tblPr>` +
-    `<w:tblGrid><w:gridCol w:w="5027"/><w:gridCol w:w="5027"/></w:tblGrid>` +
+    `<w:tblGrid><w:gridCol w:w="${larguraColunaDxa}"/><w:gridCol w:w="${larguraColunaDxa}"/></w:tblGrid>` +
     linhas +
     `</w:tbl>`;
 
@@ -401,15 +414,11 @@ export async function buscarImagemMapa(
   try {
     const urlStr = mapUrl.toString();
     const res = await fetch(urlStr);
-    console.log('[buscarImagemMapa] status:', res.status, res.statusText);
-    console.log('[buscarImagemMapa] content-type:', res.headers.get('content-type'));
     if (!res.ok) {
-      const body = await res.text();
-      console.warn('[buscarImagemMapa] body erro:', body.slice(0, 500));
+      console.warn('[buscarImagemMapa] HTTP erro:', res.status, res.statusText);
       return null;
     }
     const buffer = Buffer.from(await res.arrayBuffer());
-    console.log('[buscarImagemMapa] buffer size:', buffer.length);
     return { buffer, width, height };
   } catch (err) {
     console.warn('[buscarImagemMapa] exceção:', err instanceof Error ? err.message : 'erro');

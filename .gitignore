@@ -1,4 +1,8 @@
 node_modules/
 .next/
+.env
 .env.local
+.env.*.local
+.claude/
+tsconfig.tsbuildinfo
 *.log

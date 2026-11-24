@@ -12,6 +12,7 @@ type UserState = {
   initials: string;
   loaded: boolean;
   fetchUser: () => Promise<void>;
+  reset: () => void;
 };
 
 function getInitials(name: string): string {
@@ -50,4 +51,14 @@ export const useUserStore = create<UserState>((set) => ({
       loaded: true,
     });
   },
+  reset: () =>
+    set({
+      userName: '',
+      userEmail: '',
+      userCargo: '',
+      userCrea: '',
+      userAssinatura: '',
+      initials: '',
+      loaded: false,
+    }),
 }));

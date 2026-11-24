@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useUserStore } from '@/store/userStore';
@@ -10,7 +11,7 @@ const GOLD    = '#C8A020';
 
 export default function Header({ paginaAtiva }: { paginaAtiva?: 'ensaios' | 'usuarios' }) {
   const router = useRouter();
-  const { userName, userCargo, initials, loaded, fetchUser } = useUserStore();
+  const { userName, userCargo, initials, loaded, fetchUser, reset } = useUserStore();
 
   useEffect(() => {
     if (!loaded) fetchUser();
@@ -19,19 +20,32 @@ export default function Header({ paginaAtiva }: { paginaAtiva?: 'ensaios' | 'usu
   const handleSignOut = async () => {
     const sb = createClient();
     await sb.auth.signOut();
+    reset();
     router.push('/login');
   };
 
   return (
     <header className="header-root" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 60, padding: '0 28px', backgroundColor: PRIMARY, boxShadow: '0 2px 12px rgba(30,50,100,0.25)', position: 'sticky', top: 0, zIndex: 50 }}>
-      <style>{`.sb-u:hover{background:rgba(255,255,255,0.12)!important}.nv-u:hover{color:#fff!important}`}</style>
+      <style>{`
+        .sb-u:hover{background:rgba(255,255,255,0.12)!important}
+        .nv-u:hover{color:#fff!important}
+        @media (max-width: 600px) {
+          .header-root { padding: 0 12px !important; flex-wrap: nowrap !important; }
+          .header-left { gap: 10px !important; flex-shrink: 1; min-width: 0; overflow: hidden; }
+          .header-right { gap: 4px !important; flex-shrink: 0; }
+          .header-user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .header-cargo, .header-divider { display: none !important; }
+          .signout-text { display: none; }
+          .sb-u { padding: 6px 8px !important; }
+        }
+      `}</style>
       <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: 32, flexShrink: 1, overflow: 'hidden' }}>
-        <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+        <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
           <img src="/logo_tecomat.png" alt="TECOMAT" style={{ height: 34, objectFit: 'contain' }} />
-        </a>
+        </Link>
         <nav style={{ display: 'flex', gap: 6 }}>
-          <a href="/dashboard" className="nv-u" style={{ fontSize: 13, fontWeight: 600, color: paginaAtiva === 'ensaios' ? '#fff' : 'rgba(255,255,255,0.65)', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, borderBottom: paginaAtiva === 'ensaios' ? `2px solid ${GOLD}` : 'none', transition: 'color 0.15s' }}>Ensaios</a>
-          <a href="/usuarios" className="nv-u" style={{ fontSize: 13, fontWeight: 600, color: paginaAtiva === 'usuarios' ? '#fff' : 'rgba(255,255,255,0.65)', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, borderBottom: paginaAtiva === 'usuarios' ? `2px solid ${GOLD}` : 'none', transition: 'color 0.15s' }}>Usuários</a>
+          <Link href="/dashboard" className="nv-u" style={{ fontSize: 13, fontWeight: 600, color: paginaAtiva === 'ensaios' ? '#fff' : 'rgba(255,255,255,0.65)', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, borderBottom: paginaAtiva === 'ensaios' ? `2px solid ${GOLD}` : 'none', transition: 'color 0.15s' }}>Ensaios</Link>
+          <Link href="/usuarios" className="nv-u" style={{ fontSize: 13, fontWeight: 600, color: paginaAtiva === 'usuarios' ? '#fff' : 'rgba(255,255,255,0.65)', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, borderBottom: paginaAtiva === 'usuarios' ? `2px solid ${GOLD}` : 'none', transition: 'color 0.15s' }}>Usuários</Link>
         </nav>
       </div>
       <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>

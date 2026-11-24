@@ -9,23 +9,29 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { usuarioAtual } from '@/lib/auth';
 import { BUCKET_FOTOS_ADERENCIA } from '@/lib/aderenciaStorage';
 
 const MAX_SIZE = 3 * 1024 * 1024; // a foto já vem comprimida (~100 KB); 3 MB é só teto de segurança
 const ALLOWED = ['image/jpeg', 'image/png'];
 
+let bucketGarantido = false;
+
 async function garantirBucket(admin: ReturnType<typeof createAdminClient>) {
+  if (bucketGarantido) return;
   const { data } = await admin.storage.getBucket(BUCKET_FOTOS_ADERENCIA);
-  if (data) return;
+  if (data) {
+    bucketGarantido = true;
+    return;
+  }
   const { error } = await admin.storage.createBucket(BUCKET_FOTOS_ADERENCIA, { public: false });
   // "already exists" em corrida entre duas requisições simultâneas não é erro
   if (error && !/already exists/i.test(error.message)) throw new Error(error.message);
+  bucketGarantido = true;
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await usuarioAtual();
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
   let form: FormData;
@@ -55,8 +61,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await usuarioAtual();
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
   const path = req.nextUrl.searchParams.get('path') ?? '';

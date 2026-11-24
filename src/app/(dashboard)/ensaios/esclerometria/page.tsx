@@ -125,7 +125,7 @@ async function gerarPDFOficial(cab: Cabecalho, amostras: AmostraRow[], mediaBigo
     rect(ML,8,PW-ML-MR,30,azulEscuro);
     if(logoData)doc.addImage(logoData,'PNG',ML+2,10,38,13);else txt('TECOMAT ENGENHARIA',ML+3,18,{size:11,bold:true,color:branco});
     txt('ENSAIO DE ESCLEROMETRIA',PW/2,16,{size:13,bold:true,color:branco,align:'center'});
-    txt('NBR 7584:2012',PW/2,22,{size:8,color:[200,210,230],align:'center'});
+    txt('NBR 7584:2026',PW/2,22,{size:8,color:[200,210,230],align:'center'});
     rect(PW-MR-42,10,42,8,[0,20,70]);txt('Nº DO LAUDO',PW-MR-41,14.5,{size:6,bold:true,color:[180,190,215]});txt(rltOficial,PW-MR-21,17.5,{size:7.5,bold:true,color:branco,align:'center'});
     rect(PW-MR-42,20,42,8,[0,20,70]);txt('PÁGINA',PW-MR-41,24.5,{size:6,bold:true,color:[180,190,215]});txt(`${pg} / ${tot}`,PW-MR-21,27.5,{size:7.5,bold:true,color:branco,align:'center'});
     doc.setFillColor(200,160,32);doc.rect(ML,38,PW-ML-MR,1.2,'F');
@@ -136,7 +136,7 @@ async function gerarPDFOficial(cab: Cabecalho, amostras: AmostraRow[], mediaBigo
     txt('CLIENTE:',ML+2,y+3.2,{size:7,bold:true,color:[80,90,120]});txt(cab.cliente||'—',ML+18,y+3.2,{size:8.5,maxWidth:110});txt('DATA DE EMISSÃO:',PW-MR-48,y+3.2,{size:7,bold:true,color:[80,90,120]});txt(cab.data||'—',PW-MR-10,y+3.2,{size:8.5,align:'right'});hLine(y+5,ML,PW-MR,0.2,[220,223,230]);y+=5.5;
     txt('OBRA:',ML+2,y+3.2,{size:7,bold:true,color:[80,90,120]});txt(cab.obra||'—',ML+18,y+3.2,{size:8.5,maxWidth:140});hLine(y+5,ML,PW-MR,0.2,[220,223,230]);y+=5.5;
     txt('A/C:',ML+2,y+3.2,{size:7,bold:true,color:[80,90,120]});txt(cab.att||'—',ML+18,y+3.2,{size:8.5,maxWidth:55});vLine(ML+80,y,y+5,0.2,[220,223,230]);txt('ENDEREÇO:',ML+82,y+3.2,{size:7,bold:true,color:[80,90,120]});txt(cab.endereco||'—',ML+100,y+3.2,{size:8.5,maxWidth:80});hLine(y+5,ML,PW-MR,0.2,[220,223,230]);y+=5.5;
-    txt('NORMA:',ML+2,y+3.2,{size:7,bold:true,color:[80,90,120]});txt('NBR 7584:2012 — Concreto endurecido — Esclerômetro de reflexão',ML+18,y+3.2,{size:7.5,maxWidth:110});vLine(ML+135,y,y+5,0.2,[220,223,230]);txt('RESPONSÁVEL:',ML+137,y+3.2,{size:7,bold:true,color:[80,90,120]});txt(`${cab.respNome||'—'}  |  CREA: ${cab.respCrea||'—'}`,ML+158,y+3.2,{size:7.5,maxWidth:30,align:'right'});
+    txt('NORMA:',ML+2,y+3.2,{size:7,bold:true,color:[80,90,120]});txt('NBR 7584:2026 — Concreto endurecido — Esclerômetro de reflexão',ML+18,y+3.2,{size:7.5,maxWidth:110});vLine(ML+135,y,y+5,0.2,[220,223,230]);txt('RESPONSÁVEL:',ML+137,y+3.2,{size:7,bold:true,color:[80,90,120]});txt(`${cab.respNome||'—'}  |  CREA: ${cab.respCrea||'—'}`,ML+158,y+3.2,{size:7.5,maxWidth:30,align:'right'});
     return startY+29;
   };
   const drawBigorna=(startY:number):number=>{
@@ -603,7 +603,7 @@ export default function EsclerometriaPage() {
         <EnsaioCabecalho
           breadcrumb="Esclerometria"
           titulo="Esclerometria"
-          subtitulo="NBR 7584:2012 — Concreto endurecido"
+          subtitulo="NBR 7584:2026 — Concreto endurecido"
           salvoMsg={salvoMsg}
           onLimparTudo={limparTudo}
           onGerarRelatorio={gerarDocx}

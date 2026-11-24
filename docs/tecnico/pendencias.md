@@ -1,6 +1,6 @@
-# Pendências Abertas
+# Pendências Abertas (Ações do Usuário)
 
-## Segurança (ações manuais do usuário)
+## Segurança (painéis Google Cloud / Supabase / Vercel)
 1. **Rotacionar e restringir `GOOGLE_MAPS_API_KEY`** (a chave atual pode estar em logs antigos da Vercel; o site usa apenas a **Maps Static API**):
    - Em *Google Cloud → APIs e serviços → Credenciais*, localizar o projeto da chave atual comparando os últimos 4 dígitos com `.env.local` (o projeto aberto anteriormente só tinha Gemini API).
    - Confirmar que *Maps Static API* está ativada em *Biblioteca*.
@@ -9,11 +9,10 @@
    - Testar mapa em um laudo de esclerometria ou resistividade, excluir a chave antiga e configurar cota diária + alerta de faturamento.
 2. **Supabase Auth:** confirmar no painel (*Authentication → Sign In / Providers*) que *"Allow new users to sign up"* está **desligado**.
 
-## Técnicas / Infra
-3. **Vercel `maxDuration` em Aderência:** avaliar adicionar `export const maxDuration` em `src/app/api/ensaios/aderencia/docx/route.ts` (resistividade usa `60`), verificando o limite atual do plano Hobby, já que aderência baixa várias fotos do Storage.
-4. **Atualização `NBR 7584:2026` na tela de Esclerometria:** o DOCX já foi atualizado para `NBR 7584:2026`, mas o texto de tela/PDF client-side em `src/app/(dashboard)/ensaios/esclerometria/page.tsx` ainda exibe `NBR 7584:2012`.
-5. **Padronizar corpo de texto DOCX em 11 pt (`w:sz="22"`):** atualizar os templates/scripts dos módulos `aderencia`, `esclerometria` e `resistividade` para usar tamanho 11 pt no corpo de texto (Pacometria já está em 11 pt).
-6. **Dependência `postcss` (Next 15):** vulnerabilidade residual só usada no build local com o CSS próprio; correção definitiva exige migração para Next 16 (sem urgência).
+## Banco / Infra / Revisão Visual
+3. **Modo Obra de Pacometria em Postgres (Supabase):** avaliar criar tabela relacional + políticas RLS no Supabase para os metadados das obras (mantendo apenas as fotos no Storage), eliminando o risco de sobrescrita (*lost update*) em uploads simultâneos sobre o JSON único no bucket `pacometria-obra`.
+4. **Padronizar corpo de texto DOCX em 11 pt (`w:sz="22"`):** atualizar os templates/scripts dos módulos `aderencia`, `esclerometria` e `resistividade` e conferir visualmente no Word eventuais quebras de página (Pacometria já está em 11 pt).
+5. **Dependência `postcss` (Next 15):** vulnerabilidade residual só usada no build local com o CSS próprio; correção definitiva exige migração para Next 16 (decisão futura, sem urgência).
 
 ## QA pós-módulos
 6. **Teste ponta a ponta completo do site:** quando todos os módulos estiverem prontos (`pacometria`, `carbonatacao`, `potencial-corrosao`, `ultrassom`), rodar bateria completa cobrindo login, permissões, usuários/assinatura, autosave e geração/abertura real dos DOCX de todos os ensaios.

@@ -303,10 +303,11 @@ export default function PacometriaPage() {
   })();
 
   const rltOficial = (() => {
+    const aa = String(new Date().getFullYear()).slice(-2);
     const n = cab.rlt.trim();
-    if (!n) return 'RLT.LAU-XXX.26-00';
-    if (/^\d+$/.test(n)) return `RLT.LAU-${n.padStart(3, '0')}.26-00`;
-    return `RLT.LAU-${n}.26-00`;
+    if (!n) return `RLT.LAU-XXX.${aa}-00`;
+    if (/^\d+$/.test(n)) return `RLT.LAU-${n.padStart(3, '0')}.${aa}-00`;
+    return `RLT.LAU-${n}.${aa}-00`;
   })();
 
   const persistirAmostrasGrupo = async (

@@ -51,7 +51,7 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 | `POST /api/ensaios/{aderencia,esclerometria,resistividade,pacometria}/docx` | Gera laudo `.docx` do módulo |
 | `POST / DELETE /api/ensaios/aderencia/foto` | Upload/remoção de foto no bucket `aderencia-fotos` |
 | `GET / POST /api/ensaios/pacometria/obra` · `PATCH / DELETE .../[id]` · `POST / DELETE .../[id]/foto` | Modo Obra multiusuário de pacometria (JSON + fotos no bucket `pacometria-obra`; só o criador edita/apaga) |
-| `GET /api/maps/static` | Proxy autenticado para Google Maps Static API |
+| `POST /api/maps/static` | Proxy autenticado para Google Maps Static API |
 | `GET / POST /api/users` · `PATCH / DELETE /api/users/[id]` | Gestão de usuários (admin em `app_metadata.role`) |
 | `GET / POST / DELETE /api/users/[id]/assinatura` | Upload, remoção e URL assinada de 1h da assinatura |
 
@@ -76,7 +76,8 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 - `src/lib/auth.ts` — `usuarioAtual`, `isAdmin`, `roleDe`, `senhaAtualValida`, `baixarAssinaturaDoUsuario`.
 - `src/lib/assinatura.ts` — `buscarUrlAssinatura` (busca URL assinada de 1h para prévia no front).
 - `src/lib/aderenciaStorage.ts` — upload/download/exclusão no bucket privado `aderencia-fotos` com checagem de dono (`<userId>/`).
-- `src/lib/docx/esclerometria.ts` — `registrarImagem`, `buildDrawingXml`, `injetarAssinatura`, `injetarCroqui`, `injetarCroquiMultiplo`.
+- `src/lib/docx/esclerometria.ts` — `registrarImagem`, `buildDrawingXml`, `injetarAssinatura`, `injetarCroqui`, `injetarCroquiMultiplo`, `sanitizarNomeArquivoDocx`.
+- `src/store/userStore.ts` — `useUserStore` (`fetchUser` + `reset` chamado no logout em `Header.tsx`).
 - `src/modules/aderencia/svgParaPng.ts` — rasteriza SVG em PNG 3x no navegador (usado por aderência e pacometria).
 - `src/modules/pacometria/svgRelatorio.ts` — gera SVGs puros da seção/malha e perfis de elevação por face (com divisão automática >8 estribos) para o laudo DOCX de pacometria.
 
@@ -84,18 +85,18 @@ Commit e push só quando o usuário pedir explicitamente (e **sempre** validar c
 - **Não alterar a assinatura de `injetarCroqui`** em `src/lib/docx/esclerometria.ts` — o módulo `resistividade` ainda a usa (imagem única).
 - **Marcadores de imagem/cor no DOCX de Aderência** terminam em `_END` (`FOTO_PH_<sit>_<cp>_<1|2>_END`, `QUAD_COR_<HEX>_END`) para `_1` não casar com `_10`; `rId`/`docPrId` começam em `2000` para não colidir com `901–9xx` de esclerometria.
 - **Tensão Ra (Aderência)** é calculada a partir de `cargaKgf` e **arredondada em 2 casas** antes de comparar com o limite (decisão do usuário: 60 kgf em placa Ø 5 cm = `0,30 MPa`, passa em `>= 0,30`).
-- **Header mobile:** toda página com `Header` precisa do `@media (max-width: 600px)` com `.header-*`/`.signout-text`/`.sb-u` para evitar overflow horizontal em 320–360px.
+- **Header mobile:** `Header.tsx` já embute o `@media (max-width: 600px)` com `.header-*`/`.signout-text`/`.sb-u` para evitar overflow horizontal em 320–360px.
 - **Anti-zoom mobile:** inputs sem `font-size: 16px` no iOS dão zoom automático (coberto globalmente em `globals.css` + `viewport` em `layout.tsx`).
 - **Build no Next 15:** `npm run dev` ignora erros de tipo que quebram `npx next build` na Vercel.
 
 ## Testes e build
-- Suíte Vitest: `npm run test` (alias `@` em `vitest.config.ts`). Principais: `src/lib/auth.test.ts`, `src/lib/esclerometria/calcularAmostra.test.ts`, `src/modules/aderencia/calculos.test.ts`, `src/modules/aderencia/svgGraficoResultado.test.ts`, `src/modules/pacometria/calculos.test.ts`, `src/app/api/ensaios/aderencia/docx/route.test.ts`, `src/app/api/ensaios/pacometria/docx/route.test.ts`.
+- Suíte Vitest: `npm run test` (alias `@` em `vitest.config.ts`). Principais: `src/lib/auth.test.ts`, `src/app/api/seguranca-rotas.test.ts`, `src/lib/docx/esclerometria.test.ts`, `src/lib/esclerometria/calcularAmostra.test.ts`, `src/lib/resistividade/calcularMedicao.test.ts`, `src/modules/aderencia/calculos.test.ts`, `src/modules/aderencia/svgGraficoResultado.test.ts`, `src/modules/pacometria/calculos.test.ts`, `src/app/api/ensaios/aderencia/docx/route.test.ts`, `src/app/api/ensaios/pacometria/docx/route.test.ts`.
 - Validação de build: `npx next build`.
 
 ## Pendências abertas (detalhe em `docs/tecnico/pendencias.md`)
 - Rotacionar e restringir `GOOGLE_MAPS_API_KEY` (só Maps Static API) no Google Cloud + Vercel + `.env.local`.
 - Confirmar no Supabase que "Allow new users to sign up" está desligado.
-- Avaliar `export const maxDuration` em `api/ensaios/aderencia/docx/route.ts` no plano Hobby.
-- Atualizar menção `NBR 7584:2012` → `2026` na tela/PDF client-side de `esclerometria/page.tsx` (DOCX já está em 2026).
-- Padronizar corpo de texto DOCX em **11 pt (`w:sz="22"`)** nos modelos de `aderencia`, `esclerometria` e `resistividade` (Pacometria já atualizado).
+- Avaliar migrar metadados do Modo Obra de Pacometria (JSON no Storage) para tabela Postgres + RLS no Supabase (evita sobrescrita concorrente).
+- Padronizar corpo de texto DOCX em **11 pt (`w:sz="22"`)** nos modelos de `aderencia`, `esclerometria` e `resistividade` com revisão visual no Word (Pacometria já atualizado).
+- Decisão futura: migrar para Next 16 para eliminar vulnerabilidade residual de `postcss` em build local.
 - Teste ponta a ponta completo do site após concluir os módulos restantes (`pacometria`, `carbonatacao`, `potencial-corrosao`, `ultrassom`).
