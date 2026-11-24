@@ -358,12 +358,23 @@ function legendaCoresPerfilSvg(W: number, yBase: number, footerH: number, fSize:
   );
 }
 
-function gerarSvgPerfilVerticalFace(face: string, nBarras: number, fd: FaceData): string {
-  const ne = Math.max(1, fd.nEstribos || fd.cob?.length || 1);
+const MAX_ESTRIBOS_POR_BLOCO = 8;
+
+function gerarSvgPerfilVerticalFace(
+  face: string,
+  nBarras: number,
+  fd: FaceData,
+  startIdx = 0,
+  endIdx?: number,
+): string {
+  const neTotal = Math.max(1, fd.nEstribos || fd.cob?.length || 1);
+  const fim = Math.min(neTotal, endIdx ?? neTotal);
+  const ne = Math.max(1, fim - startIdx);
   const nb = Math.max(1, nBarras || 1);
+  const ehTrecho = startIdx > 0 || fim < neTotal;
 
   const espVals = Array.from({ length: Math.max(0, ne - 1) }, (_, i) => {
-    const raw = fd.espV?.[i]?.replace(',', '.');
+    const raw = fd.espV?.[startIdx + i]?.replace(',', '.');
     const n = raw ? parseFloat(raw) : NaN;
     return !isNaN(n) && n > 0 ? n : null;
   });
@@ -373,42 +384,47 @@ function gerarSvgPerfilVerticalFace(face: string, nBarras: number, fd: FaceData)
     return !isNaN(n) && n > 0 ? n : null;
   });
 
+  const cobSlice = Array.from({ length: ne }, (_, i) => fd.cob?.[startIdx + i] ?? '');
   const cobPerpEsq = fd.cobPerpIni?.trim() || '';
   const cobPerpDir = fd.cobPerpFim?.trim() || '';
-  const st = statsCobrimentosFace(fd.cob ?? []);
-  const faceNome = FACE_LABELS[face] ?? face;
+  const st = statsCobrimentosFace(cobSlice);
+  const baseFaceNome = FACE_LABELS[face] ?? face;
+  const faceNome = ehTrecho ? `${baseFaceNome} (E${startIdx + 1}–E${fim})` : baseFaceNome;
   const faceAccent = FACE_COLORS[face] || NAVY;
 
-  // Passo compacto para que perfis com 5–8 barras não fiquem excessivamente largos
+  // Passo horizontal com folga para cotas ("20cm") nunca encostarem umas nas outras
   const minStepY = 42;
-  const minStepX = nb >= 5 ? 48 : 56;
+  const minStepX = 64;
   const padY = 28;
-  const padX = cobPerpEsq || cobPerpDir ? 46 : 28;
+  const padX = cobPerpEsq || cobPerpDir ? 52 : 30;
 
   const rawGapY = espVals.map(v => v ?? 15);
   const rawGapX = espHVals.map(v => v ?? 12);
 
   const scY = Math.max(minStepY / Math.max(Math.min(...(rawGapY.length ? rawGapY : [15])), 1), 2.4);
-  const gapYPx = rawGapY.map(v => Math.min(68, Math.max(minStepY, v * scY)));
+  const gapYPx = rawGapY.map(v => Math.min(64, Math.max(minStepY, v * scY)));
   const ch = Math.max(122, gapYPx.reduce((a, b) => a + b, 0) + 2 * padY);
 
-  const scX = Math.max(minStepX / Math.max(Math.min(...(rawGapX.length ? rawGapX : [12])), 1), 2.8);
-  const gapXPx = rawGapX.map(v => Math.min(72, Math.max(minStepX, v * scX)));
-  const cw = Math.max(142, gapXPx.reduce((a, b) => a + b, 0) + 2 * padX);
+  const scX = Math.max(minStepX / Math.max(Math.min(...(rawGapX.length ? rawGapX : [12])), 1), 3.0);
+  const gapXPx = rawGapX.map(v => Math.min(82, Math.max(minStepX, v * scX)));
+  const cw = Math.max(146, gapXPx.reduce((a, b) => a + b, 0) + 2 * padX);
 
-  // Escala dinâmica de fonte proporcional à largura W para manter leitura equivalente a ~10–11 pt no Word
-  const estW = Math.max(360, 82 + cw + 114);
-  const fK = Math.max(1, estW / 360);
+  // Escala dinâmica de fonte considerando AMBAS as dimensões (W e H) para não encolher em perfis altos ou largos
+  const estW = Math.max(360, 84 + cw + 118);
+  const estH = 160 + ch;
+  const fK = Math.max(1, estW / 360, estH / 340);
   const fTit = +(18.5 * fK).toFixed(1);
   const fSub = +(16.5 * fK).toFixed(1);
-  const fLbl = +(18 * fK).toFixed(1);
-  const fCota = +(17 * fK).toFixed(1);
-  const fLeg = +(14.5 * fK).toFixed(1);
+  const fLbl = +(17.5 * fK).toFixed(1);
+  // Limita a fonte das cotas horizontais ao passo disponível para "20cm" nunca encostar no vizinho
+  const minGapXReal = gapXPx.length > 0 ? Math.min(...gapXPx) : minStepX;
+  const fCota = +Math.min(16.5 * fK, minGapXReal * 0.29).toFixed(1);
+  const fLeg = +(14.2 * fK).toFixed(1);
 
   const headerH = Math.round(50 * fK);
   const footerH = Math.round(30 * fK);
-  const ML = Math.round(82 * fK);
-  const MR = Math.round(114 * fK);
+  const ML = Math.round(84 * fK);
+  const MR = Math.round(118 * fK);
   const MT = headerH + Math.round(30 * fK);
   const MB = Math.round(50 * fK) + footerH;
 
@@ -451,13 +467,15 @@ function gerarSvgPerfilVerticalFace(face: string, nBarras: number, fd: FaceData)
     inner += `<text x="${x.toFixed(1)}" y="${oy - Math.round(7 * fK)}" text-anchor="middle" font-size="${fLbl}" font-weight="700" fill="${BARRA_COLOR}" font-family="Calibri, sans-serif">B${i + 1}</text>`;
   });
 
-  // Estribos (horizontais, VERMELHO SÓBRIO) + nomes E1..En e cobrimentos em VERMELHO SÓBRIO
+  // Estribos (horizontais, VERMELHO SÓBRIO) + nomes E{k} e cobrimentos em VERMELHO SÓBRIO
   estrY.forEach((y, i) => {
-    const cobVal = fd.cob?.[i]?.trim() || '';
+    const numEstribo = startIdx + i + 1;
+    const cobVal = cobSlice[i]?.trim() || '';
     inner += `<line x1="${ox + 10}" y1="${y.toFixed(1)}" x2="${ox + cw - 10}" y2="${y.toFixed(1)}" stroke="${ESTRIBO_COLOR}" stroke-width="3.4"/>`;
-    inner += `<text x="${ox + cw + Math.round(8 * fK)}" y="${(y + fLbl * 0.35).toFixed(1)}" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">E${i + 1}</text>`;
+    inner += `<text x="${ox + cw + Math.round(8 * fK)}" y="${(y + fLbl * 0.35).toFixed(1)}" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">E${numEstribo}</text>`;
     if (cobVal) {
-      inner += `<text x="${ox + cw + Math.round(40 * fK)}" y="${(y + fLbl * 0.35).toFixed(1)}" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">${escSvg(cobVal.replace('.', ','))}mm</text>`;
+      const offsetCob = numEstribo >= 10 ? 48 : 40;
+      inner += `<text x="${ox + cw + Math.round(offsetCob * fK)}" y="${(y + fLbl * 0.35).toFixed(1)}" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">${escSvg(cobVal.replace('.', ','))}mm</text>`;
     }
   });
 
@@ -504,12 +522,21 @@ function gerarSvgPerfilVerticalFace(face: string, nBarras: number, fd: FaceData)
   </svg>`;
 }
 
-function gerarSvgPerfilHorizontalFace(face: string, nBarras: number, fd: FaceData): string {
-  const ne = Math.max(1, fd.nEstribos || fd.cob?.length || 1);
+function gerarSvgPerfilHorizontalFace(
+  face: string,
+  nBarras: number,
+  fd: FaceData,
+  startIdx = 0,
+  endIdx?: number,
+): string {
+  const neTotal = Math.max(1, fd.nEstribos || fd.cob?.length || 1);
+  const fim = Math.min(neTotal, endIdx ?? neTotal);
+  const ne = Math.max(1, fim - startIdx);
   const nb = Math.max(1, nBarras || 1);
+  const ehTrecho = startIdx > 0 || fim < neTotal;
 
   const espEstr = Array.from({ length: Math.max(0, ne - 1) }, (_, i) => {
-    const raw = fd.espV?.[i]?.replace(',', '.');
+    const raw = fd.espV?.[startIdx + i]?.replace(',', '.');
     const n = raw ? parseFloat(raw) : NaN;
     return !isNaN(n) && n > 0 ? n : null;
   });
@@ -519,22 +546,24 @@ function gerarSvgPerfilHorizontalFace(face: string, nBarras: number, fd: FaceDat
     return !isNaN(n) && n > 0 ? n : null;
   });
 
+  const cobSlice = Array.from({ length: ne }, (_, i) => fd.cob?.[startIdx + i] ?? '');
   const cobPerpSup = fd.cobPerpIni?.trim() || '';
   const cobPerpInf = fd.cobPerpFim?.trim() || '';
-  const st = statsCobrimentosFace(fd.cob ?? []);
-  const faceNome = FACE_LABELS[face] ?? face;
+  const st = statsCobrimentosFace(cobSlice);
+  const baseFaceNome = FACE_LABELS[face] ?? face;
+  const faceNome = ehTrecho ? `${baseFaceNome} (E${startIdx + 1}–E${fim})` : baseFaceNome;
   const faceAccent = FACE_COLORS[face] || NAVY;
 
-  const minStepX = ne >= 5 ? 56 : 64;
+  const minStepX = 68;
   const minStepY = 44;
-  const padX = 36;
-  const padY = cobPerpSup || cobPerpInf ? 38 : 28;
+  const padX = 40;
+  const padY = cobPerpSup || cobPerpInf ? 40 : 28;
 
   const rawGapX = espEstr.map(v => v ?? 15);
   const rawGapY = espLong.map(v => v ?? 10);
 
   const scX = Math.max(minStepX / Math.max(Math.min(...(rawGapX.length ? rawGapX : [15])), 1), 3.0);
-  const gapXPx = rawGapX.map(v => Math.min(82, Math.max(minStepX, v * scX)));
+  const gapXPx = rawGapX.map(v => Math.min(84, Math.max(minStepX, v * scX)));
   const cw = Math.max(200, gapXPx.reduce((a, b) => a + b, 0) + 2 * padX);
 
   const scY = Math.max(minStepY / Math.max(Math.min(...(rawGapY.length ? rawGapY : [10])), 1), 3.0);
@@ -542,12 +571,14 @@ function gerarSvgPerfilHorizontalFace(face: string, nBarras: number, fd: FaceDat
   const ch = Math.max(108, gapYPx.reduce((a, b) => a + b, 0) + 2 * padY);
 
   const estW = Math.max(380, 86 + cw + 52);
-  const fK = Math.max(1, estW / 380);
+  const estH = 180 + ch;
+  const fK = Math.max(1, estW / 380, estH / 340);
   const fTit = +(18.5 * fK).toFixed(1);
   const fSub = +(16.5 * fK).toFixed(1);
-  const fLbl = +(17.5 * fK).toFixed(1);
-  const fCota = +(17 * fK).toFixed(1);
-  const fLeg = +(14.5 * fK).toFixed(1);
+  const minGapXReal = gapXPx.length > 0 ? Math.min(...gapXPx) : minStepX;
+  const fLbl = +Math.min(17.5 * fK, minGapXReal * 0.28).toFixed(1);
+  const fCota = +Math.min(16.5 * fK, minGapXReal * 0.28).toFixed(1);
+  const fLeg = +(14.2 * fK).toFixed(1);
 
   const headerH = Math.round(50 * fK);
   const footerH = Math.round(30 * fK);
@@ -597,11 +628,12 @@ function gerarSvgPerfilHorizontalFace(face: string, nBarras: number, fd: FaceDat
     inner += `<text x="${ox + cw + Math.round(7 * fK)}" y="${(y + fLbl * 0.35).toFixed(1)}" font-size="${fLbl}" font-weight="700" fill="${BARRA_COLOR}" font-family="Calibri, sans-serif">B${i + 1}</text>`;
   });
 
-  // Estribos (verticais, VERMELHO SÓBRIO) + nomes E1..En e cobrimentos em VERMELHO SÓBRIO
+  // Estribos (verticais, VERMELHO SÓBRIO) + nomes E{k} e cobrimentos em VERMELHO SÓBRIO
   estrX.forEach((x, i) => {
-    const cobVal = fd.cob?.[i]?.trim() || '';
+    const numEstribo = startIdx + i + 1;
+    const cobVal = cobSlice[i]?.trim() || '';
     inner += `<line x1="${x.toFixed(1)}" y1="${oy + 9}" x2="${x.toFixed(1)}" y2="${oy + ch - 9}" stroke="${ESTRIBO_COLOR}" stroke-width="3.4"/>`;
-    inner += `<text x="${x.toFixed(1)}" y="${oy - Math.round(28 * fK)}" text-anchor="middle" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">E${i + 1}</text>`;
+    inner += `<text x="${x.toFixed(1)}" y="${oy - Math.round(28 * fK)}" text-anchor="middle" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">E${numEstribo}</text>`;
     if (cobVal) {
       inner += `<text x="${x.toFixed(1)}" y="${oy - Math.round(8 * fK)}" text-anchor="middle" font-size="${fLbl}" font-weight="700" fill="${ESTRIBO_COLOR}" font-family="Calibri, sans-serif">${escSvg(cobVal.replace('.', ','))}mm</text>`;
     }
@@ -654,6 +686,8 @@ export type PerfilSvgFace = {
   face: string;
   faceLabel: string;
   svg: string;
+  /** Quando true (ex.: viga com >= 6 estribos no trecho), ocupa largura total da ficha no Word */
+  larguraTotal?: boolean;
 };
 
 /** Gera string SVG técnica do esquema do elemento (Pilar, Viga ou Laje/Área Livre). */
@@ -665,6 +699,8 @@ export function gerarSvgEsquemaPacometria(amostra: AmostraRow): string {
 
 /**
  * Gera os SVGs de elevação/perfil por face para Pilar (vertical) e Viga (horizontal).
+ * Faces com mais de 8 estribos são divididas automaticamente em trechos (E1–E8, E9–E16, ...)
+ * para evitar encolhimento excessivo no Word.
  * Para Laje retorna array vazio (a malha já é representada em gerarSvgEsquemaPacometria).
  */
 export function gerarSvgsPerfisPacometria(amostra: AmostraRow): PerfilSvgFace[] {
@@ -677,14 +713,24 @@ export function gerarSvgsPerfisPacometria(amostra: AmostraRow): PerfilSvgFace[] 
     const fd = amostra.facesData?.[face];
     if (!fd) continue;
     const nBarras = amostra.barras?.[face] ?? 2;
-    const svg = amostra.tipo === 'viga'
-      ? gerarSvgPerfilHorizontalFace(face, nBarras, fd)
-      : gerarSvgPerfilVerticalFace(face, nBarras, fd);
-    perfis.push({
-      face,
-      faceLabel: FACE_LABELS[face] ?? face,
-      svg,
-    });
+    const neTotal = Math.max(1, fd.nEstribos || fd.cob?.length || 1);
+    const baseLabel = FACE_LABELS[face] ?? face;
+
+    for (let start = 0; start < neTotal; start += MAX_ESTRIBOS_POR_BLOCO) {
+      const end = Math.min(neTotal, start + MAX_ESTRIBOS_POR_BLOCO);
+      const ehTrecho = start > 0 || end < neTotal;
+      const neTrecho = end - start;
+      const svg = amostra.tipo === 'viga'
+        ? gerarSvgPerfilHorizontalFace(face, nBarras, fd, start, end)
+        : gerarSvgPerfilVerticalFace(face, nBarras, fd, start, end);
+
+      perfis.push({
+        face,
+        faceLabel: ehTrecho ? `${baseLabel} (E${start + 1}–E${end})` : baseLabel,
+        svg,
+        larguraTotal: amostra.tipo === 'viga' && neTrecho >= 6,
+      });
+    }
   }
 
   return perfis;

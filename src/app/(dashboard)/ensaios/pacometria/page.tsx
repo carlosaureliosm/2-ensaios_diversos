@@ -285,11 +285,12 @@ export default function PacometriaPage() {
           face: string;
           faceLabel: string;
           imagem: { base64: string; width: number; height: number; contentType: string };
+          larguraTotal?: boolean;
         }> = [];
         for (const p of perfisSvgs) {
           try {
             const imagem = await svgParaPng(p.svg, 3);
-            perfis.push({ face: p.face, faceLabel: p.faceLabel, imagem });
+            perfis.push({ face: p.face, faceLabel: p.faceLabel, imagem, larguraTotal: p.larguraTotal });
           } catch {
             // ignora perfil se falhar rasterização
           }

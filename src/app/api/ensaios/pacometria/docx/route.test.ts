@@ -568,4 +568,86 @@ describe('geração DOCX de pacometria (ponta a ponta)', () => {
     expect(xml).toContain('Figura 1 —');
     expect(xml).toContain('Figura 20 —');
   });
+
+  it('divide automaticamente em trechos (E1–E8, E9–E15) quando há muitos estribos em Pilar e Viga', async () => {
+    const pilar15Estribos: AmostraRow = {
+      ...amostraPilarCirc,
+      id: 'p15',
+      item: 1,
+      elemento: 'Pilar Alto PA-01',
+      barras: { circ: 6 },
+      facesData: {
+        circ: {
+          nEstribos: 15,
+          cob: Array.from({ length: 15 }, (_, i) => String(20 + (i % 5))),
+          espV: Array.from({ length: 14 }, () => '15'),
+          espH: Array.from({ length: 5 }, () => '20'),
+          cobPerpIni: '',
+          cobPerpFim: '',
+        },
+      },
+    };
+
+    const viga14Estribos: AmostraRow = {
+      ...amostraViga,
+      id: 'v14',
+      item: 2,
+      elemento: 'Viga Longa VL-01',
+      opcao: 'VD', // 1 face: fundo
+      barras: { fundo: 3 },
+      facesData: {
+        fundo: {
+          nEstribos: 14,
+          cob: Array.from({ length: 14 }, (_, i) => String(25 + (i % 4))),
+          espV: Array.from({ length: 13 }, () => '15'),
+          espH: ['8', '8'],
+          cobPerpIni: '25',
+          cobPerpFim: '25',
+        },
+      },
+    };
+
+    const perfisPilar = gerarSvgsPerfisPacometria(pilar15Estribos);
+    expect(perfisPilar).toHaveLength(2);
+    expect(perfisPilar[0].faceLabel).toContain('(E1–E8)');
+    expect(perfisPilar[1].faceLabel).toContain('(E9–E15)');
+    expect(perfisPilar[1].svg).toContain('E9');
+    expect(perfisPilar[1].svg).toContain('E15');
+    expect(perfisPilar[0].larguraTotal).toBe(false);
+
+    const perfisViga = gerarSvgsPerfisPacometria(viga14Estribos);
+    expect(perfisViga).toHaveLength(2);
+    expect(perfisViga[0].faceLabel).toContain('(E1–E8)');
+    expect(perfisViga[1].faceLabel).toContain('(E9–E14)');
+    expect(perfisViga[0].larguraTotal).toBe(true);
+    expect(perfisViga[1].larguraTotal).toBe(true);
+
+    // Gera DOCX real com os trechos divididos (incluindo perfis largos de viga em largura total)
+    const res = await POST(new NextRequest('http://localhost/api/ensaios/pacometria/docx', {
+      method: 'POST',
+      body: JSON.stringify({
+        cab: { rlt: '100', data: '24/11/2026', cliente: 'Teste Estribos', obra: 'Obra', att: '', endereco: '', notas: '' },
+        respNome: 'Eng. Teste',
+        respCrea: '12345',
+        amostras: [
+          {
+            ...pilar15Estribos,
+            esquema: imgMock(490, 262),
+            perfis: perfisPilar.map(p => ({ face: p.face, faceLabel: p.faceLabel, imagem: imgMock(460, 520), larguraTotal: p.larguraTotal })),
+          },
+          {
+            ...viga14Estribos,
+            esquema: imgMock(490, 262),
+            perfis: perfisViga.map(p => ({ face: p.face, faceLabel: p.faceLabel, imagem: imgMock(720, 260), larguraTotal: p.larguraTotal })),
+          },
+        ],
+      }),
+    }));
+    expect(res.status).toBe(200);
+    const xml = new PizZip(Buffer.from(await res.arrayBuffer())).file('word/document.xml')!.asText();
+    validarXmlBemFormado(xml);
+    expect(xml).toContain('(E1–E8)');
+    expect(xml).toContain('(E9–E15)');
+    expect(xml).toContain('(E9–E14)');
+  });
 });

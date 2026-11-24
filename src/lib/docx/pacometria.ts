@@ -38,6 +38,7 @@ export type PerfilFacePayload = {
   face: string;
   faceLabel: string;
   imagem: ImagemBase64Payload;
+  larguraTotal?: boolean;
 };
 
 export type AmostraPacometriaPayload = Omit<AmostraRow, 'fotoFile' | 'fotoPreview'> & {
@@ -613,10 +614,13 @@ export function montarDadosPacometria(
     };
 
     // Linhas de Esquema + Perfis (ordem: Esquema -> Perfis -> Foto)
-    if (temEsquema && (nPerfis === 1 || nPerfis === 3)) {
+    const temPerfilLargo = perfisValidos.some(p => p.larguraTotal);
+
+    if (temEsquema && !temPerfilLargo && (nPerfis === 1 || nPerfis === 3)) {
       // N=1 -> [Esquema | Perfil 1] em 1 linha
       // N=3 -> [Esquema | Perfil 1] + [Perfil 2 | Perfil 3] em grade 2×2 perfeita
-      const maxH = nPerfis === 1 ? 6.8 : 5.4;
+      const p0Alto = perfisValidos[0].imagem.height > perfisValidos[0].imagem.width;
+      const maxH = nPerfis === 1 ? (p0Alto ? 7.6 : 6.8) : (p0Alto ? 6.4 : 5.4);
       const maxW = nPerfis === 1 ? 8.6 : 8.4;
 
       figNum += 1;
@@ -669,12 +673,12 @@ export function montarDadosPacometria(
         cardRows.push(xmlTrow([cellP2, cellP3]));
       }
     } else {
-      // N=0, N=2, N=4+ ou sem esquema
+      // N=0, N=2, N=4+, sem esquema, ou quando há perfis largos (ex.: viga com >= 6 estribos)
       if (temEsquema) {
         figNum += 1;
         const figEsq = figNum;
         const esqMarc = `ESQUEMA_PAC_${itemNum}_END`;
-        const maxHEsq = nPerfis >= 4 ? 5.0 : nPerfis === 2 ? 5.4 : 7.0;
+        const maxHEsq = nPerfis >= 4 ? 5.0 : nPerfis >= 2 ? 5.4 : 7.0;
         const maxWEsq = nPerfis >= 2 ? 13.5 : 14.5;
         imagens.push({
           marcador: esqMarc,
@@ -699,47 +703,62 @@ export function montarDadosPacometria(
         );
       }
 
-      if (nPerfis === 1) {
-        const bBot = temFoto ? B_LIGHT : B_NAVY;
-        cardRows.push(
-          xmlTrow([
-            criarCelulaPerfil(
-              perfisValidos[0],
-              1,
-              14.0,
-              7.5,
-              { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_NAVY },
-              2,
-            ),
-          ]),
-        );
-      } else if (nPerfis >= 2) {
-        const maxHPerfil = nPerfis >= 4 ? 5.2 : 5.6;
-        for (let pi = 0; pi < nPerfis; pi += 2) {
-          const pEsq = perfisValidos[pi];
-          const pDir = perfisValidos[pi + 1];
-          const ultimaLinha = pi + 2 >= nPerfis;
-          const bBot = ultimaLinha && !temFoto ? B_NAVY : B_LIGHT;
+      if (nPerfis > 0) {
+        // Agrupa perfis: itens com `larguraTotal` ocupam linha inteira (gridSpan=2);
+        // os demais são pareados 2 a 2 (ou largura total se único).
+        let pi = 0;
+        while (pi < nPerfis) {
+          const atual = perfisValidos[pi];
+          const proximo = perfisValidos[pi + 1];
+          const forcarFull = Boolean(atual.larguraTotal) || (nPerfis === 1);
 
-          const cellEsq = criarCelulaPerfil(
-            pEsq,
-            pi + 1,
-            8.4,
-            maxHPerfil,
-            { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_LIGHT },
-          );
+          if (forcarFull) {
+            const ultimaLinha = pi + 1 >= nPerfis;
+            const bBot = ultimaLinha && !temFoto ? B_NAVY : B_LIGHT;
+            const maxWFull = atual.larguraTotal ? 16.2 : 14.0;
+            const maxHFull = atual.larguraTotal ? 6.8 : 7.6;
+            cardRows.push(
+              xmlTrow([
+                criarCelulaPerfil(
+                  atual,
+                  pi + 1,
+                  maxWFull,
+                  maxHFull,
+                  { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_NAVY },
+                  2,
+                ),
+              ]),
+            );
+            pi += 1;
+          } else {
+            const parearComProximo = proximo && !proximo.larguraTotal;
+            const avanca = parearComProximo ? 2 : 1;
+            const ultimaLinha = pi + avanca >= nPerfis;
+            const bBot = ultimaLinha && !temFoto ? B_NAVY : B_LIGHT;
+            const alto = atual.imagem.height > atual.imagem.width || (parearComProximo && proximo.imagem.height > proximo.imagem.width);
+            const maxHPerfil = nPerfis >= 4 ? (alto ? 6.4 : 5.2) : (alto ? 6.8 : 5.6);
 
-          const cellDir = pDir
-            ? criarCelulaPerfil(
-                pDir,
-                pi + 2,
-                8.4,
-                maxHPerfil,
-                { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY },
-              )
-            : xmlTc(2500, '', { borders: { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY } });
+            const cellEsq = criarCelulaPerfil(
+              atual,
+              pi + 1,
+              8.4,
+              maxHPerfil,
+              { top: B_NONE, bottom: bBot, left: B_NAVY, right: B_LIGHT },
+            );
 
-          cardRows.push(xmlTrow([cellEsq, cellDir]));
+            const cellDir = parearComProximo
+              ? criarCelulaPerfil(
+                  proximo,
+                  pi + 2,
+                  8.4,
+                  maxHPerfil,
+                  { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY },
+                )
+              : xmlTc(2500, '', { borders: { top: B_NONE, bottom: bBot, left: B_LIGHT, right: B_NAVY } });
+
+            cardRows.push(xmlTrow([cellEsq, cellDir]));
+            pi += avanca;
+          }
         }
       }
     }
